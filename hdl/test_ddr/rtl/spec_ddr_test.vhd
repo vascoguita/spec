@@ -31,7 +31,7 @@ library UNISIM;
 use UNISIM.vcomponents.all;
 
 
-entity spec_top is
+entity spec_ddr_test is
   generic(
     g_SIMULATION    : string := "FALSE";
     g_CALIB_SOFT_IP : string := "TRUE");
@@ -106,10 +106,10 @@ entity spec_top is
       DDR3_ZIO     : inout std_logic;
       DDR3_RZQ     : inout std_logic
       );
-end spec_top;
+end spec_ddr_test;
 
 
-architecture rtl of spec_top is
+architecture rtl of spec_ddr_test is
 
   ------------------------------------------------------------------------------
   -- Components declaration
