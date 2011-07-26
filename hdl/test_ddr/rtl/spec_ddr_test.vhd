@@ -82,8 +82,12 @@ entity spec_ddr_test is
       VC_RDY     : in std_logic_vector(1 downto 0);  -- Channel ready
 
       -- Font panel LEDs
-      LED_RED   : out std_logic;
-      LED_GREEN : out std_logic;
+      LED_RED_O   : out std_logic;
+      LED_GREEN_O : out std_logic;
+
+      -- Auxiliary pins
+      AUX_LEDS_O    : out std_logic_vector(3 downto 0);
+      AUX_BUTTONS_I : in  std_logic_vector(1 downto 0);
 
       -- DDR3 interface
       DDR3_CAS_N   : out   std_logic;
@@ -204,7 +208,6 @@ architecture rtl of spec_ddr_test is
     generic(
       g_MEMCLK_PERIOD      : integer := 3200;               -- in ps
       g_RST_ACT_LOW        : integer := 1;                  -- 1=active low
-      g_INPUT_CLK_TYPE     : string  := "SINGLE_ENDED";
       g_SIMULATION         : string  := "FALSE";
       g_CALIB_SOFT_IP      : string  := "TRUE";
       g_MEM_ADDR_ORDER     : string  := "ROW_BANK_COLUMN";  -- BANK_ROW_COLUMN or ROW_BANK_COLUMN
@@ -213,8 +216,10 @@ architecture rtl of spec_ddr_test is
       g_MEM_BANKADDR_WIDTH : integer := 3;
       g_P0_MASK_SIZE       : integer := 4;
       g_P0_DATA_PORT_SIZE  : integer := 32;
+      g_P0_BYTE_ADDR_WIDTH : integer := 30;
       g_P1_MASK_SIZE       : integer := 4;
-      g_P1_DATA_PORT_SIZE  : integer := 32
+      g_P1_DATA_PORT_SIZE  : integer := 32;
+      g_P1_BYTE_ADDR_WIDTH : integer := 30
       );
 
     port(
@@ -246,20 +251,20 @@ architecture rtl of spec_ddr_test is
       wb0_cyc_i   : in  std_logic;
       wb0_stb_i   : in  std_logic;
       wb0_we_i    : in  std_logic;
-      wb0_addr_i  : in  std_logic_vector(29 downto 0);
+      wb0_addr_i  : in  std_logic_vector(g_P0_BYTE_ADDR_WIDTH - 3 downto 0);
       wb0_data_i  : in  std_logic_vector(g_P0_DATA_PORT_SIZE - 1 downto 0);
       wb0_data_o  : out std_logic_vector(g_P0_DATA_PORT_SIZE - 1 downto 0);
       wb0_ack_o   : out std_logic;
       wb0_stall_o : out std_logic;
 
       wb1_clk_i   : in  std_logic;
-      wb1_sel_i   : in  std_logic_vector(g_P0_MASK_SIZE - 1 downto 0);
+      wb1_sel_i   : in  std_logic_vector(g_P1_MASK_SIZE - 1 downto 0);
       wb1_cyc_i   : in  std_logic;
       wb1_stb_i   : in  std_logic;
       wb1_we_i    : in  std_logic;
-      wb1_addr_i  : in  std_logic_vector(29 downto 0);
-      wb1_data_i  : in  std_logic_vector(g_P0_DATA_PORT_SIZE - 1 downto 0);
-      wb1_data_o  : out std_logic_vector(g_P0_DATA_PORT_SIZE - 1 downto 0);
+      wb1_addr_i  : in  std_logic_vector(g_P1_BYTE_ADDR_WIDTH - 3 downto 0);
+      wb1_data_i  : in  std_logic_vector(g_P1_DATA_PORT_SIZE - 1 downto 0);
+      wb1_data_o  : out std_logic_vector(g_P1_DATA_PORT_SIZE - 1 downto 0);
       wb1_ack_o   : out std_logic;
       wb1_stall_o : out std_logic
       );
@@ -285,22 +290,6 @@ architecture rtl of spec_ddr_test is
       );
   end component gpio_regs;
 
-  component monostable
-    generic(
-      g_INPUT_POLARITY  : std_logic := '1';    --! trigger_i polarity
-                                               --! ('0'=negative, 1=positive)
-      g_OUTPUT_POLARITY : std_logic := '1';    --! pulse_o polarity
-                                               --! ('0'=negative, 1=positive)
-      g_OUTPUT_RETRIG   : boolean   := false;  --! Retriggerable output monostable
-      g_OUTPUT_LENGTH   : natural   := 1       --! pulse_o lenght (in clk_i ticks)
-      );
-    port (
-      rst_n_i   : in  std_logic;               --! Reset (active low)
-      clk_i     : in  std_logic;               --! Clock
-      trigger_i : in  std_logic;               --! Trigger input pulse
-      pulse_o   : out std_logic                --! Monostable output pulse
-      );
-  end component monostable;
 
   ------------------------------------------------------------------------------
   -- Constants declaration
@@ -346,7 +335,7 @@ architecture rtl of spec_ddr_test is
   signal wb_we      : std_logic;
   signal wb_ack     : std_logic_vector(c_CSR_WB_SLAVES_NB-1 downto 0);
   signal spi_wb_adr : std_logic_vector(4 downto 0);
-  signal ddr_wb_adr : std_logic_vector(29 downto 0);
+  signal ddr_wb_adr : std_logic_vector(26 downto 0);
 
   -- DMA wishbone bus
   signal dma_adr     : std_logic_vector(31 downto 0);
@@ -359,7 +348,7 @@ architecture rtl of spec_ddr_test is
   signal dma_ack     : std_logic;       --_vector(c_DMA_WB_SLAVES_NB-1 downto 0);
   signal dma_stall   : std_logic;       --_vector(c_DMA_WB_SLAVES_NB-1 downto 0);
   signal ram_we      : std_logic_vector(0 downto 0);
-  signal ddr_dma_adr : std_logic_vector(29 downto 0);
+  signal ddr_dma_adr : std_logic_vector(27 downto 0);
 
   -- Interrupts stuff
   signal irq_sources       : std_logic_vector(1 downto 0);
@@ -375,6 +364,11 @@ architecture rtl of spec_ddr_test is
 
   -- DDR3
   signal ddr3_calib_done : std_logic;
+
+  -- LED
+  signal led_cnt1 : unsigned(22 downto 0);
+  signal led_cnt2 : unsigned(24 downto 0);
+  signal led_en   : std_logic;
 
 
 begin
@@ -433,6 +427,7 @@ begin
       O => sys_clk_200,
       I => sys_clk_200_buf);
 
+  -- Note that the IBUFG have to be removed from the generated ddr core (memc3_infrastructure.vhd)
   cmp_ddr_clk_buf : BUFG
     port map (
       O => ddr_clk,
@@ -572,23 +567,40 @@ begin
                & sys_clk_pll_locked
                & p2l_pll_locked;
 
-  gen_irq_led : for I in 0 to 1 generate
-    cmp_irq_led : monostable
-      generic map(
-        g_INPUT_POLARITY  => '1',
-        g_OUTPUT_POLARITY => '1',
-        g_OUTPUT_RETRIG   => false,
-        g_OUTPUT_LENGTH   => 5000000)
-      port map(
-        rst_n_i   => L_RST_N,
-        clk_i     => sys_clk_50,
-        trigger_i => irq_sources(I),
-        pulse_o   => irq_sources_2_led(I));
-  end generate gen_irq_led;
+  p_led_mono_1 : process (L_RST_N, sys_clk_50)
+  begin
+    if L_RST_N = '0' then
+      led_cnt1 <= (others => '0');
+    elsif rising_edge(sys_clk_50) then
+      if irq_sources(0) = '1' then
+        led_cnt1             <= (others => '1');
+        irq_sources_2_led(0) <= '1';
+      elsif led_cnt1 = 0 then
+        irq_sources_2_led(0) <= '0';
+      else
+        led_cnt1 <= led_cnt1 - 1;
+      end if;
+    end if;
+  end process p_led_mono_1;
 
+  p_led_cnt : process (L_RST_N, sys_clk_50)
+  begin
+    if L_RST_N = '0' then
+      led_cnt2 <= (others => '1');
+      led_en   <= '1';
+    elsif rising_edge(sys_clk_50) then
+      led_cnt2 <= led_cnt2 - 1;
+      led_en   <= led_cnt2(24);
+    end if;
+  end process p_led_cnt;
 
-  LED_RED   <= gpio_led_ctrl(0) or irq_sources_2_led(0);
-  LED_GREEN <= gpio_led_ctrl(1) or irq_sources_2_led(1);
+  LED_RED_O   <= gpio_led_ctrl(0) or irq_sources_2_led(0);
+  LED_GREEN_O <= gpio_led_ctrl(1) or led_en;
+
+  AUX_LEDS_O(0) <= not(led_en);
+  AUX_LEDS_O(1) <= not(sys_clk_pll_locked);
+  AUX_LEDS_O(2) <= not(p2l_pll_locked);
+  AUX_LEDS_O(3) <= not(ddr3_calib_done);
 
   ------------------------------------------------------------------------------
   -- Interrupt stuff
@@ -602,9 +614,12 @@ begin
   ------------------------------------------------------------------------------
   cmp_ddr_ctrl : ddr3_ctrl
     generic map(
-      g_MEMCLK_PERIOD => 3000,
-      g_SIMULATION    => g_SIMULATION,
-      g_CALIB_SOFT_IP => g_CALIB_SOFT_IP)
+      g_MEMCLK_PERIOD      => 3000,
+      g_SIMULATION         => g_SIMULATION,
+      g_CALIB_SOFT_IP      => g_CALIB_SOFT_IP,
+      g_P0_MASK_SIZE       => 4,
+      g_P0_DATA_PORT_SIZE  => 32,
+      g_P0_BYTE_ADDR_WIDTH => 30)
     port map (
       clk_i   => ddr_clk,
       rst_n_i => L_RST_N,
@@ -631,15 +646,15 @@ begin
       ddr3_rzq_b    => DDR3_RZQ,
       ddr3_zio_b    => DDR3_ZIO,
 
-      wb0_clk_i   => sys_clk_50,              --'0',
-      wb0_sel_i   => "1111",
-      wb0_cyc_i   => wb_cyc(2),               --'0',
-      wb0_stb_i   => wb_stb,                  --'0',
-      wb0_we_i    => wb_we,                   --'0',
-      wb0_addr_i  => ddr_wb_adr,              --X"0000000" & "00",
-      wb0_data_i  => wb_dat_o,                --X"00000000",
-      wb0_data_o  => wb_dat_i(95 downto 64),  --open,
-      wb0_ack_o   => wb_ack(2),               --open,
+      wb0_clk_i   => sys_clk_50,        --'0',
+      wb0_sel_i   => X"F",
+      wb0_cyc_i   => '0',  --wb_cyc(2),               --'0',
+      wb0_stb_i   => '0',  --wb_stb,                  --'0',
+      wb0_we_i    => '0',  --wb_we,                   --'0',
+      wb0_addr_i  => X"0000000",
+      wb0_data_i  => X"00000000",  --wb_dat_o,                --X"00000000",
+      wb0_data_o  => open,  --wb_dat_i(95 downto 64),  --open,
+      wb0_ack_o   => open,  --wb_ack(2),               --open,
       wb0_stall_o => open,
 
       wb1_clk_i   => sys_clk_50,
@@ -647,17 +662,11 @@ begin
       wb1_cyc_i   => dma_cyc,
       wb1_stb_i   => dma_stb,
       wb1_we_i    => dma_we,
-      wb1_addr_i  => ddr_dma_adr,
+      wb1_addr_i  => dma_adr(27 downto 0),
       wb1_data_i  => dma_dat_o,
       wb1_data_o  => dma_dat_i,
       wb1_ack_o   => dma_ack,
       wb1_stall_o => dma_stall);
-
-  -- 32-bit word to byte address
-  ddr_wb_adr <= "0000000000" & wb_adr & "00";
-
-  -- 32-bit word to byte address
-  ddr_dma_adr <= dma_adr(27 downto 0) & "00";
 
   ------------------------------------------------------------------------------
   -- Assign unused outputs
