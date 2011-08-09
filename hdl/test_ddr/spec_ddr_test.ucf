@@ -568,11 +568,11 @@ NET "DDR3_UDQS_N"  IN_TERM = NONE;
 # GN4124
 
 NET "L_CLKp" TNM_NET = "l_clkp_grp";
-TIMESPEC TS_l_clkp = PERIOD "l_clkp_grp" 6.25 ns HIGH 50%;
+TIMESPEC TS_l_clkp = PERIOD "l_clkp_grp" 5 ns HIGH 50%;
 NET "P2L_CLKp" TNM_NET = "p2l_clkp_grp";
-TIMESPEC TS_p2l_clkp = PERIOD "p2l_clkp_grp" 6.25 ns HIGH 50%;
+TIMESPEC TS_p2l_clkp = PERIOD "p2l_clkp_grp" 5 ns HIGH 50%;
 NET "P2L_CLKn" TNM_NET = "p2l_clkn_grp";
-TIMESPEC TS_p2l_clkn = PERIOD "p2l_clkn_grp" 6.25 ns HIGH 50%;
+TIMESPEC TS_p2l_clkn = PERIOD "p2l_clkn_grp" 5 ns HIGH 50%;
 
 # System clock
 
@@ -599,3 +599,4 @@ NET "cmp_gn4124_core/rst_*" TIG;
 NET "cmp_ddr_ctrl/cmp_ddr3_ctrl_wrapper/cmp_ddr_ctrl/memc3_wrapper_inst/memc3_mcb_raw_wrapper_inst/selfrefresh_mcb_mode" TIG;
 NET "cmp_ddr_ctrl/cmp_ddr3_ctrl_wrapper/cmp_ddr_ctrl/c3_pll_lock" TIG;
 NET "cmp_ddr_ctrl/cmp_ddr3_ctrl_wrapper/cmp_ddr_ctrl/memc3_wrapper_inst/memc3_mcb_raw_wrapper_inst/hard_done_cal" TIG;
+NET "cmp_ddr_ctrl/cmp_ddr3_ctrl_wrapper/cmp_ddr_ctrl/memc3_wrapper_inst/memc3_mcb_raw_wrapper_inst/gen_term_calib.mcb_soft_calibration_top_inst/mcb_soft_calibration_inst/DONE_SOFTANDHARD_CAL" TIG;

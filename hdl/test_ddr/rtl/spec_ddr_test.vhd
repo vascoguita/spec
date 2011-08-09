@@ -118,26 +118,13 @@ architecture rtl of spec_ddr_test is
   ------------------------------------------------------------------------------
   -- Components declaration
   ------------------------------------------------------------------------------
-
   component gn4124_core
-    generic(
-      g_BAR0_APERTURE     : integer := 20;  -- BAR0 aperture, defined in GN4124 PCI_BAR_CONFIG register (0x80C)
-                                            -- => number of bits to address periph on the board
-      g_CSR_WB_SLAVES_NB  : integer := 1;   -- Number of CSR wishbone slaves
-      g_DMA_WB_SLAVES_NB  : integer := 1;   -- Number of DMA wishbone slaves
-      g_DMA_WB_ADDR_WIDTH : integer := 26   -- DMA wishbone address bus width
-      );
     port
       (
         ---------------------------------------------------------
         -- Control and status
-        --
-        -- Asynchronous reset from GN4124
-        rst_n_a_i      : in  std_logic;
-        -- P2L clock PLL locked
-        p2l_pll_locked : out std_logic;
-        -- Debug ouputs
-        debug_o        : out std_logic_vector(7 downto 0);
+        rst_n_a_i : in  std_logic;                      -- Asynchronous reset from GN4124
+        status_o  : out std_logic_vector(31 downto 0);  -- Core status output
 
         ---------------------------------------------------------
         -- P2L Direction
@@ -178,36 +165,88 @@ architecture rtl of spec_ddr_test is
         irq_p_o   : out std_logic;                     -- Interrupt request pulse to GN4124 GPIO
 
         ---------------------------------------------------------
-        -- Target interface (CSR wishbone master)
-        wb_clk_i : in  std_logic;
-        wb_adr_o : out std_logic_vector(g_BAR0_APERTURE-log2_ceil(g_CSR_WB_SLAVES_NB+1)-1 downto 0);
-        wb_dat_o : out std_logic_vector(31 downto 0);                         -- Data out
-        wb_sel_o : out std_logic_vector(3 downto 0);                          -- Byte select
-        wb_stb_o : out std_logic;
-        wb_we_o  : out std_logic;
-        wb_cyc_o : out std_logic_vector(g_CSR_WB_SLAVES_NB-1 downto 0);
-        wb_dat_i : in  std_logic_vector((32*g_CSR_WB_SLAVES_NB)-1 downto 0);  -- Data in
-        wb_ack_i : in  std_logic_vector(g_CSR_WB_SLAVES_NB-1 downto 0);
+        -- DMA registers wishbone interface (slave classic)
+        dma_reg_clk_i   : in  std_logic;
+        dma_reg_adr_i   : in  std_logic_vector(31 downto 0);
+        dma_reg_dat_i   : in  std_logic_vector(31 downto 0);
+        dma_reg_sel_i   : in  std_logic_vector(3 downto 0);
+        dma_reg_stb_i   : in  std_logic;
+        dma_reg_we_i    : in  std_logic;
+        dma_reg_cyc_i   : in  std_logic;
+        dma_reg_dat_o   : out std_logic_vector(31 downto 0);
+        dma_reg_ack_o   : out std_logic;
+        dma_reg_stall_o : out std_logic;
+
+        ---------------------------------------------------------
+        -- CSR wishbone interface (master pipelined)
+        csr_clk_i   : in  std_logic;
+        csr_adr_o   : out std_logic_vector(31 downto 0);
+        csr_dat_o   : out std_logic_vector(31 downto 0);
+        csr_sel_o   : out std_logic_vector(3 downto 0);
+        csr_stb_o   : out std_logic;
+        csr_we_o    : out std_logic;
+        csr_cyc_o   : out std_logic;
+        csr_dat_i   : in  std_logic_vector(31 downto 0);
+        csr_ack_i   : in  std_logic;
+        csr_stall_i : in  std_logic;
 
         ---------------------------------------------------------
         -- DMA interface (Pipelined wishbone master)
         dma_clk_i   : in  std_logic;
         dma_adr_o   : out std_logic_vector(31 downto 0);
-        dma_dat_o   : out std_logic_vector(31 downto 0);                         -- Data out
-        dma_sel_o   : out std_logic_vector(3 downto 0);                          -- Byte select
+        dma_dat_o   : out std_logic_vector(31 downto 0);
+        dma_sel_o   : out std_logic_vector(3 downto 0);
         dma_stb_o   : out std_logic;
         dma_we_o    : out std_logic;
-        dma_cyc_o   : out std_logic;                                             --_vector(g_DMA_WB_SLAVES_NB-1 downto 0);
-        dma_dat_i   : in  std_logic_vector((32*g_DMA_WB_SLAVES_NB)-1 downto 0);  -- Data in
-        dma_ack_i   : in  std_logic;                                             --_vector(g_DMA_WB_SLAVES_NB-1 downto 0);
-        dma_stall_i : in  std_logic--_vector(g_DMA_WB_SLAVES_NB-1 downto 0)        -- for pipelined Wishbone
+        dma_cyc_o   : out std_logic;
+        dma_dat_i   : in  std_logic_vector(31 downto 0);
+        dma_ack_i   : in  std_logic;
+        dma_stall_i : in  std_logic
         );
   end component;  --  gn4124_core
+
+  component wb_addr_decoder
+    generic
+      (
+        g_WINDOW_SIZE  : integer := 18;  -- Number of bits to address periph on the board (32-bit word address)
+        g_WB_SLAVES_NB : integer := 2
+        );
+    port
+      (
+        ---------------------------------------------------------
+        -- GN4124 core clock and reset
+        clk_i   : in std_logic;
+        rst_n_i : in std_logic;
+
+        ---------------------------------------------------------
+        -- wishbone master interface
+        wbm_adr_i   : in  std_logic_vector(31 downto 0);  -- Address
+        wbm_dat_i   : in  std_logic_vector(31 downto 0);  -- Data out
+        wbm_sel_i   : in  std_logic_vector(3 downto 0);   -- Byte select
+        wbm_stb_i   : in  std_logic;                      -- Strobe
+        wbm_we_i    : in  std_logic;                      -- Write
+        wbm_cyc_i   : in  std_logic;                      -- Cycle
+        wbm_dat_o   : out std_logic_vector(31 downto 0);  -- Data in
+        wbm_ack_o   : out std_logic;                      -- Acknowledge
+        wbm_stall_o : out std_logic;                      -- Stall
+
+        ---------------------------------------------------------
+        -- wishbone slaves interface
+        wb_adr_o   : out std_logic_vector(31 downto 0);                     -- Address
+        wb_dat_o   : out std_logic_vector(31 downto 0);                     -- Data out
+        wb_sel_o   : out std_logic_vector(3 downto 0);                      -- Byte select
+        wb_stb_o   : out std_logic;                                         -- Strobe
+        wb_we_o    : out std_logic;                                         -- Write
+        wb_cyc_o   : out std_logic_vector(g_WB_SLAVES_NB-1 downto 0);       -- Cycle
+        wb_dat_i   : in  std_logic_vector((32*g_WB_SLAVES_NB)-1 downto 0);  -- Data in
+        wb_ack_i   : in  std_logic_vector(g_WB_SLAVES_NB-1 downto 0);       -- Acknowledge
+        wb_stall_i : in  std_logic_vector(g_WB_SLAVES_NB-1 downto 0)        -- Stall
+        );
+  end component wb_addr_decoder;
 
   component ddr3_ctrl
     generic(
       g_MEMCLK_PERIOD      : integer := 3200;               -- in ps
-      g_RST_ACT_LOW        : integer := 1;                  -- 1=active low
       g_SIMULATION         : string  := "FALSE";
       g_CALIB_SOFT_IP      : string  := "TRUE";
       g_MEM_ADDR_ORDER     : string  := "ROW_BANK_COLUMN";  -- BANK_ROW_COLUMN or ROW_BANK_COLUMN
@@ -225,7 +264,7 @@ architecture rtl of spec_ddr_test is
     port(
       clk_i         : in    std_logic;
       rst_n_i       : in    std_logic;
-      calib_done    : out   std_logic;
+      status_o      : out   std_logic_vector(31 downto 0);
       ddr3_dq_b     : inout std_logic_vector(g_NUM_DQ_PINS-1 downto 0);
       ddr3_a_o      : out   std_logic_vector(g_MEM_ADDR_WIDTH-1 downto 0);
       ddr3_ba_o     : out   std_logic_vector(g_MEM_BANKADDR_WIDTH-1 downto 0);
@@ -251,7 +290,7 @@ architecture rtl of spec_ddr_test is
       wb0_cyc_i   : in  std_logic;
       wb0_stb_i   : in  std_logic;
       wb0_we_i    : in  std_logic;
-      wb0_addr_i  : in  std_logic_vector(g_P0_BYTE_ADDR_WIDTH - 3 downto 0);
+      wb0_addr_i  : in  std_logic_vector(31 downto 0);
       wb0_data_i  : in  std_logic_vector(g_P0_DATA_PORT_SIZE - 1 downto 0);
       wb0_data_o  : out std_logic_vector(g_P0_DATA_PORT_SIZE - 1 downto 0);
       wb0_ack_o   : out std_logic;
@@ -262,7 +301,7 @@ architecture rtl of spec_ddr_test is
       wb1_cyc_i   : in  std_logic;
       wb1_stb_i   : in  std_logic;
       wb1_we_i    : in  std_logic;
-      wb1_addr_i  : in  std_logic_vector(g_P1_BYTE_ADDR_WIDTH - 3 downto 0);
+      wb1_addr_i  : in  std_logic_vector(31 downto 0);
       wb1_data_i  : in  std_logic_vector(g_P1_DATA_PORT_SIZE - 1 downto 0);
       wb1_data_o  : out std_logic_vector(g_P1_DATA_PORT_SIZE - 1 downto 0);
       wb1_ack_o   : out std_logic;
@@ -294,10 +333,8 @@ architecture rtl of spec_ddr_test is
   ------------------------------------------------------------------------------
   -- Constants declaration
   ------------------------------------------------------------------------------
-  constant c_BAR0_APERTURE     : integer := 20;
-  constant c_CSR_WB_SLAVES_NB  : integer := 3;
-  constant c_DMA_WB_SLAVES_NB  : integer := 1;
-  constant c_DMA_WB_ADDR_WIDTH : integer := 26;
+  constant c_BAR0_APERTURE    : integer := 18;  -- nb of bits for 32-bit word address
+  constant c_CSR_WB_SLAVES_NB : integer := 2;
 
   ------------------------------------------------------------------------------
   -- Signals declaration
@@ -325,30 +362,38 @@ architecture rtl of spec_ddr_test is
   -- Reset
   signal rst : std_logic;
 
-  -- CSR wishbone bus
-  signal wb_adr     : std_logic_vector(c_BAR0_APERTURE-log2_ceil(c_CSR_WB_SLAVES_NB+1)-1 downto 0);
-  signal wb_dat_i   : std_logic_vector((32*c_CSR_WB_SLAVES_NB)-1 downto 0);
-  signal wb_dat_o   : std_logic_vector(31 downto 0);
-  signal wb_sel     : std_logic_vector(3 downto 0);
-  signal wb_cyc     : std_logic_vector(c_CSR_WB_SLAVES_NB-1 downto 0);
-  signal wb_stb     : std_logic;
-  signal wb_we      : std_logic;
-  signal wb_ack     : std_logic_vector(c_CSR_WB_SLAVES_NB-1 downto 0);
-  signal spi_wb_adr : std_logic_vector(4 downto 0);
-  signal ddr_wb_adr : std_logic_vector(26 downto 0);
+  -- CSR wishbone bus (master)
+  signal wbm_adr   : std_logic_vector(31 downto 0);
+  signal wbm_dat_i : std_logic_vector(31 downto 0);
+  signal wbm_dat_o : std_logic_vector(31 downto 0);
+  signal wbm_sel   : std_logic_vector(3 downto 0);
+  signal wbm_cyc   : std_logic;
+  signal wbm_stb   : std_logic;
+  signal wbm_we    : std_logic;
+  signal wbm_ack   : std_logic;
+  signal wbm_stall : std_logic;
+
+  -- CSR wishbone bus (slaves)
+  signal wb_adr   : std_logic_vector(31 downto 0);
+  signal wb_dat_i : std_logic_vector((32*c_CSR_WB_SLAVES_NB)-1 downto 0);
+  signal wb_dat_o : std_logic_vector(31 downto 0);
+  signal wb_sel   : std_logic_vector(3 downto 0);
+  signal wb_cyc   : std_logic_vector(c_CSR_WB_SLAVES_NB-1 downto 0);
+  signal wb_stb   : std_logic;
+  signal wb_we    : std_logic;
+  signal wb_ack   : std_logic_vector(c_CSR_WB_SLAVES_NB-1 downto 0);
+  signal wb_stall : std_logic_vector(c_CSR_WB_SLAVES_NB-1 downto 0);
 
   -- DMA wishbone bus
-  signal dma_adr     : std_logic_vector(31 downto 0);
-  signal dma_dat_i   : std_logic_vector((32*c_DMA_WB_SLAVES_NB)-1 downto 0);
-  signal dma_dat_o   : std_logic_vector(31 downto 0);
-  signal dma_sel     : std_logic_vector(3 downto 0);
-  signal dma_cyc     : std_logic;       --_vector(c_DMA_WB_SLAVES_NB-1 downto 0);
-  signal dma_stb     : std_logic;
-  signal dma_we      : std_logic;
-  signal dma_ack     : std_logic;       --_vector(c_DMA_WB_SLAVES_NB-1 downto 0);
-  signal dma_stall   : std_logic;       --_vector(c_DMA_WB_SLAVES_NB-1 downto 0);
-  signal ram_we      : std_logic_vector(0 downto 0);
-  signal ddr_dma_adr : std_logic_vector(27 downto 0);
+  signal dma_adr   : std_logic_vector(31 downto 0);
+  signal dma_dat_i : std_logic_vector(31 downto 0);
+  signal dma_dat_o : std_logic_vector(31 downto 0);
+  signal dma_sel   : std_logic_vector(3 downto 0);
+  signal dma_cyc   : std_logic;
+  signal dma_stb   : std_logic;
+  signal dma_we    : std_logic;
+  signal dma_ack   : std_logic;
+  signal dma_stall : std_logic;
 
   -- Interrupts stuff
   signal irq_sources       : std_logic_vector(1 downto 0);
@@ -363,7 +408,11 @@ architecture rtl of spec_ddr_test is
   signal gpio_led_ctrl : std_logic_vector(31 downto 0);
 
   -- DDR3
+  signal ddr3_status     : std_logic_vector(31 downto 0);
   signal ddr3_calib_done : std_logic;
+
+  -- Gennum core
+  signal gn4124_status : std_logic_vector(31 downto 0);
 
   -- LED
   signal led_cnt1 : unsigned(22 downto 0);
@@ -456,21 +505,13 @@ begin
   -- GN4124 interface
   ------------------------------------------------------------------------------
   cmp_gn4124_core : gn4124_core
-    generic map (
-      g_BAR0_APERTURE     => c_BAR0_APERTURE,
-      g_CSR_WB_SLAVES_NB  => c_CSR_WB_SLAVES_NB,
-      g_DMA_WB_SLAVES_NB  => c_DMA_WB_SLAVES_NB,
-      g_DMA_WB_ADDR_WIDTH => c_DMA_WB_ADDR_WIDTH)
-    port map(
+    port map
+    (
       ---------------------------------------------------------
       -- Control and status
-      --
-      -- Asynchronous reset from GN4124
-      rst_n_a_i      => L_RST_N,
-      -- P2L clock PLL locked
-      p2l_pll_locked => p2l_pll_locked,
-      -- Debug outputs
-      debug_o        => open,
+      rst_n_a_i             => L_RST_N,
+      status_o           => gn4124_status,
+
 
       ---------------------------------------------------------
       -- P2L Direction
@@ -513,19 +554,33 @@ begin
       irq_p_o   => GPIO(0),
 
       ---------------------------------------------------------
-      -- CSR wishbone interface
-      wb_clk_i => sys_clk_50,
-      wb_adr_o => wb_adr,
-      wb_dat_o => wb_dat_o,
-      wb_sel_o => wb_sel,
-      wb_stb_o => wb_stb,
-      wb_we_o  => wb_we,
-      wb_cyc_o => wb_cyc,
-      wb_dat_i => wb_dat_i,
-      wb_ack_i => wb_ack,
+      -- DMA registers wishbone interface (slave classic)
+      dma_reg_clk_i   => sys_clk_50,
+      dma_reg_adr_i   => wb_adr,
+      dma_reg_dat_i   => wb_dat_o,
+      dma_reg_sel_i   => wb_sel,
+      dma_reg_stb_i   => wb_stb,
+      dma_reg_we_i    => wb_we,
+      dma_reg_cyc_i   => wb_cyc(0),
+      dma_reg_dat_o   => wb_dat_i(31 downto 0),
+      dma_reg_ack_o   => wb_ack(0),
+      dma_reg_stall_o => wb_stall(0),
 
       ---------------------------------------------------------
-      -- DMA wishbone interface (pipelined)
+      -- CSR wishbone interface (master pipelined)
+      csr_clk_i   => sys_clk_50,
+      csr_adr_o   => wbm_adr,
+      csr_dat_o   => wbm_dat_o,
+      csr_sel_o   => wbm_sel,
+      csr_stb_o   => wbm_stb,
+      csr_we_o    => wbm_we,
+      csr_cyc_o   => wbm_cyc,
+      csr_dat_i   => wbm_dat_i,
+      csr_ack_i   => wbm_ack,
+      csr_stall_i => wbm_stall,
+
+      ---------------------------------------------------------
+      -- DMA wishbone interface (master pipelined)
       dma_clk_i   => sys_clk_50,
       dma_adr_o   => dma_adr,
       dma_dat_o   => dma_dat_o,
@@ -535,13 +590,54 @@ begin
       dma_cyc_o   => dma_cyc,
       dma_dat_i   => dma_dat_i,
       dma_ack_i   => dma_ack,
-      dma_stall_i => dma_stall);
+      dma_stall_i => dma_stall
+      );
+
+  p2l_pll_locked <= gn4124_status(0);
+
+  ------------------------------------------------------------------------------
+  -- CSR wishbone address decoder
+  ------------------------------------------------------------------------------
+  cmp_csr_wb_addr_decoder : wb_addr_decoder
+    generic map (
+      g_WINDOW_SIZE  => c_BAR0_APERTURE,
+      g_WB_SLAVES_NB => c_CSR_WB_SLAVES_NB
+      )
+    port map (
+      ---------------------------------------------------------
+      -- GN4124 core clock and reset
+      clk_i   => sys_clk_50,
+      rst_n_i => L_RST_N,
+
+      ---------------------------------------------------------
+      -- wishbone master interface
+      wbm_adr_i   => wbm_adr,
+      wbm_dat_i   => wbm_dat_o,
+      wbm_sel_i   => wbm_sel,
+      wbm_stb_i   => wbm_stb,
+      wbm_we_i    => wbm_we,
+      wbm_cyc_i   => wbm_cyc,
+      wbm_dat_o   => wbm_dat_i,
+      wbm_ack_o   => wbm_ack,
+      wbm_stall_o => wbm_stall,
+
+      ---------------------------------------------------------
+      -- wishbone slaves interface
+      wb_adr_o   => wb_adr,
+      wb_dat_o   => wb_dat_o,
+      wb_sel_o   => wb_sel,
+      wb_stb_o   => wb_stb,
+      wb_we_o    => wb_we,
+      wb_cyc_o   => wb_cyc,
+      wb_dat_i   => wb_dat_i,
+      wb_ack_i   => wb_ack,
+      wb_stall_i => wb_stall
+      );
 
   ------------------------------------------------------------------------------
   -- CSR wishbone bus slaves
-  --  0 -> Not connected
+  --  0 -> DMA control and status registers (inside gn4124 core)
   --  1 -> gpio registers
-  --  2 -> DDR3 controller port0
   ------------------------------------------------------------------------------
   cmp_gpio_regs : gpio_regs
     port map(
@@ -560,6 +656,8 @@ begin
       gpio_ctrl_2_o   => gpio_ctrl_2,
       gpio_ctrl_3_o   => gpio_ctrl_3,
       gpio_led_ctrl_o => gpio_led_ctrl);
+
+  wb_stall(1) <= '0';
 
   gpio_stat <= X"DEAD000"
                & '0'
@@ -619,12 +717,15 @@ begin
       g_CALIB_SOFT_IP      => g_CALIB_SOFT_IP,
       g_P0_MASK_SIZE       => 4,
       g_P0_DATA_PORT_SIZE  => 32,
-      g_P0_BYTE_ADDR_WIDTH => 30)
+      g_P0_BYTE_ADDR_WIDTH => 30,
+      g_P1_MASK_SIZE       => 4,
+      g_P1_DATA_PORT_SIZE  => 32,
+      g_P1_BYTE_ADDR_WIDTH => 30)
     port map (
       clk_i   => ddr_clk,
       rst_n_i => L_RST_N,
 
-      calib_done => ddr3_calib_done,
+      status_o => ddr3_status,
 
       ddr3_dq_b     => DDR3_DQ,
       ddr3_a_o      => DDR3_A,
@@ -651,22 +752,24 @@ begin
       wb0_cyc_i   => '0',  --wb_cyc(2),               --'0',
       wb0_stb_i   => '0',  --wb_stb,                  --'0',
       wb0_we_i    => '0',  --wb_we,                   --'0',
-      wb0_addr_i  => X"0000000",
+      wb0_addr_i  => X"00000000",
       wb0_data_i  => X"00000000",  --wb_dat_o,                --X"00000000",
       wb0_data_o  => open,  --wb_dat_i(95 downto 64),  --open,
       wb0_ack_o   => open,  --wb_ack(2),               --open,
       wb0_stall_o => open,
 
       wb1_clk_i   => sys_clk_50,
-      wb1_sel_i   => "1111",
+      wb1_sel_i   => dma_sel,
       wb1_cyc_i   => dma_cyc,
       wb1_stb_i   => dma_stb,
       wb1_we_i    => dma_we,
-      wb1_addr_i  => dma_adr(27 downto 0),
+      wb1_addr_i  => dma_adr,
       wb1_data_i  => dma_dat_o,
       wb1_data_o  => dma_dat_i,
       wb1_ack_o   => dma_ack,
       wb1_stall_o => dma_stall);
+
+  ddr3_calib_done <= ddr3_status(0);
 
   ------------------------------------------------------------------------------
   -- Assign unused outputs
