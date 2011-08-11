@@ -246,6 +246,7 @@ architecture rtl of spec_ddr_test is
 
   component ddr3_ctrl
     generic(
+      g_BANK_PORT_SELECT   : string := "BANK3_32B_32B";
       g_MEMCLK_PERIOD      : integer := 3200;               -- in ps
       g_SIMULATION         : string  := "FALSE";
       g_CALIB_SOFT_IP      : string  := "TRUE";
@@ -712,6 +713,7 @@ begin
   ------------------------------------------------------------------------------
   cmp_ddr_ctrl : ddr3_ctrl
     generic map(
+      g_BANK_PORT_SELECT   => "BANK3_32B_32B",
       g_MEMCLK_PERIOD      => 3000,
       g_SIMULATION         => g_SIMULATION,
       g_CALIB_SOFT_IP      => g_CALIB_SOFT_IP,
