@@ -4,5 +4,5 @@ fetchto = "../ip_cores"
 
 modules = {
     "local" : ["../"],
-    "svn" : [ "http://svn.ohwr.org/gn4124-core/trunk/hdl/gn4124core/rtl" ]
+    "git" : "git://ohwr.org/hdl-core-lib/gn4124-core.git"
     }
