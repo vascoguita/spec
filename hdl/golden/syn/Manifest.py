@@ -11,5 +11,7 @@ syn_project = "spec_init.xise"
 
 modules = { "local" : 
 	[ "../top", 
-	  "../platform/xilinx/chipscope" ] 
+    "../ip_cores/general-cores",
+    "../ip_cores/gn4124-core",
+    "../ip_cores/wr-cores" ] 
 }

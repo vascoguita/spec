@@ -87,6 +87,11 @@ entity spec_init is
       button1_i : in std_logic;
       button2_i : in std_logic;
 
+      spi_sclk_o : out std_logic; 
+      spi_ncs_o  : out std_logic;
+      spi_mosi_o : out std_logic;
+      spi_miso_i : in  std_logic;
+
       -------------------------------------------------------------------------
       -- SFP pins
       -------------------------------------------------------------------------
@@ -388,6 +393,10 @@ begin
      memsize_i   => "0000",
      btn1_i      => button1_i,
      btn2_i      => button2_i,
+     spi_sclk_o  => spi_sclk_o,
+     spi_ncs_o   => spi_ncs_o,
+     spi_mosi_o  => spi_mosi_o,
+     spi_miso_i  => spi_miso_i,
 
      slave_i => periph_slv_in,
      slave_o => periph_slv_out,
