@@ -11,6 +11,7 @@
 #include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/fs.h>
+#include <linux/ioport.h>
 #include <linux/module.h>
 #include <linux/pci.h>
 
@@ -36,13 +37,14 @@ static struct class *spec_class;
  * @cdev Char device descriptor
  * @dev Linux device instance descriptor
  * @flags collection of bit flags
+ * @remap ioremap of PCI bar 0, 2, 4
  */
 struct spec_dev {
 	struct cdev cdev;
 	struct device dev;
 
 	DECLARE_BITMAP(flags, SPEC_FLAG_BITS);
-
+	void __iomem *remap[3];	/* ioremap of bar 0, 2, 4 */
 };
 
 
@@ -150,12 +152,17 @@ static void spec_release(struct device *dev)
 {
 	struct spec_dev *spec = dev_get_drvdata(dev);
 	struct pci_dev *pdev = to_pci_dev(dev->parent);
-	int minor = MINOR(dev->devt);
+	int minor = MINOR(dev->devt), i;
 
 	pci_disable_device(pdev);
 	pci_set_drvdata(pdev, NULL);
 
 	cdev_del(&spec->cdev);
+	for (i = 0; i < 3; i++) {
+		if (spec->remap[i])
+			iounmap(spec->remap[i]);
+		spec->remap[i] = NULL;
+	}
 	kfree(spec);
 	spec_minor_put(minor);
 }
@@ -165,7 +172,7 @@ static int spec_probe(struct pci_dev *pdev,
 		      const struct pci_device_id *id)
 {
 	struct spec_dev *spec;
-	int err, minor;
+	int err, minor, i;
 
 	minor = spec_minor_get();
 	if (minor >= SPEC_MINOR_MAX)
@@ -186,6 +193,23 @@ static int spec_probe(struct pci_dev *pdev,
 	spec->dev.parent = &pdev->dev;
 	spec->dev.release = spec_release;
 	dev_set_drvdata(&spec->dev, spec);
+
+	/* Remap our 3 bars */
+	for (i = err = 0; i < 3; i++) {
+		struct resource *r = pdev->resource + (2 * i);
+
+		if (!r->start)
+			continue;
+		if (r->flags & IORESOURCE_MEM) {
+			spec->remap[i] = ioremap(r->start,
+						r->end + 1 - r->start);
+			if (!spec->remap[i])
+				err = -ENOMEM;
+		}
+	}
+	if (err)
+		goto err_remap;
+
 
 	cdev_init(&spec->cdev, &spec_fops);
 	spec->cdev.owner = THIS_MODULE;
@@ -212,6 +236,12 @@ err_enable:
 err_dev_reg:
 	cdev_del(&spec->cdev);
 err_cdev:
+	for (i = 0; i < 3; i++) {
+		if (spec->remap[i])
+			iounmap(spec->remap[i]);
+		spec->remap[i] = NULL;
+	}
+err_remap:
 	kfree(spec);
 err_alloc:
 	spec_minor_put(minor);
