@@ -1,0 +1,15 @@
+# add versions of supermodule. It is useful when spec is included as sub-module
+# of a bigger project that we want to track
+ifdef CONFIG_SUPER_REPO
+ifdef CONFIG_SUPER_REPO_VERSION
+SUBMODULE_VERSIONS += MODULE_INFO(version_$(CONFIG_SUPER_REPO),\"$(CONFIG_SUPER_REPO_VERSION)\");
+endif
+endif
+# add versions of used submodules
+
+ccflags-y += -DADDITIONAL_VERSIONS="$(SUBMODULE_VERSIONS)"
+ccflags-y += -DGIT_VERSION=\"$(GIT_VERSION)\"
+
+obj-m := spec.o
+
+spec-objs := spec-core.o
