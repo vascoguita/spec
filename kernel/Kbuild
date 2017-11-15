@@ -13,3 +13,4 @@ ccflags-y += -DGIT_VERSION=\"$(GIT_VERSION)\"
 obj-m := spec.o
 
 spec-objs := spec-core.o
+spec-objs += loader-ll.o

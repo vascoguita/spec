@@ -9,104 +9,24 @@
 
 #include <linux/bitmap.h>
 #include <linux/cdev.h>
+#include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/fs.h>
 #include <linux/ioport.h>
+#include <linux/jiffies.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/uaccess.h>
+#include <linux/spinlock.h>
+#include <linux/vmalloc.h>
 
-
-#define PCI_VENDOR_ID_CERN      (0x10DC)
-#define PCI_DEVICE_ID_SPEC_45T  (0x018D)
-#define PCI_DEVICE_ID_SPEC_100T (0x01A2)
-#define PCI_VENDOR_ID_GENNUM    (0x1A39)
-#define PCI_DEVICE_ID_GN4124    (0x0004)
-
-#define SPEC_MINOR_MAX (64)
-#define SPEC_FLAG_BITS (8)
-
-
-/* Registers for GN4124 access */
-enum {
-	/* page 106 */
-	GNPPCI_MSI_CONTROL	= 0x48,		/* actually, 3 smaller regs */
-	GNPPCI_MSI_ADDRESS_LOW	= 0x4c,
-	GNPPCI_MSI_ADDRESS_HIGH	= 0x50,
-	GNPPCI_MSI_DATA		= 0x54,
-
-	GNPCI_SYS_CFG_SYSTEM	= 0x800,
-
-	/* page 130 ff */
-	GNINT_CTRL		= 0x810,
-	GNINT_STAT		= 0x814,
-	GNINT_CFG_0		= 0x820,
-	GNINT_CFG_1		= 0x824,
-	GNINT_CFG_2		= 0x828,
-	GNINT_CFG_3		= 0x82c,
-	GNINT_CFG_4		= 0x830,
-	GNINT_CFG_5		= 0x834,
-	GNINT_CFG_6		= 0x838,
-	GNINT_CFG_7		= 0x83c,
-#define GNINT_CFG(x) (GNINT_CFG_0 + 4 * (x))
-
-	/* page 146 ff */
-	GNGPIO_BASE = 0xA00,
-	GNGPIO_BYPASS_MODE	= GNGPIO_BASE,
-	GNGPIO_DIRECTION_MODE	= GNGPIO_BASE + 0x04, /* 0 == output */
-	GNGPIO_OUTPUT_ENABLE	= GNGPIO_BASE + 0x08,
-	GNGPIO_OUTPUT_VALUE	= GNGPIO_BASE + 0x0C,
-	GNGPIO_INPUT_VALUE	= GNGPIO_BASE + 0x10,
-	GNGPIO_INT_MASK		= GNGPIO_BASE + 0x14, /* 1 == disabled */
-	GNGPIO_INT_MASK_CLR	= GNGPIO_BASE + 0x18, /* irq enable */
-	GNGPIO_INT_MASK_SET	= GNGPIO_BASE + 0x1C, /* irq disable */
-	GNGPIO_INT_STATUS	= GNGPIO_BASE + 0x20,
-	GNGPIO_INT_TYPE		= GNGPIO_BASE + 0x24, /* 1 == level */
-	GNGPIO_INT_VALUE	= GNGPIO_BASE + 0x28, /* 1 == high/rise */
-	GNGPIO_INT_ON_ANY	= GNGPIO_BASE + 0x2C, /* both edges */
-
-	/* page 158 ff */
-	FCL_BASE		= 0xB00,
-	FCL_CTRL		= FCL_BASE,
-	FCL_STATUS		= FCL_BASE + 0x04,
-	FCL_IODATA_IN		= FCL_BASE + 0x08,
-	FCL_IODATA_OUT		= FCL_BASE + 0x0C,
-	FCL_EN			= FCL_BASE + 0x10,
-	FCL_TIMER_0		= FCL_BASE + 0x14,
-	FCL_TIMER_1		= FCL_BASE + 0x18,
-	FCL_CLK_DIV		= FCL_BASE + 0x1C,
-	FCL_IRQ			= FCL_BASE + 0x20,
-	FCL_TIMER_CTRL		= FCL_BASE + 0x24,
-	FCL_IM			= FCL_BASE + 0x28,
-	FCL_TIMER2_0		= FCL_BASE + 0x2C,
-	FCL_TIMER2_1		= FCL_BASE + 0x30,
-	FCL_DBG_STS		= FCL_BASE + 0x34,
-
-	FCL_FIFO		= 0xE00,
-
-	PCI_SYS_CFG_SYSTEM	= 0x800
-};
+#include "spec.h"
+#include "loader-ll.h"
 
 
 static DECLARE_BITMAP(spec_minors, SPEC_MINOR_MAX);
 static dev_t basedev;
 static struct class *spec_class;
-
-
-/**
- * struct spec_dev - SPEC instance
- * It describes a SPEC device instance.
- * @cdev Char device descriptor
- * @dev Linux device instance descriptor
- * @flags collection of bit flags
- * @remap ioremap of PCI bar 0, 2, 4
- */
-struct spec_dev {
-	struct cdev cdev;
-	struct device dev;
-
-	DECLARE_BITMAP(flags, SPEC_FLAG_BITS);
-	void __iomem *remap[3];	/* ioremap of bar 0, 2, 4 */
-};
 
 
 /**
@@ -192,6 +112,43 @@ static inline void spec_minor_put(unsigned int minor)
 }
 
 
+/* Load the FPGA. This bases on loader-ll.c, a kernel/user space thing */
+static int spec_load_fpga(struct spec_dev *spec, const void *data, int size)
+{
+	int i, wrote;
+	unsigned long j;
+
+	/* loader_low_level is designed to run from user space too */
+	wrote = loader_low_level(0 /* unused fd */,
+				 spec->remap[2], data, size);
+	j = jiffies + 2 * HZ;
+	/* Wait for DONE interrupt  */
+	while (1) {
+		udelay(100);
+		i = readl(spec->remap[2] + FCL_IRQ);
+		if (i & 0x8)
+			break;
+
+		if (i & 0x4) {
+			dev_err(&spec->dev,
+				"FPGA program error after %i writes\n",
+				wrote);
+			return -ETIMEDOUT;
+		}
+
+		if (time_after(jiffies, j)) {
+			dev_err(&spec->dev,
+				"FPGA timeout after %i writes\n", wrote);
+			return -ETIMEDOUT;
+		}
+	}
+	gpiofix_low_level(0 /* unused fd */, spec->remap[2]);
+	loader_reset_fpga(0 /* unused fd */, spec->remap[2]);
+
+	return 0;
+}
+
+
 /**
  * It prepares the FPGA to receive a new bitstream.
  * @inode file system node
@@ -209,13 +166,30 @@ static int spec_open(struct inode *inode, struct file *file)
 					     cdev);
 	int err;
 
+	if (!test_bit(SPEC_FLAG_UNLOCK, spec->flags)) {
+		dev_info(&spec->dev, "Application FPGA programming blocked\n");
+		return -EPERM;
+	}
+
 	err = try_module_get(file->f_op->owner);
 	if (err == 0)
 		return -EBUSY;
 
+	spec->size = 1024 * 1024 * 4; /* 4MiB to begin with */
+	spec->buf = vmalloc(spec->size);
+	if (!spec->buf) {
+		err = -ENOMEM;
+		goto err_vmalloc;
+	}
+
+
 	file->private_data = spec;
 
 	return 0;
+
+err_vmalloc:
+	module_put(file->f_op->owner);
+	return err;
 }
 
 
@@ -229,6 +203,15 @@ static int spec_close(struct inode *inode, struct file *file)
 	struct spec_dev *spec = file->private_data;
 
 	file->private_data = NULL;
+
+	spec_load_fpga(spec, spec->buf, spec->size);
+
+	vfree(spec->buf);
+	spec->size = 0;
+
+	spin_lock(&spec->lock);
+	clear_bit(SPEC_FLAG_UNLOCK, spec->flags);
+	spin_unlock(&spec->lock);
 
 	module_put(file->f_op->owner);
 
@@ -248,7 +231,33 @@ static int spec_close(struct inode *inode, struct file *file)
 static ssize_t spec_write(struct file *file, const char __user *buf,
 			  size_t count, loff_t *offp)
 {
-	return -EINVAL;
+	struct spec_dev *spec = file->private_data;
+	int err;
+
+	if (unlikely(!spec->buf)) {
+		dev_err(&spec->dev, "No memory left to copy the bitstream\n");
+		return -ENOMEM;
+	}
+
+	if (unlikely(count + *offp > 1024 * 1024 * 20)) {
+		dev_err(&spec->dev, "An FPGA bitstream of 20MiB is too big\n");
+		return -EINVAL;
+	}
+
+	if (count + *offp > spec->size) {
+		vfree(spec->buf);
+		spec->size *= 2;
+		spec->buf = vmalloc(spec->size);
+		return 0;
+	}
+
+	err = copy_from_user(spec->buf + *offp, buf, count);
+	if (err)
+		return err;
+
+	*offp += count;
+
+	return count;
 }
 
 
@@ -260,6 +269,65 @@ static const struct file_operations spec_fops = {
 	.open = spec_open,
 	.release = spec_close,
 	.write  = spec_write,
+};
+
+
+
+/**
+ * It shows the current AFPGA programming locking status
+ */
+static ssize_t spec_afpga_lock_show(struct device *dev,
+				    struct device_attribute *attr,
+				    char *buf)
+{
+	struct spec_dev *spec = to_spec_dev(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%s\n",
+			test_bit(SPEC_FLAG_UNLOCK, spec->flags) ?
+			"unlocked" : "locked");
+}
+
+
+/**
+ * It unlocks the AFPGA programming when the user write "unlock" or "lock"
+ */
+static ssize_t spec_afpga_lock_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
+{
+	struct spec_dev *spec = to_spec_dev(dev);
+	unsigned int lock;
+
+	if (strncmp(buf, "unlock" , min(6, (int)count)) != 0 &&
+	    strncmp(buf, "lock" , min(4, (int)count)) != 0)
+		return -EINVAL;
+
+	lock = (strncmp(buf, "lock" , min(4, (int)count)) == 0);
+
+	spin_lock(&spec->lock);
+	if (lock)
+		clear_bit(SPEC_FLAG_UNLOCK, spec->flags);
+	else
+		set_bit(SPEC_FLAG_UNLOCK, spec->flags);
+	spin_unlock(&spec->lock);
+
+	return count;
+}
+static DEVICE_ATTR(lock, 0644, spec_afpga_lock_show, spec_afpga_lock_store);
+
+
+static struct attribute *spec_dev_attrs[] = {
+	&dev_attr_lock.attr,
+	NULL,
+};
+static const struct attribute_group spec_dev_group = {
+	.name = "AFPGA",
+	.attrs = spec_dev_attrs,
+};
+
+static const struct attribute_group *spec_dev_groups[] = {
+	&spec_dev_group,
+	NULL,
 };
 
 
@@ -303,15 +371,15 @@ static int spec_probe(struct pci_dev *pdev,
 		err = -ENOMEM;
 		goto err_alloc;
 	}
-	dev_set_name(&spec->dev, "spec.%04x:%02x:%02x.%d",
-		     pci_domain_nr(pdev->bus),
-		     pdev->bus->number, PCI_SLOT(pdev->devfn),
-		     PCI_FUNC(pdev->devfn));
+	dev_set_name(&spec->dev, "spec.%04x",
+		     pdev->bus->number << 8 | PCI_SLOT(pdev->devfn));
 	spec->dev.class = spec_class;
 	spec->dev.devt = basedev + minor;
 	spec->dev.parent = &pdev->dev;
 	spec->dev.release = spec_release;
+	spec->dev.groups = spec_dev_groups;
 	dev_set_drvdata(&spec->dev, spec);
+	spin_lock_init(&spec->lock);
 
 	/* Remap our 3 bars */
 	for (i = err = 0; i < 3; i++) {
