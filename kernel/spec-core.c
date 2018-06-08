@@ -11,6 +11,7 @@
 #include <linux/cdev.h>
 #include <linux/delay.h>
 #include <linux/device.h>
+#include <linux/fpga/fpga-mgr.h>
 #include <linux/fs.h>
 #include <linux/ioport.h>
 #include <linux/jiffies.h>
@@ -21,13 +22,10 @@
 #include <linux/vmalloc.h>
 
 #include "spec.h"
-#include "loader-ll.h"
 
-
-static DECLARE_BITMAP(spec_minors, SPEC_MINOR_MAX);
-static dev_t basedev;
-static struct class *spec_class;
-
+/* These must be set to choose the FPGA configuration mode */
+#define GPIO_BOOTSEL0 15
+#define GPIO_BOOTSEL1 14
 
 /**
  * It reads a 32bit register from the gennum chip
@@ -52,6 +50,225 @@ static inline void gennum_writel(struct spec_dev *spec, uint32_t val, int reg)
 	writel(val, spec->remap[2] + reg);
 }
 
+static inline uint8_t reverse_bits8(uint8_t x)
+{
+	x = ((x >> 1) & 0x55) | ((x & 0x55) << 1);
+	x = ((x >> 2) & 0x33) | ((x & 0x33) << 2);
+	x = ((x >> 4) & 0x0f) | ((x & 0x0f) << 4);
+
+	return x;
+}
+
+static uint32_t unaligned_bitswap_le32(const uint32_t *ptr32)
+{
+	static uint32_t tmp32;
+	static uint8_t *tmp8 = (uint8_t *) &tmp32;
+	static uint8_t *ptr8;
+
+	ptr8 = (uint8_t *) ptr32;
+
+	*(tmp8 + 0) = reverse_bits8(*(ptr8 + 0));
+	*(tmp8 + 1) = reverse_bits8(*(ptr8 + 1));
+	*(tmp8 + 2) = reverse_bits8(*(ptr8 + 2));
+	*(tmp8 + 3) = reverse_bits8(*(ptr8 + 3));
+
+	return tmp32;
+}
+
+static inline void gpio_out(struct spec_dev *spec, const uint32_t addr,
+			    const int bit, const int value)
+{
+	uint32_t reg;
+
+	reg = gennum_readl(spec, addr);
+
+	if(value)
+		reg |= (1<<bit);
+	else
+		reg &= ~(1<<bit);
+
+	gennum_writel(spec, reg, addr);
+}
+
+
+/**
+ * configure Gennum GPIO to select GN4124->FPGA configuration mode
+ * @spec: spec device instance
+ */
+static void gn4124_gpio_config(struct spec_dev *spec)
+{
+	gpio_out(spec, GNGPIO_DIRECTION_MODE, GPIO_BOOTSEL0, 0);
+	gpio_out(spec, GNGPIO_DIRECTION_MODE, GPIO_BOOTSEL1, 0);
+	gpio_out(spec, GNGPIO_OUTPUT_ENABLE, GPIO_BOOTSEL0, 1);
+	gpio_out(spec, GNGPIO_OUTPUT_ENABLE, GPIO_BOOTSEL1, 1);
+	gpio_out(spec, GNGPIO_OUTPUT_VALUE, GPIO_BOOTSEL0, 1);
+	gpio_out(spec, GNGPIO_OUTPUT_VALUE, GPIO_BOOTSEL1, 0);
+}
+
+
+/**
+ * Initialize the gennum
+ * @spec: spec device instance
+ * @last_word_size: last word size in the FPGA bitstream
+ *
+ * Return: 0 on success, otherwise a negative error code
+ */
+static int gn4124_fcl_init(struct spec_dev *spec, int last_word_size)
+{
+	uint32_t ctrl;
+	int i;
+
+	gennum_writel(spec, 0x00, FCL_CLK_DIV);
+	gennum_writel(spec, 0x40, FCL_CTRL); /* Reset */
+	i = gennum_readl(spec, FCL_CTRL);
+	if (i != 0x40) {
+		printk(KERN_ERR "%s: %i: error\n", __func__, __LINE__);
+		return -EIO;
+	}
+	gennum_writel(spec, 0x00, FCL_CTRL);
+	gennum_writel(spec, 0x00, FCL_IRQ); /* clear pending irq */
+
+	switch(last_word_size) {
+	case 3: ctrl = 0x116; break;
+	case 2: ctrl = 0x126; break;
+	case 1: ctrl = 0x136; break;
+	case 0: ctrl = 0x106; break;
+	default: return -EINVAL;
+	}
+	gennum_writel(spec, ctrl, FCL_CTRL);
+	gennum_writel(spec, 0x00, FCL_CLK_DIV); /* again? maybe 1 or 2? */
+	gennum_writel(spec, 0x00, FCL_TIMER_CTRL); /* "disable FCL timr fun" */
+	gennum_writel(spec, 0x10, FCL_TIMER_0); /* "pulse width" */
+	gennum_writel(spec, 0x00, FCL_TIMER_1);
+
+	/*
+	 * Set delay before data and clock is applied by FCL
+	 * after SPRI_STATUS is	detected being assert.
+	 */
+	gennum_writel(spec, 0x08, FCL_TIMER2_0); /* "delay before data/clk" */
+	gennum_writel(spec, 0x00, FCL_TIMER2_1);
+	gennum_writel(spec, 0x17, FCL_EN); /* "output enable" */
+
+	ctrl |= 0x01; /* "start FSM configuration" */
+	gennum_writel(spec, ctrl, FCL_CTRL);
+
+	return 0;
+}
+
+
+/**
+ * It notifies the gennum that the configuration is over
+ * @spec: spec device instance
+ */
+static void gn4124_fcl_complete(struct spec_dev *spec)
+{
+	gennum_writel(spec, 0x186, FCL_CTRL); /* "last data written" */
+}
+
+
+/**
+ * It configures the FPGA with the given image
+ * @spec: spec instance
+ * @data: FPGA configuration code
+ * @len: image length in bytes
+ *
+ * Return: 0 on success, otherwise a negative error code
+ */
+static int gn4124_load(struct spec_dev *spec, const void *data, int len)
+{
+	int size32 = (len + 3) >> 2;
+	int done = 0, wrote = 0, i;
+	const uint32_t *data32 = data;
+
+	while(size32 > 0)
+	{
+		/* Check to see if FPGA configuation has error */
+		i = gennum_readl(spec, FCL_IRQ);
+		if ( (i & 8) && wrote) {
+			done = 1;
+			printk("%s: %i: done after %i\n", __func__, __LINE__,
+				wrote);
+		} else if ( (i & 0x4) && !done) {
+			printk("%s: %i: error after %i\n", __func__, __LINE__,
+				wrote);
+			return -EIO;
+		}
+
+		/* Wait until at least 1/2 of the fifo is empty */
+		while (gennum_readl(spec, FCL_IRQ)  & (1<<5))
+			;
+
+		/* Write a few dwords into FIFO at a time. */
+		for (i = 0; size32 && i < 32; i++) {
+			gennum_writel(spec, unaligned_bitswap_le32(data32),
+				  FCL_FIFO);
+			data32++; size32--; wrote++;
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * After programming, we fix gpio lines so pci can access the flash
+ */
+static void gn4124_gpio_restore(struct spec_dev *spec)
+{
+	gpio_out(spec, GNGPIO_OUTPUT_VALUE, GPIO_BOOTSEL0, 0);
+	gpio_out(spec, GNGPIO_OUTPUT_VALUE, GPIO_BOOTSEL1, 0);
+	gpio_out(spec, GNGPIO_OUTPUT_ENABLE, GPIO_BOOTSEL0, 0);
+	gpio_out(spec, GNGPIO_OUTPUT_ENABLE, GPIO_BOOTSEL1, 0);
+}
+
+
+/**
+ * it resets the FPGA
+ */
+static void gn4124_reset_fpga(struct spec_dev *spec)
+{
+	uint32_t reg;
+
+	/* After reprogramming, reset the FPGA using the gennum register */
+	reg = gennum_readl(spec, GNPCI_SYS_CFG_SYSTEM);
+	/*
+	 * This _fucking_ register must be written with extreme care,
+	 * becase some fields are "protected" and some are not. *hate*
+	 */
+	gennum_writel(spec, (reg & ~0xffff) | 0x3fff, GNPCI_SYS_CFG_SYSTEM);
+	gennum_writel(spec, (reg & ~0xffff) | 0x7fff, GNPCI_SYS_CFG_SYSTEM);
+}
+
+
+/**
+ * Wait for the FPGA to be configured and ready
+ * @spec: device instance
+ *
+ * Return: 0 on success,-ETIMEDOUT on failure
+ */
+static int gn4124_fcl_waitdone(struct spec_dev *spec)
+{
+	unsigned long j;
+	uint32_t val;
+
+	j = jiffies + 2 * HZ;
+	while (1) {
+		val = gennum_readl(spec, FCL_IRQ);
+
+		/* Done */
+		if (val & 0x8)
+			return 0;
+
+		/* Fail */
+		if (val & 0x4)
+			return -EIO;
+
+		/* Timeout */
+		if (time_after(jiffies, j))
+			return -ETIMEDOUT;
+
+		udelay(100);
+	}
+}
 
 /**
  * It writes a 32bit register to the gennum chip according to the given mask
@@ -86,248 +303,72 @@ static int gennum_config(struct spec_dev *spec)
 }
 
 
-
-/**
- * It gets a minor number
- * Return: the first minor number available
- */
-static inline int spec_minor_get(void)
+static enum fpga_mgr_states spec_fpga_state(struct fpga_manager *mgr)
 {
-	int minor;
-
-	minor = find_first_zero_bit(spec_minors, SPEC_MINOR_MAX);
-	set_bit(minor, spec_minors);
-
-	return minor;
+	return mgr->state;
 }
 
 
-/**
- * It releases a minor number
- * @minor minor number to release
- */
-static inline void spec_minor_put(unsigned int minor)
+static int spec_fpga_write_init(struct fpga_manager *mgr,
+				struct fpga_image_info *info,
+				const char *buf, size_t count)
 {
-	clear_bit(minor, spec_minors);
-}
+	struct spec_dev *spec = mgr->priv;
+	int err = 0;
 
-
-/* Load the FPGA. This bases on loader-ll.c, a kernel/user space thing */
-static int spec_load_fpga(struct spec_dev *spec, const void *data, int size)
-{
-	int i, wrote;
-	unsigned long j;
-
-	/* loader_low_level is designed to run from user space too */
-	wrote = loader_low_level(0 /* unused fd */,
-				 spec->remap[2], data, size);
-	j = jiffies + 2 * HZ;
-	/* Wait for DONE interrupt  */
-	while (1) {
-		udelay(100);
-		i = readl(spec->remap[2] + FCL_IRQ);
-		if (i & 0x8)
-			break;
-
-		if (i & 0x4) {
-			dev_err(&spec->dev,
-				"FPGA program error after %i writes\n",
-				wrote);
-			return -ETIMEDOUT;
-		}
-
-		if (time_after(jiffies, j)) {
-			dev_err(&spec->dev,
-				"FPGA timeout after %i writes\n", wrote);
-			return -ETIMEDOUT;
-		}
-	}
-	gpiofix_low_level(0 /* unused fd */, spec->remap[2]);
-	loader_reset_fpga(0 /* unused fd */, spec->remap[2]);
-
-	return 0;
-}
-
-
-/**
- * It prepares the FPGA to receive a new bitstream.
- * @inode file system node
- * @file char device file open instance
- *
- * By just opening this device you may reset the FPGA
- * (unless other errors prevent the user from programming).
- * Only one user at time can access the programming procedure.
- * Return: 0 on success, otherwise a negative errno number
- */
-static int spec_open(struct inode *inode, struct file *file)
-{
-	struct spec_dev *spec = container_of(inode->i_cdev,
-					     struct spec_dev,
-					     cdev);
-	int err;
-
-	if (!test_bit(SPEC_FLAG_UNLOCK, spec->flags)) {
-		dev_info(&spec->dev, "Application FPGA programming blocked\n");
-		return -EPERM;
-	}
-
-	err = try_module_get(file->f_op->owner);
-	if (err == 0)
-		return -EBUSY;
-
-	spec->size = 1024 * 1024 * 4; /* 4MiB to begin with */
-	spec->buf = vmalloc(spec->size);
-	if (!spec->buf) {
-		err = -ENOMEM;
-		goto err_vmalloc;
-	}
-
-
-	file->private_data = spec;
+	gn4124_gpio_config(spec);
+	err = gn4124_fcl_init(spec, info->count & 0x3);
+	if (err < 0)
+		goto err;
 
 	return 0;
 
-err_vmalloc:
-	module_put(file->f_op->owner);
+err:
+	gn4124_gpio_restore(spec);
 	return err;
 }
 
 
-/**
- * @inode file system node
- * @file char device file open instance
- * Return 0 on success, otherwise a negative errno number.
- */
-static int spec_close(struct inode *inode, struct file *file)
+static int spec_fpga_write(struct fpga_manager *mgr, const char *buf, size_t count)
 {
-	struct spec_dev *spec = file->private_data;
+	struct spec_dev *spec = mgr->priv;
 
-	file->private_data = NULL;
+	return gn4124_load(spec, buf, count);
+}
 
-	spec_load_fpga(spec, spec->buf, spec->size);
 
-	vfree(spec->buf);
-	spec->size = 0;
+static int spec_fpga_write_complete(struct fpga_manager *mgr,
+				    struct fpga_image_info *info)
+{
+	struct spec_dev *spec = mgr->priv;
+	int err;
 
-	spin_lock(&spec->lock);
-	clear_bit(SPEC_FLAG_UNLOCK, spec->flags);
-	spin_unlock(&spec->lock);
+	gn4124_fcl_complete(spec);
 
-	module_put(file->f_op->owner);
+	err = gn4124_fcl_waitdone(spec);
+	if (err < 0)
+		return err;
+
+	gn4124_gpio_restore(spec);
+	gn4124_reset_fpga(spec);
 
 	return 0;
 }
 
 
-/**
- * It creates a local copy of the user buffer and it start
- * to program the FPGA with it
- * @file char device file open instance
- * @buf user space buffer
- * @count user space buffer size
- * @offp offset where to copy the buffer (ignored here)
- * Return: number of byte actually copied, otherwise a negative errno
- */
-static ssize_t spec_write(struct file *file, const char __user *buf,
-			  size_t count, loff_t *offp)
+static void spec_fpga_remove(struct fpga_manager *mgr)
 {
-	struct spec_dev *spec = file->private_data;
-	int err;
-
-	if (unlikely(!spec->buf)) {
-		dev_err(&spec->dev, "No memory left to copy the bitstream\n");
-		return -ENOMEM;
-	}
-
-	if (unlikely(count + *offp > 1024 * 1024 * 20)) {
-		dev_err(&spec->dev, "An FPGA bitstream of 20MiB is too big\n");
-		return -EINVAL;
-	}
-
-	if (count + *offp > spec->size) {
-		vfree(spec->buf);
-		spec->size *= 2;
-		spec->buf = vmalloc(spec->size);
-		return 0;
-	}
-
-	err = copy_from_user(spec->buf + *offp, buf, count);
-	if (err)
-		return err;
-
-	*offp += count;
-
-	return count;
+	/* do nothing */
 }
 
 
-/**
- * Char device operation to provide bitstream
- */
-static const struct file_operations spec_fops = {
-	.owner = THIS_MODULE,
-	.open = spec_open,
-	.release = spec_close,
-	.write  = spec_write,
-};
-
-
-
-/**
- * It shows the current AFPGA programming locking status
- */
-static ssize_t spec_afpga_lock_show(struct device *dev,
-				    struct device_attribute *attr,
-				    char *buf)
-{
-	struct spec_dev *spec = to_spec_dev(dev);
-
-	return snprintf(buf, PAGE_SIZE, "%s\n",
-			test_bit(SPEC_FLAG_UNLOCK, spec->flags) ?
-			"unlocked" : "locked");
-}
-
-
-/**
- * It unlocks the AFPGA programming when the user write "unlock" or "lock"
- */
-static ssize_t spec_afpga_lock_store(struct device *dev,
-				     struct device_attribute *attr,
-				     const char *buf, size_t count)
-{
-	struct spec_dev *spec = to_spec_dev(dev);
-	unsigned int lock;
-
-	if (strncmp(buf, "unlock" , min(6, (int)count)) != 0 &&
-	    strncmp(buf, "lock" , min(4, (int)count)) != 0)
-		return -EINVAL;
-
-	lock = (strncmp(buf, "lock" , min(4, (int)count)) == 0);
-
-	spin_lock(&spec->lock);
-	if (lock)
-		clear_bit(SPEC_FLAG_UNLOCK, spec->flags);
-	else
-		set_bit(SPEC_FLAG_UNLOCK, spec->flags);
-	spin_unlock(&spec->lock);
-
-	return count;
-}
-static DEVICE_ATTR(lock, 0644, spec_afpga_lock_show, spec_afpga_lock_store);
-
-
-static struct attribute *spec_dev_attrs[] = {
-	&dev_attr_lock.attr,
-	NULL,
-};
-static const struct attribute_group spec_dev_group = {
-	.name = "AFPGA",
-	.attrs = spec_dev_attrs,
-};
-
-static const struct attribute_group *spec_dev_groups[] = {
-	&spec_dev_group,
-	NULL,
+static const struct fpga_manager_ops spec_fpga_ops = {
+	.initial_header_size = 0,
+	.state = spec_fpga_state,
+	.write_init = spec_fpga_write_init,
+	.write = spec_fpga_write,
+	.write_complete = spec_fpga_write_complete,
+	.fpga_remove = spec_fpga_remove,
 };
 
 
@@ -339,19 +380,17 @@ static void spec_release(struct device *dev)
 {
 	struct spec_dev *spec = dev_get_drvdata(dev);
 	struct pci_dev *pdev = to_pci_dev(dev->parent);
-	int minor = MINOR(dev->devt), i;
+	int i;
 
 	pci_disable_device(pdev);
 	pci_set_drvdata(pdev, NULL);
 
-	cdev_del(&spec->cdev);
 	for (i = 0; i < 3; i++) {
 		if (spec->remap[i])
 			iounmap(spec->remap[i]);
 		spec->remap[i] = NULL;
 	}
 	kfree(spec);
-	spec_minor_put(minor);
 }
 
 
@@ -359,25 +398,16 @@ static int spec_probe(struct pci_dev *pdev,
 		      const struct pci_device_id *id)
 {
 	struct spec_dev *spec;
-	int err, minor, i;
-
-	minor = spec_minor_get();
-	if (minor >= SPEC_MINOR_MAX)
-		return -EINVAL;
-
+	int err, i;
 
 	spec = kzalloc(sizeof(struct spec_dev), GFP_KERNEL);
-	if (!spec) {
-		err = -ENOMEM;
-		goto err_alloc;
-	}
+	if (!spec)
+		return -ENOMEM;
+
 	dev_set_name(&spec->dev, "spec.%04x",
 		     pdev->bus->number << 8 | PCI_SLOT(pdev->devfn));
-	spec->dev.class = spec_class;
-	spec->dev.devt = basedev + minor;
 	spec->dev.parent = &pdev->dev;
 	spec->dev.release = spec_release;
-	spec->dev.groups = spec_dev_groups;
 	dev_set_drvdata(&spec->dev, spec);
 	spin_lock_init(&spec->lock);
 
@@ -397,16 +427,14 @@ static int spec_probe(struct pci_dev *pdev,
 	if (err)
 		goto err_remap;
 
-
-	cdev_init(&spec->cdev, &spec_fops);
-	spec->cdev.owner = THIS_MODULE;
-	err = cdev_add(&spec->cdev, spec->dev.devt, 1);
-	if (err)
-		goto err_cdev;
-
 	err = device_register(&spec->dev);
 	if (err)
 		goto err_dev_reg;
+
+	err =fpga_mgr_register(&spec->dev, dev_name(&spec->dev),
+			       &spec_fpga_ops, spec);
+	if (err)
+		goto err_fpga;
 
 	/* Enable the PCI device */
 	pci_set_drvdata(pdev, spec);
@@ -424,11 +452,11 @@ static int spec_probe(struct pci_dev *pdev,
 err_gennum:
 	pci_disable_device(pdev);
 err_enable:
+	fpga_mgr_unregister(&spec->dev);
+err_fpga:
 	pci_set_drvdata(pdev, NULL);
 	device_unregister(&spec->dev);
 err_dev_reg:
-	cdev_del(&spec->cdev);
-err_cdev:
 	for (i = 0; i < 3; i++) {
 		if (spec->remap[i])
 			iounmap(spec->remap[i]);
@@ -436,8 +464,6 @@ err_cdev:
 	}
 err_remap:
 	kfree(spec);
-err_alloc:
-	spec_minor_put(minor);
 	return err;
 }
 
@@ -446,6 +472,7 @@ static void spec_remove(struct pci_dev *pdev)
 {
 	struct spec_dev *spec = pci_get_drvdata(pdev);
 
+	fpga_mgr_unregister(&spec->dev);
 	device_unregister(&spec->dev);
 }
 
@@ -453,7 +480,6 @@ static void spec_remove(struct pci_dev *pdev)
 static DEFINE_PCI_DEVICE_TABLE(spec_pci_tbl) = {
 	{PCI_DEVICE(PCI_VENDOR_ID_CERN, PCI_DEVICE_ID_SPEC_45T)},
 	{PCI_DEVICE(PCI_VENDOR_ID_CERN, PCI_DEVICE_ID_SPEC_100T)},
-	{PCI_DEVICE(PCI_VENDOR_ID_GENNUM, PCI_DEVICE_ID_GN4124)},
 	{0,},
 };
 
@@ -468,38 +494,13 @@ static struct pci_driver spec_driver = {
 
 static int __init spec_init(void)
 {
-	int err = 0;
-
-	spec_class = class_create(THIS_MODULE, "spec");
-	if (IS_ERR_OR_NULL(spec_class)) {
-		err = PTR_ERR(spec_class);
-		goto err_cls;
-	}
-	/* Allocate a char device region for devices, CPUs and slots */
-	err = alloc_chrdev_region(&basedev, 0, SPEC_MINOR_MAX, "spec");
-	if (err)
-		goto err_chrdev_alloc;
-
-	err = pci_register_driver(&spec_driver);
-	if (err)
-		goto err_reg;
-
-	return 0;
-
-err_reg:
-	unregister_chrdev_region(basedev, SPEC_MINOR_MAX);
-err_chrdev_alloc:
-	class_destroy(spec_class);
-err_cls:
-	return err;
+	return pci_register_driver(&spec_driver);
 }
 
 
 static void __exit spec_exit(void)
 {
 	pci_unregister_driver(&spec_driver);
-	unregister_chrdev_region(basedev, SPEC_MINOR_MAX);
-	class_destroy(spec_class);
 }
 
 

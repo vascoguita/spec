@@ -9,8 +9,10 @@ endif
 
 ccflags-y += -DADDITIONAL_VERSIONS="$(SUBMODULE_VERSIONS)"
 ccflags-y += -DGIT_VERSION=\"$(GIT_VERSION)\"
+ccflags-y += -I$(FPGA_MGR_ABS)/include
+
+KBUILD_EXTRA_SYMBOLS += $(FPGA_MGR_ABS)/drivers/fpga/Module.symvers
 
 obj-m := spec.o
 
 spec-objs := spec-core.o
-spec-objs += loader-ll.o
