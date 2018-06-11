@@ -89,25 +89,15 @@ enum {
 /**
  * struct spec_dev - SPEC instance
  * It describes a SPEC device instance.
- * @cdev Char device descriptor
  * @dev Linux device instance descriptor
  * @flags collection of bit flags
  * @remap ioremap of PCI bar 0, 2, 4
- * @lock it protects: flags
- * @buf buffer where store FPGA bitstreams
- * @size buffer size
  */
 struct spec_dev {
-	struct cdev cdev;
 	struct device dev;
 
 	DECLARE_BITMAP(flags, SPEC_FLAG_BITS);
 	void __iomem *remap[3];	/* ioremap of bar 0, 2, 4 */
-
-	struct spinlock lock;
-
-	void *buf;
-	size_t size;
 };
 
 

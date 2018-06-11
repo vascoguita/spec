@@ -18,7 +18,6 @@
 #include <linux/module.h>
 #include <linux/pci.h>
 #include <linux/uaccess.h>
-#include <linux/spinlock.h>
 #include <linux/vmalloc.h>
 
 #include "spec.h"
@@ -409,7 +408,6 @@ static int spec_probe(struct pci_dev *pdev,
 	spec->dev.parent = &pdev->dev;
 	spec->dev.release = spec_release;
 	dev_set_drvdata(&spec->dev, spec);
-	spin_lock_init(&spec->lock);
 
 	/* Remap our 3 bars */
 	for (i = err = 0; i < 3; i++) {
