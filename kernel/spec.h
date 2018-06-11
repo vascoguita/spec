@@ -1,19 +1,30 @@
 /*
- * Copyright (C) 2010-2012 CERN (www.cern.ch)
+ * Copyright (C) 2010-2018 CERN (www.cern.ch)
+ * Author: Federico Vaga <federico.vaga@cern.ch>
  * Author: Alessandro Rubini <rubini@gnudd.com>
  *
- * Released according to the GNU GPL, version 2 or any later version.
- *
- * This work is part of the White Rabbit project, a research effort led
- * by CERN, the European Institute for Nuclear Research.
+ * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #ifndef __SPEC_H__
 #define __SPEC_H__
 #include <linux/cdev.h>
 #include <linux/device.h>
+#include <linux/fmc.h>
+#include <linux/fpga/fpga-mgr.h>
+#include <linux/i2c.h>
 #include <linux/pci.h>
+#include <linux/platform_device.h>
 #include <linux/spinlock.h>
 
+#define SPEC_FMC_SLOTS 1
+
+/* On FPGA components */
+#define SPEC_I2C_MASTER_ADDR	0x0
+#define SPEC_I2C_MASTER_SIZE	8
+
+/* These must be set to choose the FPGA configuration mode */
+#define GPIO_BOOTSEL0 15
+#define GPIO_BOOTSEL1 14
 
 #define PCI_VENDOR_ID_CERN      (0x10DC)
 #define PCI_DEVICE_ID_SPEC_45T  (0x018D)
@@ -92,23 +103,51 @@ enum {
  * @dev Linux device instance descriptor
  * @flags collection of bit flags
  * @remap ioremap of PCI bar 0, 2, 4
+ * @slot_info: information about FMC slot
+ * @i2c_pdev: platform device for I2C master
+ * @i2c_adapter: the I2C master device to be used
  */
 struct spec_dev {
-	struct device dev;
+	struct pci_dev *pdev;
+	struct fpga_manager *mgr;
 
 	DECLARE_BITMAP(flags, SPEC_FLAG_BITS);
 	void __iomem *remap[3];	/* ioremap of bar 0, 2, 4 */
+
+	struct fmc_slot_info slot_info;
+	struct platform_device *i2c_pdev;
+	struct i2c_adapter *i2c_adapter;
 };
 
 
 /**
- * It gets a SPEC device instance
- * @ptr pointer to a Linux device instance
- * Return: the SPEC device instance correponding to the given Linux device
+ * It reads a 32bit register from the gennum chip
+ * @spec spec device instance
+ * @reg gennum register offset
+ * Return: a 32bit value
  */
-static inline struct spec_dev *to_spec_dev(struct device *ptr)
+static inline uint32_t gennum_readl(struct spec_dev *spec, int reg)
 {
-	return container_of(ptr, struct spec_dev, dev);
+	return readl(spec->remap[2] + reg);
 }
+
+
+/**
+ * It writes a 32bit register to the gennum chip
+ * @spec spec device instance
+ * @val a 32bit valure
+ * @reg gennum register offset
+ */
+static inline void gennum_writel(struct spec_dev *spec, uint32_t val, int reg)
+{
+	writel(val, spec->remap[2] + reg);
+}
+
+
+extern int spec_fpga_init(struct spec_dev *spec);
+extern void spec_fpga_exit(struct spec_dev *spec);
+
+extern int spec_fmc_init(struct spec_dev *spec);
+extern void spec_fmc_exit(struct spec_dev *spec);
 
 #endif /* __SPEC_H__ */
