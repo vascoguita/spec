@@ -25,3 +25,4 @@ obj-m := spec.o
 spec-objs := spec-core.o
 spec-objs += spec-fpga.o
 spec-objs += spec-fmc.o
+spec-objs += spec-irq.o

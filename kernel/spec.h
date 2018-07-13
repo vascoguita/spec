@@ -7,11 +7,13 @@
  */
 #ifndef __SPEC_H__
 #define __SPEC_H__
-#include <linux/cdev.h>
+#include <linux/completion.h>
+#include <linux/debugfs.h>
 #include <linux/device.h>
 #include <linux/fmc.h>
 #include <linux/fpga/fpga-mgr.h>
 #include <linux/i2c.h>
+#include <linux/irqdomain.h>
 #include <linux/pci.h>
 #include <linux/platform_device.h>
 #include <linux/spinlock.h>
@@ -67,11 +69,11 @@ enum {
 	GNGPIO_OUTPUT_ENABLE	= GNGPIO_BASE + 0x08,
 	GNGPIO_OUTPUT_VALUE	= GNGPIO_BASE + 0x0C,
 	GNGPIO_INPUT_VALUE	= GNGPIO_BASE + 0x10,
-	GNGPIO_INT_MASK		= GNGPIO_BASE + 0x14, /* 1 == disabled */
+	GNGPIO_INT_MASK	= GNGPIO_BASE + 0x14, /* 1 == disabled */
 	GNGPIO_INT_MASK_CLR	= GNGPIO_BASE + 0x18, /* irq enable */
 	GNGPIO_INT_MASK_SET	= GNGPIO_BASE + 0x1C, /* irq disable */
 	GNGPIO_INT_STATUS	= GNGPIO_BASE + 0x20,
-	GNGPIO_INT_TYPE		= GNGPIO_BASE + 0x24, /* 1 == level */
+	GNGPIO_INT_TYPE	= GNGPIO_BASE + 0x24, /* 1 == level */
 	GNGPIO_INT_VALUE	= GNGPIO_BASE + 0x28, /* 1 == high/rise */
 	GNGPIO_INT_ON_ANY	= GNGPIO_BASE + 0x2C, /* both edges */
 
@@ -97,18 +99,29 @@ enum {
 	PCI_SYS_CFG_SYSTEM	= 0x800
 };
 
+
+#define GNINT_STAT_GPIO BIT(15)
+#define GNINT_STAT_SW0 BIT(2)
+#define GNINT_STAT_SW1 BIT(3)
+#define GNINT_STAT_SW_ALL (GNINT_STAT_SW0 | GNINT_STAT_SW1)
+
 /**
  * struct spec_dev - SPEC instance
  * It describes a SPEC device instance.
  * @dev Linux device instance descriptor
+ * @gpio_domain: IRQ domain for GN4124 chip
  * @flags collection of bit flags
  * @remap ioremap of PCI bar 0, 2, 4
  * @slot_info: information about FMC slot
  * @i2c_pdev: platform device for I2C master
  * @i2c_adapter: the I2C master device to be used
+ * @compl: for IRQ testing
  */
 struct spec_dev {
 	struct pci_dev *pdev;
+
+	struct irq_domain *gpio_domain;
+
 	struct fpga_manager *mgr;
 
 	DECLARE_BITMAP(flags, SPEC_FLAG_BITS);
@@ -117,6 +130,12 @@ struct spec_dev {
 	struct fmc_slot_info slot_info;
 	struct platform_device *i2c_pdev;
 	struct i2c_adapter *i2c_adapter;
+
+	struct dentry *dbg_dir;
+#define SPEC_DBG_INFO_NAME "info"
+	struct dentry *dbg_info;
+
+	struct completion	compl;
 };
 
 
@@ -144,10 +163,30 @@ static inline void gennum_writel(struct spec_dev *spec, uint32_t val, int reg)
 }
 
 
+/**
+ * It writes a 32bit register to the gennum chip according to the given mask
+ * @spec spec device instance
+ * @mask bit mask of the bits to actually write
+ * @val a 32bit valure
+ * @reg gennum register offset
+ */
+static inline void gennum_mask_val(struct spec_dev *spec,
+				   uint32_t mask, uint32_t val, int reg)
+{
+	uint32_t v = gennum_readl(spec, reg);
+	v &= ~mask;
+	v |= val;
+	gennum_writel(spec, v, reg);
+}
+
+
 extern int spec_fpga_init(struct spec_dev *spec);
 extern void spec_fpga_exit(struct spec_dev *spec);
 
 extern int spec_fmc_init(struct spec_dev *spec);
 extern void spec_fmc_exit(struct spec_dev *spec);
+
+extern int spec_irq_init(struct spec_dev *spec);
+extern void spec_irq_exit(struct spec_dev *spec);
 
 #endif /* __SPEC_H__ */

@@ -15,39 +15,6 @@
 #include "spec.h"
 
 
-/**
- * It writes a 32bit register to the gennum chip according to the given mask
- * @spec spec device instance
- * @mask bit mask of the bits to actually write
- * @val a 32bit valure
- * @reg gennum register offset
- */
-static inline void gennum_mask_val(struct spec_dev *spec,
-				   uint32_t mask, uint32_t val, int reg)
-{
-	uint32_t v = gennum_readl(spec, reg);
-	v &= ~mask;
-	v |= val;
-	gennum_writel(spec, v, reg);
-}
-
-
-/**
- * It configures the gennum chip
- * @spec spec device instance
- * Return: 0 on success, otherwise a negative errno number
- */
-static int gennum_config(struct spec_dev *spec)
-{
-	/* Put our 6 pins to a sane state (4 test points, 2 from FPGA) */
-	gennum_mask_val(spec, 0xfc0, 0x000, GNGPIO_BYPASS_MODE); /* no AF */
-	gennum_mask_val(spec, 0xfc0, 0xfc0, GNGPIO_DIRECTION_MODE); /* input */
-	gennum_writel(spec, 0xffff, GNGPIO_INT_MASK_SET); /* disable */
-
-	return 0;
-}
-
-
 static int spec_probe(struct pci_dev *pdev,
 		      const struct pci_device_id *id)
 {
@@ -58,6 +25,13 @@ static int spec_probe(struct pci_dev *pdev,
 	if (!spec)
 		return -ENOMEM;
 	spec->pdev = pdev;
+	pci_set_drvdata(pdev, spec);
+
+	err = pci_enable_device(pdev);
+	if (err)
+		goto err_enable;
+
+	pci_set_master(pdev);
 
 	/* Remap our 3 bars */
 	for (i = err = 0; i < 3; i++) {
@@ -83,22 +57,13 @@ static int spec_probe(struct pci_dev *pdev,
 	if (err)
 		goto err_fmc;
 
-	/* Enable the PCI device */
-	pci_set_drvdata(pdev, spec);
-	err = pci_enable_device(pdev);
+	err = spec_irq_init(spec);
 	if (err)
-		goto err_enable;
-	pci_set_master(pdev);
-
-	err = gennum_config(spec);
-	if (err)
-		goto err_gennum;
+		goto err_irq;
 
 	return 0;
 
-err_gennum:
-	pci_disable_device(pdev);
-err_enable:
+err_irq:
 	spec_fmc_exit(spec);
 err_fmc:
 	spec_fpga_exit(spec);
@@ -110,6 +75,8 @@ err_fpga:
 		spec->remap[i] = NULL;
 	}
 err_remap:
+	pci_disable_device(pdev);
+err_enable:
 	kfree(spec);
 	return err;
 }
@@ -120,17 +87,18 @@ static void spec_remove(struct pci_dev *pdev)
 	struct spec_dev *spec = pci_get_drvdata(pdev);
 	int i;
 
-	pci_disable_device(pdev);
 	pci_set_drvdata(pdev, NULL);
 
-	spec_fpga_exit(spec);
+	spec_irq_exit(spec);
 	spec_fmc_exit(spec);
+	spec_fpga_exit(spec);
 
 	for (i = 0; i < 3; i++) {
 		if (spec->remap[i])
 			iounmap(spec->remap[i]);
 		spec->remap[i] = NULL;
 	}
+	pci_disable_device(pdev);
 	kfree(spec);
 }
 
@@ -143,6 +111,9 @@ static DEFINE_PCI_DEVICE_TABLE(spec_pci_tbl) = {
 
 
 static struct pci_driver spec_driver = {
+	.driver = {
+		.owner = THIS_MODULE,
+	},
 	.name = "spec",
 	.probe = spec_probe,
 	.remove = spec_remove,
