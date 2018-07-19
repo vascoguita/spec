@@ -272,12 +272,13 @@ static irqreturn_t spec_irq_gpio_handler(int irq, void *arg)
 	struct irq_desc *desc;
 	unsigned int cascade_irq;
 	uint32_t gpio_int_status;
+	irqreturn_t ret = IRQ_NONE;
 	int i;
 
 	gennum_readl(spec, GNGPIO_INPUT_VALUE);
 	gpio_int_status = gennum_readl(spec, GNGPIO_INT_STATUS);
 	if (!gpio_int_status)
-		return IRQ_NONE;
+		goto out_enable_irq;
 
 	for (i = 0; i < GN4124_GPIO_IRQ_MAX; ++i) {
 		if (!(gpio_int_status & BIT(i)))
@@ -292,10 +293,19 @@ static irqreturn_t spec_irq_gpio_handler(int irq, void *arg)
 		 */
 		handle_nested_irq(cascade_irq);
 	}
+	ret = IRQ_HANDLED;
 
-	return IRQ_HANDLED;
+out_enable_irq:
+	/* Re-enable the GPIO interrupts, we are done here */
+	gennum_mask_val(spec, GNINT_STAT_GPIO, GNINT_STAT_GPIO, GNINT_CFG(0));
+
+	return ret;
 }
 
+
+/**
+ * This will run in hard-IRQ context since we do not have much to do
+ */
 static irqreturn_t spec_irq_sw_handler(int irq, void *arg)
 {
 	struct spec_dev *spec = arg;
@@ -316,26 +326,30 @@ static void spec_irq_chain_handler(unsigned int irq, struct irq_desc *desc)
 }
 #endif
 
-/**
- * This is the place to re-route interrupts to the proper handler
- */
-static irqreturn_t spec_irq_handler_threaded(int irq, void *arg)
+static irqreturn_t spec_irq_handler(int irq, void *arg)
 {
 	struct spec_dev *spec = arg;
 	uint32_t int_stat, int_cfg;
-	irqreturn_t ret;
 
 	int_cfg = gennum_readl(spec, GNINT_CFG(0));
 	int_stat = gennum_readl(spec, GNINT_STAT);
 	if (unlikely(!(int_stat & int_cfg)))
 		return IRQ_NONE;
 
-	if (int_stat & GNINT_STAT_GPIO)
-		ret = spec_irq_gpio_handler(irq, spec);
-	if (int_stat & GNINT_STAT_SW_ALL)
-		ret = spec_irq_sw_handler(irq, spec);
+	if (unlikely(int_stat & GNINT_STAT_SW_ALL)) /* only for testing */
+		return spec_irq_sw_handler(irq, spec);
 
-	return IRQ_HANDLED;
+	/*
+	 * Do not listen to new interrupts while handling the current GPIO.
+	 * This may take a while since the chain behind each GPIO can be long.
+	 * If the IRQ behind is level, we do not want this IRQ handeler to be
+	 * called continuously.
+	 * Just to play safe, let's disable interrupts. Within the thread we will
+	 * re-enable them when we are ready.
+	 */
+	gennum_mask_val(spec, GNINT_STAT_GPIO, 0, GNINT_CFG(0));
+
+	return IRQ_WAKE_THREAD;
 }
 
 /**
@@ -476,13 +490,11 @@ int spec_irq_init(struct spec_dev *spec)
 	/*
 	 * It depends on the platform and on the IRQ on which we are connecting to
 	 * but most likely our interrupt handler will be a thread.
-	 *
-	 * We need the ONESHOT option because we do not want to receive interrupts
-	 * until we finish with our handler
 	 */
-	err = request_threaded_irq(spec->pdev->irq, NULL,
-				   spec_irq_handler_threaded,
-				   IRQF_SHARED | IRQF_ONESHOT,
+	err = request_threaded_irq(spec->pdev->irq,
+				   spec_irq_handler,
+				   spec_irq_gpio_handler,
+				   IRQF_SHARED,
 				   dev_name(&spec->pdev->dev),
 				   spec);
 	if (err) {
