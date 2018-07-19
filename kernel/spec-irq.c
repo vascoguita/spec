@@ -266,8 +266,9 @@ static struct irq_domain_ops spec_irq_gpio_domain_ops = {
 /**
  * Handle IRQ from the GPIO block
  */
-static irqreturn_t spec_irq_gpio_handler(int irq, struct spec_dev *spec)
+static irqreturn_t spec_irq_gpio_handler(int irq, void *arg)
 {
+	struct spec_dev *spec = arg;
 	struct irq_desc *desc;
 	unsigned int cascade_irq;
 	uint32_t gpio_int_status;
@@ -295,9 +296,13 @@ static irqreturn_t spec_irq_gpio_handler(int irq, struct spec_dev *spec)
 	return IRQ_HANDLED;
 }
 
-static irqreturn_t spec_irq_sw_handler(int irq, struct spec_dev *spec, uint32_t int_stat)
+static irqreturn_t spec_irq_sw_handler(int irq, void *arg)
 {
+	struct spec_dev *spec = arg;
+	uint32_t int_stat;
+
 	/* Ack the interrupts */
+	int_stat = gennum_readl(spec, GNINT_STAT);
 	gennum_writel(spec, 0x0000, GNINT_STAT);
 
 	complete(&spec->compl);
@@ -328,7 +333,7 @@ static irqreturn_t spec_irq_handler_threaded(int irq, void *arg)
 	if (int_stat & GNINT_STAT_GPIO)
 		ret = spec_irq_gpio_handler(irq, spec);
 	if (int_stat & GNINT_STAT_SW_ALL)
-		ret = spec_irq_sw_handler(irq, spec, int_stat);
+		ret = spec_irq_sw_handler(irq, spec);
 
 	return IRQ_HANDLED;
 }
