@@ -314,7 +314,7 @@ static void spec_irq_chain_handler(unsigned int irq, struct irq_desc *desc)
 /**
  * This is the place to re-route interrupts to the proper handler
  */
-static irqreturn_t spec_irq_handler(int irq, void *arg)
+static irqreturn_t spec_irq_handler_threaded(int irq, void *arg)
 {
 	struct spec_dev *spec = arg;
 	uint32_t int_stat, int_cfg;
@@ -332,7 +332,6 @@ static irqreturn_t spec_irq_handler(int irq, void *arg)
 
 	return IRQ_HANDLED;
 }
-
 
 /**
  * Configure GPIO interrupts
@@ -470,11 +469,16 @@ int spec_irq_init(struct spec_dev *spec)
 	irq_set_handler_data(spec->pdev->irq, spec);
 #else
 	/*
-	 * It depends on the platform and on the IRQ on which we are connecting
-	 * but most likely our interrupt handler will be a thread
+	 * It depends on the platform and on the IRQ on which we are connecting to
+	 * but most likely our interrupt handler will be a thread.
+	 *
+	 * We need the ONESHOT option because we do not want to receive interrupts
+	 * until we finish with our handler
 	 */
-	err = request_threaded_irq(spec->pdev->irq, NULL, spec_irq_handler,
-				   IRQF_SHARED, dev_name(&spec->pdev->dev),
+	err = request_threaded_irq(spec->pdev->irq, NULL,
+				   spec_irq_handler_threaded,
+				   IRQF_SHARED | IRQF_ONESHOT,
+				   dev_name(&spec->pdev->dev),
 				   spec);
 	if (err) {
 		dev_err(&spec->pdev->dev, "Can't request IRQ %d (%d)\n",
