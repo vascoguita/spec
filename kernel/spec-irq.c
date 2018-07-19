@@ -269,23 +269,19 @@ static struct irq_domain_ops spec_irq_gpio_domain_ops = {
 static irqreturn_t spec_irq_gpio_handler(int irq, void *arg)
 {
 	struct spec_dev *spec = arg;
-	struct irq_desc *desc;
 	unsigned int cascade_irq;
 	uint32_t gpio_int_status;
+	unsigned long loop;
 	irqreturn_t ret = IRQ_NONE;
 	int i;
 
-	gennum_readl(spec, GNGPIO_INPUT_VALUE);
 	gpio_int_status = gennum_readl(spec, GNGPIO_INT_STATUS);
 	if (!gpio_int_status)
 		goto out_enable_irq;
 
-	for (i = 0; i < GN4124_GPIO_IRQ_MAX; ++i) {
-		if (!(gpio_int_status & BIT(i)))
-			continue; /* no interrupt on GPIO 'i'*/
-
+	loop = gpio_int_status;
+	for_each_set_bit(i, &loop, GN4124_GPIO_IRQ_MAX) {
 		cascade_irq = irq_find_mapping(spec->gpio_domain, i);
-		desc = irq_to_desc(cascade_irq);
 		/*
 		 * Ok, now we execute the handler for the given IRQ. Please
 		 * note that this is not the action requested by the device driver
@@ -360,6 +356,7 @@ static irqreturn_t spec_irq_handler(int irq, void *arg)
  */
 static int spec_irq_gpio_init(struct spec_dev *spec)
 {
+	unsigned long loop;
 	int i, irq;
 
 	/* Disable eery possible GPIO interrupt */
@@ -381,9 +378,8 @@ static int spec_irq_gpio_init(struct spec_dev *spec)
 	 * we have recuded set of GPIOs which can be used as interrupt:
 	 * activate only these ones
 	 */
-	for (i = 0; i < GN4124_GPIO_IRQ_MAX; ++i) {
-		if (!(spec_gpio_int & BIT(i)))
-			continue;
+	loop = spec_gpio_int;
+	for_each_set_bit(i, &loop, GN4124_GPIO_IRQ_MAX) {
 		irq = irq_create_mapping(spec->gpio_domain, i);
 		if (irq <= 0)
 			goto err;
