@@ -336,12 +336,13 @@ static irqreturn_t spec_irq_handler(int irq, void *arg)
 		return spec_irq_sw_handler(irq, spec);
 
 	/*
-	 * Do not listen to new interrupts while handling the current GPIO.
+	 * Do not listen to new interrupts while handling the current GPIOs.
 	 * This may take a while since the chain behind each GPIO can be long.
 	 * If the IRQ behind is level, we do not want this IRQ handeler to be
-	 * called continuously.
-	 * Just to play safe, let's disable interrupts. Within the thread we will
-	 * re-enable them when we are ready.
+	 * called continuously. But on the other hand we do not want other
+	 * devices sharing the same IRQ to wait for us; just to play safe,
+	 * let's disable interrupts. Within the thread we will re-enable them
+	 * when we are ready (like IRQF_ONESHOT).
 	 */
 	gennum_mask_val(spec, GNINT_STAT_GPIO, 0, GNINT_CFG(0));
 
