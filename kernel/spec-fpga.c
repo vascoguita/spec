@@ -300,6 +300,7 @@ static const struct fpga_manager_ops spec_fpga_ops = {
 	.write = spec_fpga_write,
 	.write_complete = spec_fpga_write_complete,
 	.fpga_remove = spec_fpga_remove,
+	.groups = NULL,
 };
 
 
