@@ -156,7 +156,7 @@ static int spec_irq_gpio_set_type(struct irq_data *d, unsigned int flow_type)
 
 		/* if we want to trigger on any edge */
 		if ((flow_type & IRQ_TYPE_EDGE_BOTH) == IRQ_TYPE_EDGE_BOTH)
-			gennum_mask_val(spec, bit, 0, GNGPIO_INT_ON_ANY);
+			gennum_mask_val(spec, bit, bit, GNGPIO_INT_ON_ANY);
 #if CHAIN
 		irq_set_handler(d->irq, handle_edge_irq);
 #endif
