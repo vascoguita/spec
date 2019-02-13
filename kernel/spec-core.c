@@ -70,6 +70,7 @@ static int spec_probe(struct pci_dev *pdev,
 		goto err_irq;
 
 	pci_set_drvdata(pdev, spec);
+	dev_info(spec->dev.parent, "Spec registered devptr=0x%p\n", spec->dev.parent);
 
 	return 0;
 
