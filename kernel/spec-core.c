@@ -103,7 +103,7 @@ static void spec_remove(struct pci_dev *pdev)
 }
 
 
-static DEFINE_PCI_DEVICE_TABLE(spec_pci_tbl) = {
+static const struct pci_device_id spec_pci_tbl[] = {
 	{PCI_DEVICE(PCI_VENDOR_ID_CERN, PCI_DEVICE_ID_SPEC_45T)},
 	{PCI_DEVICE(PCI_VENDOR_ID_CERN, PCI_DEVICE_ID_SPEC_100T)},
 	{PCI_DEVICE(PCI_VENDOR_ID_CERN, PCI_DEVICE_ID_SPEC_150T)},
