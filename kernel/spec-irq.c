@@ -215,27 +215,6 @@ static struct irq_chip spec_irq_gpio_chip = {
 	.irq_set_type = spec_irq_gpio_set_type,
 };
 
-
-/**
- * It match a given device with the irq_domain. `struct device_node *` is just
- * a convention. actually it can be anything (I do not understand why kernel
- * people did not use `void *`)
- *
- * In our case here we expect a string because we identify this domain by
- * name
- */
-static int spec_irq_gpio_domain_match(struct irq_domain *d, struct device_node *node)
-{
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,11,0)
-	char *name = (char *)node;
-
-	if (strcmp(d->name, name) == 0)
-		return 1;
-#endif
-	return 0;
-}
-
-
 /**
  * Given the hardware IRQ and the Linux IRQ number (virtirq), configure the
  * Linux IRQ number in order to handle properly the incoming interrupts
@@ -258,7 +237,6 @@ static int spec_irq_gpio_domain_map(struct irq_domain *h,
 
 
 static struct irq_domain_ops spec_irq_gpio_domain_ops = {
-	.match = spec_irq_gpio_domain_match,
 	.map = spec_irq_gpio_domain_map,
 };
 
