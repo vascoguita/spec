@@ -248,7 +248,11 @@ static int spec_fpga_write_init(struct fpga_manager *mgr,
 	int err = 0;
 
 	gn4124_fpga_gpio_config(spec);
+#if KERNEL_VERSION(4,16,0) > LINUX_VERSION_CODE
+	err = gn4124_fpga_fcl_init(spec, count & 0x3);
+#else
 	err = gn4124_fpga_fcl_init(spec, info->count & 0x3);
+#endif
 	if (err < 0)
 		goto err;
 
@@ -294,41 +298,33 @@ static void spec_fpga_remove(struct fpga_manager *mgr)
 
 
 static const struct fpga_manager_ops spec_fpga_ops = {
+#if KERNEL_VERSION(4,15,0) > LINUX_VERSION_CODE
+	/* So that we select the buffer size because smaller */
+	.initial_header_size = 0xFFFFFFFF,
+#else
 	.initial_header_size = 0,
+#endif
 	.state = spec_fpga_state,
 	.write_init = spec_fpga_write_init,
 	.write = spec_fpga_write,
 	.write_complete = spec_fpga_write_complete,
 	.fpga_remove = spec_fpga_remove,
-	.groups = NULL,
 };
 
 
 int spec_fpga_init(struct spec_dev *spec)
 {
-	int err;
-
 	if (!spec)
 		return -EINVAL;
 
-	spec->mgr = fpga_mgr_create(&spec->dev,
-				    dev_name(&spec->dev),
-				    &spec_fpga_ops, spec);
-	if (!spec->mgr)
-		return -EPERM;
-
-	err = fpga_mgr_register(spec->mgr);
-	if (err) {
-		fpga_mgr_free(spec->mgr);
-		return err;
-	}
-
-	return 0;
+	return fpga_mgr_register(&spec->dev,
+				 dev_name(&spec->dev),
+				 &spec_fpga_ops, spec);
 }
 
 void spec_fpga_exit(struct spec_dev *spec)
 {
-	if (!spec || !spec->mgr)
+	if (!spec)
 		return;
-	fpga_mgr_unregister(spec->mgr);
+	fpga_mgr_unregister(&spec->dev);
 }
