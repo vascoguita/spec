@@ -5,8 +5,6 @@ REPO_PARENT ?= $(shell /bin/pwd)/../..
 
 LINUX ?= /lib/modules/$(shell uname -r)/build
 
-FPGA_MGR_ABS ?= $(abspath $(FPGA_MGR))
-
 FMC_ABS ?= $(abspath $(FMC))
 
 I2C_ABS ?= $(abspath $(I2C))
@@ -19,7 +17,7 @@ all: modules
 .PHONY: all modules clean help install modules_install
 
 modules help install modules_install:
-	$(MAKE) -C $(LINUX) M=$(shell pwd) GIT_VERSION=$(GIT_VERSION) FPGA_MGR_ABS=$(FPGA_MGR_ABS) FMC_ABS=$(FMC_ABS) I2C_ABS=$(I2C_ABS) $@
+	$(MAKE) -C $(LINUX) M=$(shell pwd) GIT_VERSION=$(GIT_VERSION) FMC_ABS=$(FMC_ABS) I2C_ABS=$(I2C_ABS) $@
 
 # be able to run the "clean" rule even if $(LINUX) is not valid
 clean:
