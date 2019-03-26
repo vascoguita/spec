@@ -101,8 +101,7 @@ static int spec_irq_debug_init(struct spec_dev *spec)
  */
 static void spec_irq_debug_exit(struct spec_dev *spec)
 {
-	if (spec->dbg_dir)
-		debugfs_remove_recursive(spec->dbg_dir);
+	debugfs_remove_recursive(spec->dbg_dir);
 }
 
 
@@ -529,6 +528,7 @@ void spec_irq_exit(struct spec_dev *spec)
 	/* disable all source of interrupts */
 	for (i = 0; i < 7; i++)
 		gennum_writel(spec, 0, GNINT_CFG(i));
+
 	spec_irq_debug_exit(spec);
 	free_irq(spec->pdev->irq, spec);
 	spec_irq_sw_exit(spec);

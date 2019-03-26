@@ -21,11 +21,10 @@ static int spec_probe(struct pci_dev *pdev,
 	struct spec_dev *spec;
 	int err, i;
 
-	spec = kzalloc(sizeof(struct spec_dev), GFP_KERNEL);
+	spec = kzalloc(sizeof(*spec), GFP_KERNEL);
 	if (!spec)
 		return -ENOMEM;
 	spec->pdev = pdev;
-	pci_set_drvdata(pdev, spec);
 
 	err = pci_enable_device(pdev);
 	if (err)
@@ -61,6 +60,8 @@ static int spec_probe(struct pci_dev *pdev,
 	if (err)
 		goto err_irq;
 
+	pci_set_drvdata(pdev, spec);
+
 	return 0;
 
 err_irq:
@@ -72,7 +73,6 @@ err_fpga:
 	for (i = 0; i < 3; i++) {
 		if (spec->remap[i])
 			iounmap(spec->remap[i]);
-		spec->remap[i] = NULL;
 	}
 err_remap:
 	pci_disable_device(pdev);
@@ -93,11 +93,9 @@ static void spec_remove(struct pci_dev *pdev)
 	spec_fmc_exit(spec);
 	spec_fpga_exit(spec);
 
-	for (i = 0; i < 3; i++) {
+	for (i = 0; i < 3; i++)
 		if (spec->remap[i])
 			iounmap(spec->remap[i]);
-		spec->remap[i] = NULL;
-	}
 	pci_disable_device(pdev);
 	kfree(spec);
 }
