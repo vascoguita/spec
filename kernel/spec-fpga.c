@@ -311,8 +311,8 @@ int spec_fpga_init(struct spec_dev *spec)
 	if (!spec)
 		return -EINVAL;
 
-	spec->mgr = fpga_mgr_create(&spec->pdev->dev,
-				    dev_name(&spec->pdev->dev),
+	spec->mgr = fpga_mgr_create(&spec->dev,
+				    dev_name(&spec->dev),
 				    &spec_fpga_ops, spec);
 	if (!spec->mgr)
 		return -EPERM;

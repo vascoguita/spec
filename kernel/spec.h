@@ -119,7 +119,7 @@ enum {
  * @compl: for IRQ testing
  */
 struct spec_dev {
-	struct pci_dev *pdev;
+	struct device dev;
 
 	struct irq_domain *gpio_domain;
 
@@ -139,6 +139,11 @@ struct spec_dev {
 	struct completion	compl;
 };
 
+
+static inline struct spec_dev *to_spec_dev(struct device *_dev)
+{
+	return container_of(_dev, struct spec_dev, dev);
+}
 
 /**
  * It reads a 32bit register from the gennum chip

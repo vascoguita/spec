@@ -83,12 +83,12 @@ static int spec_i2c_add(struct spec_dev *spec)
 	int err;
 
 	/* VME function 1 */
-	res.start = pci_resource_start(to_pci_dev(spec->pdev->dev.parent), 0);
+	res.start = pci_resource_start(to_pci_dev(spec->dev.parent), 0);
 	res.start += SPEC_I2C_MASTER_ADDR;
 	res.end = res.start + SPEC_I2C_MASTER_SIZE;
 
 	/* FIXME find better ID */
-	spec->i2c_pdev = platform_device_register_resndata(&spec->pdev->dev,
+	spec->i2c_pdev = platform_device_register_resndata(&spec->dev,
 							   "ocores-i2c", id++,
 							   &res, 1,
 							   &pdata,
@@ -132,7 +132,7 @@ int spec_fmc_init(struct spec_dev *spec)
 		goto err_i2c_bus;
 	spec->slot_info.ga = 0;
 	spec->slot_info.lun = 0;
-	err = fmc_carrier_register(&spec->pdev->dev, &spec_fmc_ops,
+	err = fmc_carrier_register(&spec->dev, &spec_fmc_ops,
 				   SPEC_FMC_SLOTS, &spec->slot_info, spec);
 	if (err)
 		goto err_fmc;
@@ -152,6 +152,6 @@ void spec_fmc_exit(struct spec_dev *spec)
 
 	if (!spec)
 		return;
-	fmc_carrier_unregister(&spec->pdev->dev);
+	fmc_carrier_unregister(&spec->dev);
 	spec_i2c_del(spec);
 }
