@@ -5,7 +5,7 @@
 REPO_PARENT ?= $(shell /bin/pwd)/..
 -include $(REPO_PARENT)/parent_common.mk
 
-DIRS = kernel doc
+DIRS = kernel
 
 .PHONY: all clean modules install modules_install $(DIRS)
 
