@@ -54,3 +54,18 @@ struct fpga_manager *compat_fpga_mgr_create(struct device *dev,
 void compat_fpga_mgr_free(struct fpga_manager *mgr);
 int compat_fpga_mgr_register(struct fpga_manager *mgr);
 void compat_fpga_mgr_unregister(struct fpga_manager *mgr);
+
+#if KERNEL_VERSION(3, 11, 0) > LINUX_VERSION_CODE
+#define __ATTR_RW(_name) __ATTR(_name, (S_IWUSR | S_IRUGO),	\
+			 _name##_show, _name##_store)
+#define __ATTR_WO(_name) {						\
+	.attr	= { .name = __stringify(_name), .mode = S_IWUSR },	\
+	.store	= _name##_store,					\
+}
+#define DEVICE_ATTR_RW(_name) \
+	struct device_attribute dev_attr_##_name = __ATTR_RW(_name)
+#define DEVICE_ATTR_RO(_name) \
+	struct device_attribute dev_attr_##_name = __ATTR_RO(_name)
+#define DEVICE_ATTR_WO(_name) \
+	struct device_attribute dev_attr_##_name = __ATTR_WO(_name)
+#endif

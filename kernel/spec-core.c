@@ -11,8 +11,41 @@
 #include <linux/ioport.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/firmware.h>
 
 #include "spec.h"
+#include "spec-compat.h"
+
+static ssize_t dtb_overlay_path_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	const struct firmware *fw;
+	int err;
+
+	pr_info("%s:%d %s\n", __func__, __LINE__, buf);
+	err = request_firmware(&fw, buf, dev);
+	if (err < 0)
+		return err;
+
+	release_firmware(fw);
+	return count;
+}
+static DEVICE_ATTR_WO(dtb_overlay_path);
+
+static struct attribute *spec_attrs[] = {
+	&dev_attr_dtb_overlay_path.attr,
+	NULL,
+};
+
+static struct attribute_group spec_attr_group = {
+	.attrs = spec_attrs,
+};
+
+static const struct attribute_group *spec_attr_groups[] = {
+	&spec_attr_group,
+	NULL,
+};
 
 static void spec_release(struct device *dev)
 {
@@ -53,6 +86,7 @@ static int spec_probe(struct pci_dev *pdev,
 
 	spec->dev.parent = &pdev->dev;
 	spec->dev.release = spec_release;
+	spec->dev.groups = spec_attr_groups;
 	err = dev_set_name(&spec->dev, "spec-%s", dev_name(&pdev->dev));
 	if (err)
 		goto err_name;
