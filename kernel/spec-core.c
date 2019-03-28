@@ -65,10 +65,6 @@ static int spec_probe(struct pci_dev *pdev,
 	if (err)
 		goto err_fpga;
 
-	err = spec_fmc_init(spec);
-	if (err)
-		goto err_fmc;
-
 	err = spec_irq_init(spec);
 	if (err)
 		goto err_irq;
@@ -78,8 +74,6 @@ static int spec_probe(struct pci_dev *pdev,
 	return 0;
 
 err_irq:
-	spec_fmc_exit(spec);
-err_fmc:
 	spec_fpga_exit(spec);
 err_fpga:
 	device_unregister(&spec->dev);
@@ -104,7 +98,6 @@ static void spec_remove(struct pci_dev *pdev)
 
 
 	spec_irq_exit(spec);
-	spec_fmc_exit(spec);
 	spec_fpga_exit(spec);
 
 	for (i = 0; i < 3; i++)

@@ -10,19 +10,15 @@ endif
 ccflags-y += -DADDITIONAL_VERSIONS="$(SUBMODULE_VERSIONS)"
 ccflags-y += -DGIT_VERSION=\"$(GIT_VERSION)\"
 ccflags-y += -I$(FPGA_MGR_ABS)/include
-ccflags-y += -I$(FMC_ABS)/include
-ccflags-y += -I$(I2C_ABS)/include
 ccflags-y += -Wall -Werror
 
 # priority to I2C headers from our sources
-LINUXINCLUDE := -I$(FMC_MGR_ABS)/include -I$(FMC_MGR_ABS)/include/linux -I$(FMC_ABS)/include -I$(FMC_ABS)/include/linux -I$(I2C_ABS)/include -I$(I2C_ABS)/include/linux $(LINUXINCLUDE)
+LINUXINCLUDE := -I$(FMC_MGR_ABS)/include -I$(FMC_MGR_ABS)/include/linux $(LINUXINCLUDE)
 
 KBUILD_EXTRA_SYMBOLS += $(FPGA_MGR_ABS)/drivers/fpga/Module.symvers
-KBUILD_EXTRA_SYMBOLS += $(FMC_ABS)/drivers/fmc/Module.symvers
 
 obj-m := spec.o
 
 spec-objs := spec-core.o
 spec-objs += spec-fpga.o
-spec-objs += spec-fmc.o
 spec-objs += spec-irq.o
