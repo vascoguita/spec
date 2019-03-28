@@ -17,7 +17,7 @@ all: modules
 .PHONY: all modules clean help install modules_install
 
 modules help install modules_install:
-	$(MAKE) -C $(LINUX) M=$(shell pwd) GIT_VERSION=$(GIT_VERSION) FMC_ABS=$(FMC_ABS) I2C_ABS=$(I2C_ABS) $@
+	$(MAKE) -C $(LINUX) M=$(shell pwd) GIT_VERSION=$(GIT_VERSION) $@
 
 # be able to run the "clean" rule even if $(LINUX) is not valid
 clean:
