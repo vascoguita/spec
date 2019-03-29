@@ -16,5 +16,8 @@ modules: TARGET = modules
 install: TARGET = install
 modules_install: TARGET = modules_install
 
+ENV_VAR := CONFIG_FPGA_MGR_BACKPORT_PATH=$(CONFIG_FPGA_MGR_BACKPORT_PATH)
+ENV_VAR += CONFIG_FPGA_MGR_BACKPORT=$(CONFIG_FPGA_MGR_BACKPORT)
+
 $(DIRS):
-	$(MAKE) -C $@ $(TARGET)
+	$(MAKE) -C $@ $(ENV_VAR) $(TARGET)
