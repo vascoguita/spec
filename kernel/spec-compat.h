@@ -18,13 +18,13 @@
 #define compat_fpga_ops_initial_header_size
 #endif
 
-#if KERNEL_VERSION(4,16,0) <= LINUX_VERSION_CODE
-#define compat_fpga_ops_groups .groups = NULL,
-#else
+#if KERNEL_VERSION(4,16,0) > LINUX_VERSION_CODE && ! defined(CONFIG_FPGA_MGR_BACKPORT)
 #define compat_fpga_ops_groups
+#else
+#define compat_fpga_ops_groups .groups = NULL,
 #endif
 
-#if KERNEL_VERSION(4,10,0) > LINUX_VERSION_CODE
+#if KERNEL_VERSION(4,10,0) > LINUX_VERSION_CODE && ! defined(CONFIG_FPGA_MGR_BACKPORT)
 struct fpga_image_info;
 #endif
 
@@ -34,7 +34,7 @@ int spec_fpga_write_init(struct fpga_manager *mgr,
 int spec_fpga_write_complete(struct fpga_manager *mgr,
 			     struct fpga_image_info *info);
 
-#if KERNEL_VERSION(4,10,0) > LINUX_VERSION_CODE
+#if KERNEL_VERSION(4,10,0) > LINUX_VERSION_CODE && ! defined(CONFIG_FPGA_MGR_BACKPORT)
 int compat_spec_fpga_write_init(struct fpga_manager *mgr, u32 flags,
 				const char *buf, size_t count);
 int compat_spec_fpga_write_complete(struct fpga_manager *mgr, u32 flags);

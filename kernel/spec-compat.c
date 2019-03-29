@@ -9,17 +9,14 @@
 
 int compat_get_fpga_last_word_size(struct fpga_image_info *info, size_t count)
 {
-	int last_word_size = count;
-
-#if KERNEL_VERSION(4,16,0) <= LINUX_VERSION_CODE
-	if (info)
-		last_word_size = info->count;
+#if KERNEL_VERSION(4,16,0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
+	return count;
+#else
+	return info ? info->count : count;
 #endif
-
-	return last_word_size;
 }
 
-#if KERNEL_VERSION(4,10,0) > LINUX_VERSION_CODE
+#if KERNEL_VERSION(4,10,0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
 int compat_spec_fpga_write_init(struct fpga_manager *mgr,
 				u32 flags,
 				const char *buf, size_t count)
@@ -33,23 +30,22 @@ int compat_spec_fpga_write_complete(struct fpga_manager *mgr,
 }
 #else
 int compat_spec_fpga_write_init(struct fpga_manager *mgr,
-					      struct fpga_image_info *info,
-					      const char *buf, size_t count)
+				struct fpga_image_info *info,
+				const char *buf, size_t count)
 {
 	return spec_fpga_write_init(mgr, info, buf, count);
 }
 int compat_spec_fpga_write_complete(struct fpga_manager *mgr,
-						  struct fpga_image_info *info)
+				    struct fpga_image_info *info)
 {
 	return spec_fpga_write_complete(mgr, info);
 }
 #endif
 
-
-#if KERNEL_VERSION(4,18,0) >= LINUX_VERSION_CODE
+#if KERNEL_VERSION(4,18,0) > LINUX_VERSION_CODE  && !defined(CONFIG_FPGA_MGR_BACKPORT)
 struct fpga_manager *compat_fpga_mgr_create(struct device *dev, const char *name,
-							  const struct fpga_manager_ops *mops,
-							  void *priv)
+					    const struct fpga_manager_ops *mops,
+					    void *priv)
 {
 	int err;
 
@@ -75,9 +71,9 @@ void compat_fpga_mgr_unregister(struct fpga_manager *mgr)
 }
 #else
 struct fpga_manager *compat_fpga_mgr_create(struct device *dev,
-							  const char *name,
-							  const struct fpga_manager_ops *mops,
-							  void *priv)
+					    const char *name,
+					    const struct fpga_manager_ops *mops,
+					    void *priv)
 {
 	return fpga_mgr_create(dev, name, mops, priv);
 }
