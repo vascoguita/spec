@@ -36,9 +36,9 @@ static int spec_irq_dbg_info(struct seq_file *s, void *offset)
 	struct spec_dev *spec = s->private;
 	int i;
 
-	seq_printf(s, "'%s':\n",dev_name(&spec->pdev->dev));
+	seq_printf(s, "'%s':\n",dev_name(spec->dev.parent));
 
-	seq_printf(s, "  redirect: %d\n", spec->pdev->irq);
+	seq_printf(s, "  redirect: %d\n", to_pci_dev(spec->dev.parent)->irq);
 	seq_printf(s, "  irq-mapping:\n");
 	for (i = 0; i < GN4124_GPIO_IRQ_MAX; ++i) {
 		seq_printf(s, "    - hardware: %d\n", i);
@@ -73,9 +73,9 @@ static const struct file_operations spec_irq_dbg_info_ops = {
  */
 static int spec_irq_debug_init(struct spec_dev *spec)
 {
-	spec->dbg_dir = debugfs_create_dir(dev_name(&spec->pdev->dev), NULL);
+	spec->dbg_dir = debugfs_create_dir(dev_name(&spec->dev), NULL);
 	if (IS_ERR_OR_NULL(spec->dbg_dir)) {
-		dev_err(&spec->pdev->dev,
+		dev_err(&spec->dev,
 			"Cannot create debugfs directory (%ld)\n",
 			PTR_ERR(spec->dbg_dir));
 		return PTR_ERR(spec->dbg_dir);
@@ -85,7 +85,7 @@ static int spec_irq_debug_init(struct spec_dev *spec)
 					     spec->dbg_dir, spec,
 					     &spec_irq_dbg_info_ops);
 	if (IS_ERR_OR_NULL(spec->dbg_info)) {
-		dev_err(&spec->pdev->dev,
+		dev_err(&spec->dev,
 			"Cannot create debugfs file \"%s\" (%ld)\n",
 			SPEC_DBG_INFO_NAME, PTR_ERR(spec->dbg_info));
 		return PTR_ERR(spec->dbg_info);
@@ -101,8 +101,7 @@ static int spec_irq_debug_init(struct spec_dev *spec)
  */
 static void spec_irq_debug_exit(struct spec_dev *spec)
 {
-	if (spec->dbg_dir)
-		debugfs_remove_recursive(spec->dbg_dir);
+	debugfs_remove_recursive(spec->dbg_dir);
 }
 
 
@@ -139,7 +138,8 @@ static int spec_irq_gpio_set_type(struct irq_data *d, unsigned int flow_type)
 	 */
 	if ((flow_type & IRQ_TYPE_LEVEL_MASK) &&
 	    (flow_type & IRQ_TYPE_EDGE_BOTH)) {
-		dev_err(&spec->pdev->dev, "Impossible to set GPIO IRQ %ld to both LEVEL and EDGE (0x%x)\n",
+		dev_err(&spec->dev,
+			"Impossible to set GPIO IRQ %ld to both LEVEL and EDGE (0x%x)\n",
 			d->hwirq, flow_type);
 		return -EINVAL;
 	}
@@ -215,27 +215,6 @@ static struct irq_chip spec_irq_gpio_chip = {
 	.irq_set_type = spec_irq_gpio_set_type,
 };
 
-
-/**
- * It match a given device with the irq_domain. `struct device_node *` is just
- * a convention. actually it can be anything (I do not understand why kernel
- * people did not use `void *`)
- *
- * In our case here we expect a string because we identify this domain by
- * name
- */
-static int spec_irq_gpio_domain_match(struct irq_domain *d, struct device_node *node)
-{
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,11,0)
-	char *name = (char *)node;
-
-	if (strcmp(d->name, name) == 0)
-		return 1;
-#endif
-	return 0;
-}
-
-
 /**
  * Given the hardware IRQ and the Linux IRQ number (virtirq), configure the
  * Linux IRQ number in order to handle properly the incoming interrupts
@@ -258,7 +237,6 @@ static int spec_irq_gpio_domain_map(struct irq_domain *h,
 
 
 static struct irq_domain_ops spec_irq_gpio_domain_ops = {
-	.match = spec_irq_gpio_domain_match,
 	.map = spec_irq_gpio_domain_map,
 };
 
@@ -370,7 +348,7 @@ static int spec_irq_gpio_init(struct spec_dev *spec)
 		return -ENOMEM;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3,11,0)
 	spec->gpio_domain->name = kasprintf(GFP_KERNEL, "%s-gn4124-gpio-irq",
-					    dev_name(&spec->pdev->dev));
+					    dev_name(&spec->dev));
 #endif
 
 
@@ -449,7 +427,7 @@ static int spec_irq_sw_test(struct spec_dev *spec)
 					  msecs_to_jiffies(10000));
 	if (ret == 0) {
 		gennum_writel(spec, 0x0000, GNINT_STAT); /* disable */
-		dev_err(&spec->pdev->dev, "Cannot receive interrupts\n");
+		dev_err(&spec->dev, "Cannot receive interrupts\n");
 		return -EINVAL;
 	}
 	return 0;
@@ -463,6 +441,7 @@ static int spec_irq_sw_test(struct spec_dev *spec)
  */
 int spec_irq_init(struct spec_dev *spec)
 {
+	int irq = to_pci_dev(spec->dev.parent)->irq;
 	int err;
 	int i;
 
@@ -481,22 +460,21 @@ int spec_irq_init(struct spec_dev *spec)
 		goto err_sw;
 
 #if CHAIN
-	irq_set_chained_handler(spec->pdev->irq, spec_irq_chain_handler);
-	irq_set_handler_data(spec->pdev->irq, spec);
+	irq_set_chained_handler(irq, spec_irq_chain_handler);
+	irq_set_handler_data(irq, spec);
 #else
 	/*
 	 * It depends on the platform and on the IRQ on which we are connecting to
 	 * but most likely our interrupt handler will be a thread.
 	 */
-	err = request_threaded_irq(spec->pdev->irq,
+	err = request_threaded_irq(irq,
 				   spec_irq_handler,
 				   spec_irq_gpio_handler,
 				   IRQF_SHARED,
-				   dev_name(&spec->pdev->dev),
+				   dev_name(&spec->dev),
 				   spec);
 	if (err) {
-		dev_err(&spec->pdev->dev, "Can't request IRQ %d (%d)\n",
-			spec->pdev->irq, err);
+		dev_err(&spec->dev, "Can't request IRQ %d (%d)\n", irq, err);
 		goto err_req;
 	}
 #endif
@@ -510,7 +488,7 @@ int spec_irq_init(struct spec_dev *spec)
 
 err_test:
 	spec_irq_debug_exit(spec);
-	free_irq(spec->pdev->irq, spec);
+	free_irq(irq, spec);
 err_req:
 	spec_irq_sw_exit(spec);
 err_sw:
@@ -522,6 +500,7 @@ err_gpio:
 void spec_irq_exit(struct spec_dev *spec)
 {
 	int i;
+	int irq = to_pci_dev(spec->dev.parent)->irq;
 
 	if (!spec)
 		return;
@@ -529,8 +508,9 @@ void spec_irq_exit(struct spec_dev *spec)
 	/* disable all source of interrupts */
 	for (i = 0; i < 7; i++)
 		gennum_writel(spec, 0, GNINT_CFG(i));
+
 	spec_irq_debug_exit(spec);
-	free_irq(spec->pdev->irq, spec);
+	free_irq(irq, spec);
 	spec_irq_sw_exit(spec);
 	spec_irq_gpio_exit(spec);
 }

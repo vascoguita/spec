@@ -10,7 +10,6 @@
 #include <linux/completion.h>
 #include <linux/debugfs.h>
 #include <linux/device.h>
-#include <linux/fmc.h>
 #include <linux/fpga/fpga-mgr.h>
 #include <linux/i2c.h>
 #include <linux/irqdomain.h>
@@ -119,7 +118,7 @@ enum {
  * @compl: for IRQ testing
  */
 struct spec_dev {
-	struct pci_dev *pdev;
+	struct device dev;
 
 	struct irq_domain *gpio_domain;
 
@@ -128,10 +127,6 @@ struct spec_dev {
 	DECLARE_BITMAP(flags, SPEC_FLAG_BITS);
 	void __iomem *remap[3];	/* ioremap of bar 0, 2, 4 */
 
-	struct fmc_slot_info slot_info;
-	struct platform_device *i2c_pdev;
-	struct i2c_adapter *i2c_adapter;
-
 	struct dentry *dbg_dir;
 #define SPEC_DBG_INFO_NAME "info"
 	struct dentry *dbg_info;
@@ -139,6 +134,11 @@ struct spec_dev {
 	struct completion	compl;
 };
 
+
+static inline struct spec_dev *to_spec_dev(struct device *_dev)
+{
+	return container_of(_dev, struct spec_dev, dev);
+}
 
 /**
  * It reads a 32bit register from the gennum chip
@@ -183,9 +183,6 @@ static inline void gennum_mask_val(struct spec_dev *spec,
 
 extern int spec_fpga_init(struct spec_dev *spec);
 extern void spec_fpga_exit(struct spec_dev *spec);
-
-extern int spec_fmc_init(struct spec_dev *spec);
-extern void spec_fmc_exit(struct spec_dev *spec);
 
 extern int spec_irq_init(struct spec_dev *spec);
 extern void spec_irq_exit(struct spec_dev *spec);
