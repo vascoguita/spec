@@ -62,7 +62,7 @@ void compat_fpga_mgr_free(struct fpga_manager *mgr)
 
 int compat_fpga_mgr_register(struct fpga_manager *mgr)
 {
-	return !!mgr;
+	return mgr ? 0 : 1;
 }
 
 void compat_fpga_mgr_unregister(struct fpga_manager *mgr)
