@@ -4,10 +4,11 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
-
+#include <linux/fpga/fpga-mgr.h>
 #include <linux/delay.h>
 
 #include "spec.h"
+#include "spec-compat.h"
 
 static inline uint8_t reverse_bits8(uint8_t x)
 {
@@ -240,19 +241,16 @@ static enum fpga_mgr_states spec_fpga_state(struct fpga_manager *mgr)
 }
 
 
-static int spec_fpga_write_init(struct fpga_manager *mgr,
-				struct fpga_image_info *info,
-				const char *buf, size_t count)
+int spec_fpga_write_init(struct fpga_manager *mgr,
+			 struct fpga_image_info *info,
+			 const char *buf, size_t count)
 {
 	struct spec_dev *spec = mgr->priv;
-	int err = 0;
+	int err = 0, last_word_size;
 
 	gn4124_fpga_gpio_config(spec);
-#if KERNEL_VERSION(4,16,0) > LINUX_VERSION_CODE
-	err = gn4124_fpga_fcl_init(spec, count & 0x3);
-#else
-	err = gn4124_fpga_fcl_init(spec, info->count & 0x3);
-#endif
+	last_word_size = compat_get_fpga_last_word_size(info, count) & 0x3;
+	err = gn4124_fpga_fcl_init(spec, last_word_size);
 	if (err < 0)
 		goto err;
 
@@ -263,7 +261,6 @@ err:
 	return err;
 }
 
-
 static int spec_fpga_write(struct fpga_manager *mgr, const char *buf, size_t count)
 {
 	struct spec_dev *spec = mgr->priv;
@@ -272,8 +269,8 @@ static int spec_fpga_write(struct fpga_manager *mgr, const char *buf, size_t cou
 }
 
 
-static int spec_fpga_write_complete(struct fpga_manager *mgr,
-				    struct fpga_image_info *info)
+int spec_fpga_write_complete(struct fpga_manager *mgr,
+			     struct fpga_image_info *info)
 {
 	struct spec_dev *spec = mgr->priv;
 	int err;
@@ -296,35 +293,40 @@ static void spec_fpga_remove(struct fpga_manager *mgr)
 	/* do nothing */
 }
 
-
 static const struct fpga_manager_ops spec_fpga_ops = {
-#if KERNEL_VERSION(4,15,0) > LINUX_VERSION_CODE
-	/* So that we select the buffer size because smaller */
-	.initial_header_size = 0xFFFFFFFF,
-#else
-	.initial_header_size = 0,
-#endif
+	compat_fpga_ops_initial_header_size
+	compat_fpga_ops_groups
+
 	.state = spec_fpga_state,
-	.write_init = spec_fpga_write_init,
+	.write_init = compat_spec_fpga_write_init,
 	.write = spec_fpga_write,
-	.write_complete = spec_fpga_write_complete,
+	.write_complete = compat_spec_fpga_write_complete,
 	.fpga_remove = spec_fpga_remove,
 };
 
 
 int spec_fpga_init(struct spec_dev *spec)
 {
-	if (!spec)
-		return -EINVAL;
+	int err;
 
-	return fpga_mgr_register(&spec->dev,
-				 dev_name(&spec->dev),
-				 &spec_fpga_ops, spec);
+	spec->mgr = compat_fpga_mgr_create(&spec->dev,
+					   dev_name(&spec->dev),
+					   &spec_fpga_ops, spec);
+	if (!spec || !spec->mgr)
+		return -EPERM;
+
+	err = compat_fpga_mgr_register(spec->mgr);
+	if (err) {
+		compat_fpga_mgr_free(spec->mgr);
+		return err;
+	}
+
+	return 0;
 }
 
 void spec_fpga_exit(struct spec_dev *spec)
 {
 	if (!spec)
 		return;
-	fpga_mgr_unregister(&spec->dev);
+	compat_fpga_mgr_unregister(spec->mgr);
 }
