@@ -9,16 +9,21 @@ endif
 
 ccflags-y += -DADDITIONAL_VERSIONS="$(SUBMODULE_VERSIONS)"
 ccflags-y += -DGIT_VERSION=\"$(GIT_VERSION)\"
-ccflags-y += -I$(FPGA_MGR_ABS)/include
 ccflags-y += -Wall -Werror
 
-# priority to I2C headers from our sources
-LINUXINCLUDE := -I$(FMC_MGR_ABS)/include -I$(FMC_MGR_ABS)/include/linux $(LINUXINCLUDE)
+ccflags-$(CONFIG_FPGA_MGR_BACKPORT) += -DCONFIG_FPGA_MGR_BACKPORT
+ccflags-$(CONFIG_FPGA_MGR_BACKPORT) += -I$(CONFIG_FPGA_MGR_BACKPORT_PATH_ABS)/include
 
-KBUILD_EXTRA_SYMBOLS += $(FPGA_MGR_ABS)/drivers/fpga/Module.symvers
+ifeq ($(CONFIG_FPGA_MGR_BACKPORT), y)
+CONFIG_FPGA_MGR_BACKPORT_INCLUDE := -I$(CONFIG_FPGA_MGR_BACKPORT_PATH_ABS)/include
+CONFIG_FPGA_MGR_BACKPORT_INCLUDE += -I$(CONFIG_FPGA_MGR_BACKPORT_PATH_ABS)/include/linux
+LINUXINCLUDE := $(CONFIG_FPGA_MGR_BACKPORT_INCLUDE) $(LINUXINCLUDE)
+KBUILD_EXTRA_SYMBOLS += $(CONFIG_FPGA_MGR_BACKPORT_PATH_ABS)/drivers/fpga/Module.symvers
+endif
 
 obj-m := spec.o
 
 spec-objs := spec-core.o
 spec-objs += spec-fpga.o
 spec-objs += spec-irq.o
+spec-objs += spec-compat.o
