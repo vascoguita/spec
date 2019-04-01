@@ -168,8 +168,7 @@ static int __compat_spec_fw_load(struct fpga_manager *mgr, const char *name)
 
 	memset(&image, 0, sizeof(image));
 	image.firmware_name = (char *)name;
-	image.dev = &spec->dev;
-	mgr = spec->mgr;
+	image.dev = mgr->dev.parent;
 
 	return fpga_mgr_load(mgr, &image);
 #endif
