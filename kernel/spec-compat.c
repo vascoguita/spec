@@ -3,6 +3,7 @@
  * Copyright (C) 2017 CERN (www.cern.ch)
  * Author: Federico Vaga <federico.vaga@cern.ch>
  */
+#include <linux/kallsyms.h>
 #include <linux/module.h>
 #include <linux/fpga/fpga-mgr.h>
 #include <linux/version.h>
@@ -138,8 +139,9 @@ static int fpga_mgr_dev_match(struct device *dev, const void *data)
  *
  * Return: fpga manager struct or IS_ERR() condition containing error code.
  */
-static struct fpga_manager *fpga_mgr_get(struct device *dev)
+struct fpga_manager *fpga_mgr_get(struct device *dev)
 {
+	void *fpga_mgr_class = (void*) kallsyms_lookup_name("fpga_mgr_class");
 	struct device *mgr_dev = class_find_device(fpga_mgr_class, NULL, dev,
 						   fpga_mgr_dev_match);
 	if (!mgr_dev)
