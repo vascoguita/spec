@@ -151,32 +151,40 @@ struct fpga_manager *fpga_mgr_get(struct device *dev)
 }
 #endif
 
+
+static int __compat_spec_fw_load(struct fpga_manager *mgr, const char *name)
+{
+#if KERNEL_VERSION(4,16,0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
+#if KERNEL_VERSION(4,10,0) > LINUX_VERSION_CODE
+	return fpga_mgr_firmware_load(mgr, 0, name);
+#else
+	struct fpga_image_info image;
+
+	memset(&image, 0, sizeof(image));
+	return fpga_mgr_firmware_load(mgr, &image, name);
+#endif
+#else
+	struct fpga_image_info image;
+
+	memset(&image, 0, sizeof(image));
+	image.firmware_name = (char *)name;
+	image.dev = &spec->dev;
+	mgr = spec->mgr;
+
+	return fpga_mgr_load(mgr, &image);
+#endif
+}
+
 int compat_spec_fw_load(struct spec_dev *spec, const char *name)
 {
 	struct fpga_manager *mgr;
-	struct fpga_image_info image;
 	int err;
 
 	mgr = fpga_mgr_get(&spec->dev);
 	if (IS_ERR(mgr))
 		return -ENODEV;
 
-#if KERNEL_VERSION(4,16,0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
-#if KERNEL_VERSION(4,10,0) > LINUX_VERSION_CODE
-	err = fpga_mgr_firmware_load(mgr, 0, name);
-#else
-	memset(&image, 0, sizeof(image));
-	err = fpga_mgr_firmware_load(mgr, &image, name);
-#endif
-#else
-	memset(&image, 0, sizeof(image));
-	image.firmware_name = (char *)name;
-	image.dev = &spec->dev;
-	mgr = spec->mgr;
-
-	err = fpga_mgr_load(mgr, &image);
-#endif
-
+	err = __compat_spec_fw_load(mgr, name);
 	fpga_mgr_put(mgr);
 
 	return err;
