@@ -3,6 +3,7 @@
  * Copyright (C) 2017 CERN (www.cern.ch)
  * Author: Federico Vaga <federico.vaga@cern.ch>
  */
+#include <linux/module.h>
 #include <linux/fpga/fpga-mgr.h>
 #include <linux/version.h>
 #include "spec-compat.h"
