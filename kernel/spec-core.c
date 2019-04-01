@@ -158,6 +158,8 @@ static int spec_probe(struct pci_dev *pdev,
 	err = device_register(&spec->dev);
 	if (err)
 		goto err_dev;
+	/* This virtual device is assciated with this driver */
+	spec->dev.driver = pdev->dev.driver;
 
 	err = spec_fpga_init(spec);
 	if (err)
