@@ -91,7 +91,7 @@ static ssize_t fpga_load_store(struct device *dev,
 {
 	int err;
 
-	err = spec_fw_load(to_spec_dev(dev), dev_name(dev));
+	err = spec_fw_load(to_spec_dev(dev), buf);
 
 	return err ? err : count;
 }
