@@ -85,9 +85,9 @@ static int spec_fw_load_init(struct spec_dev *spec)
 	return spec_fw_load(spec, spec_fw_name_init_get(spec));
 }
 
-static ssize_t fpga_bitstream_store(struct device *dev,
-				    struct device_attribute *attr,
-				    const char *buf, size_t count)
+static ssize_t fpga_load_store(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf, size_t count)
 {
 	int err;
 
@@ -95,10 +95,10 @@ static ssize_t fpga_bitstream_store(struct device *dev,
 
 	return err ? err : count;
 }
-static DEVICE_ATTR_WO(fpga_bitstream);
+static DEVICE_ATTR_WO(fpga_load);
 
 static struct attribute *spec_attrs[] = {
-	&dev_attr_fpga_bitstream.attr,
+	&dev_attr_fpga_load.attr,
 	NULL,
 };
 
