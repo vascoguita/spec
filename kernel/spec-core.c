@@ -12,29 +12,93 @@
 #include <linux/module.h>
 #include <linux/pci.h>
 #include <linux/firmware.h>
+#include <linux/moduleparam.h>
 
 #include "spec.h"
 #include "spec-compat.h"
 
-static ssize_t dtb_overlay_path_store(struct device *dev,
-				      struct device_attribute *attr,
-				      const char *buf, size_t count)
+static char *spec_fw_name_45t = "spec-init-45T.bin";
+static char *spec_fw_name_100t = "spec-init-100T.bin";
+static char *spec_fw_name_150t = "spec-init-150T.bin";
+
+char *spec_fw_name = "";
+module_param_named(fw_name, spec_fw_name, charp, 0444);
+
+/**
+ * Return the SPEC defult FPGA firmware name based on PCI ID
+ * @spec: SPEC device
+ *
+ * Return: FPGA firmware name
+ */
+static const char *spec_fw_name_init_get(struct spec_dev *spec)
 {
-	const struct firmware *fw;
+	struct pci_dev *pdev = to_pci_dev(spec->dev.parent);
+
+	if (strlen(spec_fw_name) > 0)
+		return spec_fw_name;
+
+	switch (pdev->device) {
+	case PCI_DEVICE_ID_SPEC_45T:
+		return spec_fw_name_45t;
+	case PCI_DEVICE_ID_SPEC_100T:
+		return spec_fw_name_100t;
+	case PCI_DEVICE_ID_SPEC_150T:
+		return spec_fw_name_150t;
+	default:
+		return NULL;
+	}
+}
+
+/**
+ * Load FPGA code
+ * @spec: SPEC device
+ * @name: FPGA bitstream file name
+ *
+ * Return: 0 on success, otherwise a negative error number
+ */
+static int spec_fw_load(struct spec_dev *spec, const char *name)
+{
+	pr_info("%s:%d %s\n", __func__, __LINE__, name);
+	return compat_spec_fw_load(spec, name);
+}
+
+/**
+ * Return: True if the FPGA is programmed, otherwise false
+ */
+static bool spec_fw_is_pre_programmed(struct spec_dev *spec)
+{
+
+	return false;
+}
+
+/**
+ * Load default FPGA code
+ * @spec: SPEC device
+ *
+ * Return: 0 on success, otherwise a negative error number
+ */
+static int spec_fw_load_init(struct spec_dev *spec)
+{
+	if (spec_fw_is_pre_programmed(spec))
+		return 0;
+
+	return spec_fw_load(spec, spec_fw_name_init_get(spec));
+}
+
+static ssize_t fpga_bitstream_store(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf, size_t count)
+{
 	int err;
 
-	pr_info("%s:%d %s\n", __func__, __LINE__, buf);
-	err = request_firmware(&fw, buf, dev);
-	if (err < 0)
-		return err;
+	err = spec_fw_load(to_spec_dev(dev), dev_name(dev));
 
-	release_firmware(fw);
-	return count;
+	return err ? err : count;
 }
-static DEVICE_ATTR_WO(dtb_overlay_path);
+static DEVICE_ATTR_WO(fpga_bitstream);
 
 static struct attribute *spec_attrs[] = {
-	&dev_attr_dtb_overlay_path.attr,
+	&dev_attr_fpga_bitstream.attr,
 	NULL,
 };
 
@@ -103,11 +167,17 @@ static int spec_probe(struct pci_dev *pdev,
 	if (err)
 		goto err_irq;
 
+	err = spec_fw_load_init(spec);
+	if (err)
+		goto err_fw;
+
 	pci_set_drvdata(pdev, spec);
 	dev_info(spec->dev.parent, "Spec registered devptr=0x%p\n", spec->dev.parent);
 
 	return 0;
 
+err_fw:
+	spec_irq_exit(spec);
 err_irq:
 	spec_fpga_exit(spec);
 err_fpga:

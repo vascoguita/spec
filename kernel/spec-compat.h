@@ -6,6 +6,7 @@
 #include <linux/fpga/fpga-mgr.h>
 #include <linux/types.h>
 #include <linux/version.h>
+#include "spec.h"
 
 #if KERNEL_VERSION(4,10,0) <= LINUX_VERSION_CODE
 #if KERNEL_VERSION(4,16,0) > LINUX_VERSION_CODE
@@ -54,6 +55,7 @@ struct fpga_manager *compat_fpga_mgr_create(struct device *dev,
 void compat_fpga_mgr_free(struct fpga_manager *mgr);
 int compat_fpga_mgr_register(struct fpga_manager *mgr);
 void compat_fpga_mgr_unregister(struct fpga_manager *mgr);
+int compat_spec_fw_load(struct spec_dev *spec, const char *name);
 
 #if KERNEL_VERSION(3, 11, 0) > LINUX_VERSION_CODE
 #define __ATTR_RW(_name) __ATTR(_name, (S_IWUSR | S_IRUGO),	\
