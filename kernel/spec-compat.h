@@ -71,3 +71,14 @@ int compat_spec_fw_load(struct spec_dev *spec, const char *name);
 #define DEVICE_ATTR_WO(_name) \
 	struct device_attribute dev_attr_##_name = __ATTR_WO(_name)
 #endif
+
+
+#if KERNEL_VERSION(4, 16, 0) > LINUX_VERSION_CODE
+#define GPIO_PERSISTENT (0 << 3)
+#endif
+
+extern int compat_gpiod_add_lookup_table(struct gpiod_lookup_table *table);
+
+#if KERNEL_VERSION(4, 3, 0) > LINUX_VERSION_CODE
+extern void gpiod_remove_lookup_table(struct gpiod_lookup_table *table);
+#endif

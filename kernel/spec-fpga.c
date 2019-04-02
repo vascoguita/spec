@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #include <linux/fpga/fpga-mgr.h>
+#include <linux/gpio/consumer.h>
 #include <linux/delay.h>
 
 #include "spec.h"
@@ -37,22 +38,6 @@ static uint32_t unaligned_bitswap_le32(const uint32_t *ptr32)
 }
 
 
-static inline void gpio_out(struct spec_dev *spec, const uint32_t addr,
-			    const int bit, const int value)
-{
-	uint32_t reg;
-
-	reg = gennum_readl(spec, addr);
-
-	if(value)
-		reg |= (1<<bit);
-	else
-		reg &= ~(1<<bit);
-
-	gennum_writel(spec, reg, addr);
-}
-
-
 /**
  * it resets the FPGA
  */
@@ -77,12 +62,7 @@ static void gn4124_fpga_reset(struct spec_dev *spec)
  */
 static void gn4124_fpga_gpio_config(struct spec_dev *spec)
 {
-	gpio_out(spec, GNGPIO_DIRECTION_MODE, GPIO_BOOTSEL0, 0);
-	gpio_out(spec, GNGPIO_DIRECTION_MODE, GPIO_BOOTSEL1, 0);
-	gpio_out(spec, GNGPIO_OUTPUT_ENABLE, GPIO_BOOTSEL0, 1);
-	gpio_out(spec, GNGPIO_OUTPUT_ENABLE, GPIO_BOOTSEL1, 1);
-	gpio_out(spec, GNGPIO_OUTPUT_VALUE, GPIO_BOOTSEL0, 1);
-	gpio_out(spec, GNGPIO_OUTPUT_VALUE, GPIO_BOOTSEL1, 0);
+	spec_gpio_fpga_select(spec, SPEC_FPGA_SELECT_GN4124);
 }
 
 
@@ -92,10 +72,7 @@ static void gn4124_fpga_gpio_config(struct spec_dev *spec)
  */
 static void gn4124_fpga_gpio_restore(struct spec_dev *spec)
 {
-	gpio_out(spec, GNGPIO_OUTPUT_ENABLE, GPIO_BOOTSEL0, 1);
-	gpio_out(spec, GNGPIO_OUTPUT_ENABLE, GPIO_BOOTSEL1, 1);
-	gpio_out(spec, GNGPIO_OUTPUT_VALUE, GPIO_BOOTSEL0, 0);
-	gpio_out(spec, GNGPIO_OUTPUT_VALUE, GPIO_BOOTSEL1, 0);
+	spec_gpio_fpga_select(spec, SPEC_FPGA_SELECT_FLASH);
 }
 
 

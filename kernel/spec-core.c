@@ -144,6 +144,15 @@ static int spec_probe(struct pci_dev *pdev,
 	/* This virtual device is assciated with this driver */
 	spec->dev.driver = pdev->dev.driver;
 
+	spec->gn412x.mem = spec->remap[2];
+	err = gn412x_gpio_init(&spec->gn412x);
+	if (err)
+		goto err_ggpio;
+
+	err = spec_gpio_init(spec);
+	if (err)
+		goto err_sgpio;
+
 	err = spec_fpga_init(spec);
 	if (err)
 		goto err_fpga;
@@ -173,6 +182,10 @@ err_fw:
 err_irq:
 	spec_fpga_exit(spec);
 err_fpga:
+	spec_gpio_exit(spec);
+err_sgpio:
+	gn412x_gpio_exit(&spec->gn412x);
+err_ggpio:
 	device_unregister(&spec->dev);
 err_dev:
 err_name:
@@ -197,6 +210,8 @@ static void spec_remove(struct pci_dev *pdev)
 	spec_fmc_exit(spec);
 	spec_irq_exit(spec);
 	spec_fpga_exit(spec);
+	spec_gpio_exit(spec);
+	gn412x_gpio_exit(&spec->gn412x);
 
 	for (i = 0; i < 3; i++)
 		if (spec->remap[i])

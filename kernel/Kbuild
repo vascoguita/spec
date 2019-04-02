@@ -35,3 +35,5 @@ spec-objs += spec-irq.o
 spec-objs += spec-dbg.o
 spec-objs += spec-fmc.o
 spec-objs += spec-compat.o
+spec-objs += gn412x-gpio.o
+spec-objs += spec-gpio.o

@@ -15,6 +15,7 @@
 #include <linux/irqdomain.h>
 #include <linux/pci.h>
 #include <linux/platform_device.h>
+#include <linux/gpio/driver.h>
 #include <linux/spinlock.h>
 #include <linux/fmc.h>
 
@@ -23,10 +24,6 @@
 /* On FPGA components */
 #define SPEC_I2C_MASTER_ADDR	0x0
 #define SPEC_I2C_MASTER_SIZE	8
-
-/* These must be set to choose the FPGA configuration mode */
-#define GPIO_BOOTSEL0 15
-#define GPIO_BOOTSEL1 14
 
 #define PCI_VENDOR_ID_CERN      (0x10DC)
 #define PCI_DEVICE_ID_SPEC_45T  (0x018D)
@@ -38,6 +35,28 @@
 #define SPEC_MINOR_MAX (64)
 #define SPEC_FLAG_BITS (8)
 #define SPEC_FLAG_UNLOCK BIT(0)
+
+#define GN4124_GPIO_MAX 16
+#define GN4124_GPIO_BOOTSEL0 15
+#define GN4124_GPIO_BOOTSEL1 14
+#define GN4124_GPIO_SPRI_DIN 13
+#define GN4124_GPIO_SPRI_FLASH_CS 12
+#define GN4124_GPIO_IRQ0 9
+#define GN4124_GPIO_IRQ1 8
+#define GN4124_GPIO_SCL 5
+#define GN4124_GPIO_SDA 4
+
+/**
+ * @SPEC_FPGA_SELECT_FLASH: (default) the FPGA takes its configuration from
+ *                          flash
+ * @SPEC_FPGA_SELECT_GN4124: the FPGA takes its configuration from GN4124
+ * @SPEC_FPGA_SELECT_SPI: the SPI flash is accessible from GN4124
+ */
+enum spec_fpga_select {
+	SPEC_FPGA_SELECT_FLASH=0,
+	SPEC_FPGA_SELECT_GN4124,
+	SPEC_FPGA_SELECT_SPI,
+};
 
 #define GN4124_GPIO_IRQ_MAX 16
 
@@ -89,7 +108,7 @@ enum {
 	FCL_TIMER_0		= FCL_BASE + 0x14,
 	FCL_TIMER_1		= FCL_BASE + 0x18,
 	FCL_CLK_DIV		= FCL_BASE + 0x1C,
-	FCL_IRQ			= FCL_BASE + 0x20,
+	FCL_IRQ		= FCL_BASE + 0x20,
 	FCL_TIMER_CTRL		= FCL_BASE + 0x24,
 	FCL_IM			= FCL_BASE + 0x28,
 	FCL_TIMER2_0		= FCL_BASE + 0x2C,
@@ -106,6 +125,17 @@ enum {
 #define GNINT_STAT_SW0 BIT(2)
 #define GNINT_STAT_SW1 BIT(3)
 #define GNINT_STAT_SW_ALL (GNINT_STAT_SW0 | GNINT_STAT_SW1)
+
+
+struct gn412x_dev {
+	void __iomem *mem;
+	struct gpio_chip gpiochip;
+};
+
+static inline struct gn412x_dev *to_gn412x_dev_gpio(struct gpio_chip *chip)
+{
+	return container_of(chip, struct gn412x_dev, gpiochip);
+}
 
 /**
  * struct spec_dev - SPEC instance
@@ -140,6 +170,11 @@ struct spec_dev {
 	struct dentry *dbg_fw;
 
 	struct completion	compl;
+
+	struct gn412x_dev gn412x;
+
+	struct gpiod_lookup_table *gpiod_table;
+	struct gpio_desc *gpiod[GN4124_GPIO_MAX];
 };
 
 
@@ -188,6 +223,8 @@ static inline void gennum_mask_val(struct spec_dev *spec,
 	gennum_writel(spec, v, reg);
 }
 
+extern int gn412x_gpio_init(struct gn412x_dev *spec);
+extern void gn412x_gpio_exit(struct gn412x_dev *spec);
 
 extern int spec_fpga_init(struct spec_dev *spec);
 extern void spec_fpga_exit(struct spec_dev *spec);
@@ -200,5 +237,10 @@ extern void spec_dbg_exit(struct spec_dev *spec);
 
 extern int spec_fmc_init(struct spec_dev *spec);
 extern void spec_fmc_exit(struct spec_dev *spec);
+
+extern void spec_gpio_fpga_select(struct spec_dev *spec,
+				  enum spec_fpga_select sel);
+extern int spec_gpio_init(struct spec_dev *spec);
+extern void spec_gpio_exit(struct spec_dev *spec);
 
 #endif /* __SPEC_H__ */

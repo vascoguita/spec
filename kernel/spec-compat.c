@@ -189,3 +189,31 @@ int compat_spec_fw_load(struct spec_dev *spec, const char *name)
 
 	return err;
 }
+
+
+
+int compat_gpiod_add_lookup_table(struct gpiod_lookup_table *table)
+{
+	void (*gpiod_add_lookup_table_p)(struct gpiod_lookup_table *table);
+
+	gpiod_add_lookup_table_p = (void *) kallsyms_lookup_name("gpiod_add_lookup_table");
+
+	if (gpiod_add_lookup_table_p)
+		gpiod_add_lookup_table_p(table);
+	else
+		return WARN(1, "Cannot find 'gpiod_add_lookup_table'");
+	return 0;
+}
+
+#if KERNEL_VERSION(4, 3, 0) > LINUX_VERSION_CODE
+void gpiod_remove_lookup_table(struct gpiod_lookup_table *table)
+{
+	struct mutex *gpio_lookup_lock_p = (void *) kallsyms_lookup_name("gpio_lookup_lock");
+
+	mutex_lock(gpio_lookup_lock_p);
+
+	list_del(&table->list);
+
+	mutex_unlock(gpio_lookup_lock_p);
+}
+#endif
