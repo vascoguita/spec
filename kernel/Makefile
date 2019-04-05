@@ -5,14 +5,9 @@ REPO_PARENT ?= $(shell /bin/pwd)/../..
 
 LINUX ?= /lib/modules/$(shell uname -r)/build
 
-FMC_ABS ?= $(abspath $(FMC))
-
-I2C_ABS ?= $(abspath $(I2C))
-
 CONFIG_FPGA_MGR_BACKPORT_PATH_ABS ?= $(abspath $(CONFIG_FPGA_MGR_BACKPORT_PATH))
 
 GIT_VERSION = $(shell git describe --dirty --long --tags)
-export GIT_VERSION
 
 all: modules
 
