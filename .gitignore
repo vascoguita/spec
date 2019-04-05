@@ -11,3 +11,7 @@ modules.order
 Module.symvers
 \#*
 *~
+GTAGS
+GPATH
+GRTAGS
+Makefile.specific
