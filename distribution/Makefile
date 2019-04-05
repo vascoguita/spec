@@ -30,8 +30,9 @@ dkms-src: dkms-tree
 	@cp $($@_src) $(TOP_DIR)/distribution/dkms.conf $($@_dir)
 	@cp $(TOP_DIR)/LICENSES/GPL-2.0.txt $($@_dir)/LICENSE
 	@sed -r -i -e "s/^VERSION\s=\s.*/VERSION = $(VERSION)/" $($@_dir)/Makefile
-	@sed -r -i -e "s/PACKAGE_NAME=.*/PACKAGE_NAME=$(DRIVER_NAME)/" $($@_dir)/dkms.conf
-	@sed -r -i -e "s/PACKAGE_VERSION=.*/PACKAGE_VERSION=$(VERSION)/" $($@_dir)/dkms.conf
+	@sed -r -i -e "s/@PKGNAME@/$(DRIVER_NAME)/" $($@_dir)/dkms.conf
+	@sed -r -i -e "s/@PKGVER@/$(VERSION)/" $($@_dir)/dkms.conf
+
 
 dkms-add: dkms-src
 	@dkms add $(DKMS_OPT) --sourcetree $(BUILD_DKMSSOURCE)
