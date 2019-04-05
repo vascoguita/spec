@@ -116,6 +116,18 @@ static void spec_release(struct device *dev)
 
 }
 
+static int spec_uevent(struct device *dev, struct kobj_uevent_env *env)
+{
+	return 0;
+}
+
+static const struct device_type spec_dev_type = {
+	.name = "spec",
+	.release = spec_release,
+	.groups = spec_attr_groups,
+	.uevent = spec_uevent,
+};
+
 static int spec_probe(struct pci_dev *pdev,
 		      const struct pci_device_id *id)
 {
@@ -149,8 +161,7 @@ static int spec_probe(struct pci_dev *pdev,
 		goto err_remap;
 
 	spec->dev.parent = &pdev->dev;
-	spec->dev.release = spec_release;
-	spec->dev.groups = spec_attr_groups;
+	spec->dev.type = &spec_dev_type;
 	err = dev_set_name(&spec->dev, "spec-%s", dev_name(&pdev->dev));
 	if (err)
 		goto err_name;
