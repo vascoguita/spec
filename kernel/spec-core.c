@@ -249,7 +249,7 @@ module_pci_driver(spec_driver);
 
 MODULE_AUTHOR("Federico Vaga <federico.vaga@cern.ch>");
 MODULE_LICENSE("GPL v2");
-MODULE_VERSION(GIT_VERSION);
+MODULE_VERSION(VERSION);
 MODULE_DESCRIPTION("spec driver");
 
 ADDITIONAL_VERSIONS;
