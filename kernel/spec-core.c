@@ -251,5 +251,6 @@ MODULE_AUTHOR("Federico Vaga <federico.vaga@cern.ch>");
 MODULE_LICENSE("GPL v2");
 MODULE_VERSION(VERSION);
 MODULE_DESCRIPTION("spec driver");
+MODULE_DEVICE_TABLE(pci, spec_pci_tbl);
 
 ADDITIONAL_VERSIONS;
