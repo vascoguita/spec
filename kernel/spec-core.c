@@ -58,7 +58,6 @@ static const char *spec_fw_name_init_get(struct spec_dev *spec)
  */
 static int spec_fw_load(struct spec_dev *spec, const char *name)
 {
-	pr_info("%s:%d %s\n", __func__, __LINE__, name);
 	return compat_spec_fw_load(spec, name);
 }
 
