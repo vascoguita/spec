@@ -38,6 +38,7 @@
 #define SPEC_FLAG_BITS (8)
 #define SPEC_FLAG_UNLOCK BIT(0)
 
+#define GN4124_GPIO_IRQ_MAX 16
 
 /* Registers for GN4124 access */
 enum {
@@ -130,6 +131,8 @@ struct spec_dev {
 	struct dentry *dbg_dir;
 #define SPEC_DBG_INFO_NAME "info"
 	struct dentry *dbg_info;
+#define SPEC_DBG_FW_NAME "fpga_firmware"
+	struct dentry *dbg_fw;
 
 	struct completion	compl;
 };
@@ -186,5 +189,8 @@ extern void spec_fpga_exit(struct spec_dev *spec);
 
 extern int spec_irq_init(struct spec_dev *spec);
 extern void spec_irq_exit(struct spec_dev *spec);
+
+extern int spec_dbg_init(struct spec_dev *spec);
+extern void spec_dbg_exit(struct spec_dev *spec);
 
 #endif /* __SPEC_H__ */

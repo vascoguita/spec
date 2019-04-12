@@ -85,32 +85,6 @@ static int spec_fw_load_init(struct spec_dev *spec)
 	return spec_fw_load(spec, spec_fw_name_init_get(spec));
 }
 
-static ssize_t fpga_load_store(struct device *dev,
-			       struct device_attribute *attr,
-			       const char *buf, size_t count)
-{
-	int err;
-
-	err = spec_fw_load(to_spec_dev(dev), buf);
-
-	return err ? err : count;
-}
-static DEVICE_ATTR_WO(fpga_load);
-
-static struct attribute *spec_attrs[] = {
-	&dev_attr_fpga_load.attr,
-	NULL,
-};
-
-static struct attribute_group spec_attr_group = {
-	.attrs = spec_attrs,
-};
-
-static const struct attribute_group *spec_attr_groups[] = {
-	&spec_attr_group,
-	NULL,
-};
-
 static void spec_release(struct device *dev)
 {
 
@@ -124,7 +98,6 @@ static int spec_uevent(struct device *dev, struct kobj_uevent_env *env)
 static const struct device_type spec_dev_type = {
 	.name = "spec",
 	.release = spec_release,
-	.groups = spec_attr_groups,
 	.uevent = spec_uevent,
 };
 
@@ -187,6 +160,8 @@ static int spec_probe(struct pci_dev *pdev,
 	pci_set_drvdata(pdev, spec);
 	dev_info(spec->dev.parent, "Spec registered devptr=0x%p\n", spec->dev.parent);
 
+	spec_dbg_init(spec);
+
 	return 0;
 
 err_fw:
@@ -214,7 +189,7 @@ static void spec_remove(struct pci_dev *pdev)
 	struct spec_dev *spec = pci_get_drvdata(pdev);
 	int i;
 
-
+	spec_dbg_exit(spec);
 	spec_irq_exit(spec);
 	spec_fpga_exit(spec);
 

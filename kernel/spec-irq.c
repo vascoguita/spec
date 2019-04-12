@@ -17,8 +17,6 @@
 
 #define CHAIN 0
 
-#define GN4124_GPIO_IRQ_MAX 16
-
 static int spec_use_msi = 0;
 module_param_named(use_msi, spec_use_msi, int, 0444);
 
@@ -30,80 +28,6 @@ module_param_named(test_irq, spec_test_irq, int, 0444);
  * By default SPEC uses GPIO8 and GPIO9
  */
 static int spec_gpio_int = 0x00000300;
-
-static int spec_irq_dbg_info(struct seq_file *s, void *offset)
-{
-	struct spec_dev *spec = s->private;
-	int i;
-
-	seq_printf(s, "'%s':\n",dev_name(spec->dev.parent));
-
-	seq_printf(s, "  redirect: %d\n", to_pci_dev(spec->dev.parent)->irq);
-	seq_printf(s, "  irq-mapping:\n");
-	for (i = 0; i < GN4124_GPIO_IRQ_MAX; ++i) {
-		seq_printf(s, "    - hardware: %d\n", i);
-		seq_printf(s, "      linux: %d\n",
-			   irq_find_mapping(spec->gpio_domain, i));
-	}
-
-	return 0;
-}
-
-static int spec_irq_dbg_info_open(struct inode *inode, struct file *file)
-{
-	struct spec_dev *spec = inode->i_private;
-
-	return single_open(file, spec_irq_dbg_info, spec);
-}
-
-static const struct file_operations spec_irq_dbg_info_ops = {
-	.owner = THIS_MODULE,
-	.open  = spec_irq_dbg_info_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
-};
-
-
-/**
- * It initializes the debugfs interface
- * @spec: SPEC instance
- *
- * Return: 0 on success, otherwise a negative error number
- */
-static int spec_irq_debug_init(struct spec_dev *spec)
-{
-	spec->dbg_dir = debugfs_create_dir(dev_name(&spec->dev), NULL);
-	if (IS_ERR_OR_NULL(spec->dbg_dir)) {
-		dev_err(&spec->dev,
-			"Cannot create debugfs directory (%ld)\n",
-			PTR_ERR(spec->dbg_dir));
-		return PTR_ERR(spec->dbg_dir);
-	}
-
-	spec->dbg_info = debugfs_create_file(SPEC_DBG_INFO_NAME, 0444,
-					     spec->dbg_dir, spec,
-					     &spec_irq_dbg_info_ops);
-	if (IS_ERR_OR_NULL(spec->dbg_info)) {
-		dev_err(&spec->dev,
-			"Cannot create debugfs file \"%s\" (%ld)\n",
-			SPEC_DBG_INFO_NAME, PTR_ERR(spec->dbg_info));
-		return PTR_ERR(spec->dbg_info);
-	}
-
-	return 0;
-}
-
-
-/**
- * It removes the debugfs interface
- * @spec: SPEC instance
- */
-static void spec_irq_debug_exit(struct spec_dev *spec)
-{
-	debugfs_remove_recursive(spec->dbg_dir);
-}
-
 
 /**
  * (disable)
@@ -478,7 +402,6 @@ int spec_irq_init(struct spec_dev *spec)
 		goto err_req;
 	}
 #endif
-	spec_irq_debug_init(spec);
 
 	err = spec_irq_sw_test(spec);
 	if (err)
@@ -487,7 +410,6 @@ int spec_irq_init(struct spec_dev *spec)
 	return 0;
 
 err_test:
-	spec_irq_debug_exit(spec);
 	free_irq(irq, spec);
 err_req:
 	spec_irq_sw_exit(spec);
@@ -509,7 +431,6 @@ void spec_irq_exit(struct spec_dev *spec)
 	for (i = 0; i < 7; i++)
 		gennum_writel(spec, 0, GNINT_CFG(i));
 
-	spec_irq_debug_exit(spec);
 	free_irq(irq, spec);
 	spec_irq_sw_exit(spec);
 	spec_irq_gpio_exit(spec);
