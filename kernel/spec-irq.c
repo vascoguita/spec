@@ -207,10 +207,9 @@ out_enable_irq:
 static irqreturn_t spec_irq_sw_handler(int irq, void *arg)
 {
 	struct spec_dev *spec = arg;
-	uint32_t int_stat;
 
 	/* Ack the interrupts */
-	int_stat = gennum_readl(spec, GNINT_STAT);
+	gennum_readl(spec, GNINT_STAT);
 	gennum_writel(spec, 0x0000, GNINT_STAT);
 
 	complete(&spec->compl);
@@ -365,12 +364,12 @@ static int spec_irq_sw_test(struct spec_dev *spec)
  */
 int spec_irq_init(struct spec_dev *spec)
 {
-	int irq = to_pci_dev(spec->dev.parent)->irq;
-	int err;
-	int i;
+	int irq, err, i;
 
 	if (!spec)
 		return -EINVAL;
+
+	irq = to_pci_dev(spec->dev.parent)->irq;
 
 	/* disable all source of interrupts */
 	for (i = 0; i < 7; i++)
@@ -421,11 +420,12 @@ err_gpio:
 
 void spec_irq_exit(struct spec_dev *spec)
 {
-	int i;
-	int irq = to_pci_dev(spec->dev.parent)->irq;
+	int i, irq;
 
 	if (!spec)
 		return;
+
+	irq = to_pci_dev(spec->dev.parent)->irq;
 
 	/* disable all source of interrupts */
 	for (i = 0; i < 7; i++)

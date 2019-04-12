@@ -158,11 +158,10 @@ static int gn4124_fpga_fcl_init(struct spec_dev *spec, int last_word_size)
 static int gn4124_fpga_fcl_waitdone(struct spec_dev *spec)
 {
 	unsigned long j;
-	uint32_t val;
 
 	j = jiffies + 2 * HZ;
 	while (1) {
-		val = gennum_readl(spec, FCL_IRQ);
+		uint32_t val = gennum_readl(spec, FCL_IRQ);
 
 		/* Done */
 		if (val & 0x8)
@@ -192,13 +191,13 @@ static int gn4124_fpga_fcl_waitdone(struct spec_dev *spec)
 static int gn4124_fpga_load(struct spec_dev *spec, const void *data, int len)
 {
 	int size32 = (len + 3) >> 2;
-	int done = 0, wrote = 0, i;
+	int done = 0, wrote = 0;
 	const uint32_t *data32 = data;
 
 	while(size32 > 0)
 	{
 		/* Check to see if FPGA configuation has error */
-		i = gennum_readl(spec, FCL_IRQ);
+		int i = gennum_readl(spec, FCL_IRQ);
 		if ( (i & 8) && wrote) {
 			done = 1;
 			printk("%s: %i: done after %i\n", __func__, __LINE__,
