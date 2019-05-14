@@ -44,7 +44,7 @@ int compat_spec_fpga_write_complete(struct fpga_manager *mgr,
 }
 #endif
 
-#if KERNEL_VERSION(4,18,0) > LINUX_VERSION_CODE  && !defined(CONFIG_FPGA_MGR_BACKPORT)
+#if KERNEL_VERSION(4,18,0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
 struct fpga_manager *compat_fpga_mgr_create(struct device *dev, const char *name,
 					    const struct fpga_manager_ops *mops,
 					    void *priv)
@@ -98,7 +98,7 @@ void compat_fpga_mgr_unregister(struct fpga_manager *mgr)
 
 
 
-#if KERNEL_VERSION(4,10,0) > LINUX_VERSION_CODE
+#if KERNEL_VERSION(4,10,0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
 struct fpga_manager *__fpga_mgr_get(struct device *dev)
 {
 	struct fpga_manager *mgr;
