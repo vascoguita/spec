@@ -141,9 +141,10 @@ static int fpga_mgr_dev_match(struct device *dev, const void *data)
  */
 struct fpga_manager *fpga_mgr_get(struct device *dev)
 {
-	void *fpga_mgr_class = (void*) kallsyms_lookup_name("fpga_mgr_class");
-	struct device *mgr_dev = class_find_device(fpga_mgr_class, NULL, dev,
-						   fpga_mgr_dev_match);
+	struct class *fpga_mgr_class = (struct class *) kallsyms_lookup_name("fpga_mgr_class");
+	struct device *mgr_dev;
+
+	mgr_dev = class_find_device(fpga_mgr_class, NULL, dev, fpga_mgr_dev_match);
 	if (!mgr_dev)
 		return ERR_PTR(-ENODEV);
 
