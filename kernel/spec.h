@@ -16,6 +16,7 @@
 #include <linux/pci.h>
 #include <linux/platform_device.h>
 #include <linux/spinlock.h>
+#include <linux/fmc.h>
 
 #define SPEC_FMC_SLOTS 1
 
@@ -128,6 +129,10 @@ struct spec_dev {
 	DECLARE_BITMAP(flags, SPEC_FLAG_BITS);
 	void __iomem *remap[3];	/* ioremap of bar 0, 2, 4 */
 
+	struct platform_device *i2c_pdev;
+	struct i2c_adapter *i2c_adapter;
+	struct fmc_slot_info slot_info;
+
 	struct dentry *dbg_dir;
 #define SPEC_DBG_INFO_NAME "info"
 	struct dentry *dbg_info;
@@ -192,5 +197,8 @@ extern void spec_irq_exit(struct spec_dev *spec);
 
 extern int spec_dbg_init(struct spec_dev *spec);
 extern void spec_dbg_exit(struct spec_dev *spec);
+
+extern int spec_fmc_init(struct spec_dev *spec);
+extern void spec_fmc_exit(struct spec_dev *spec);
 
 #endif /* __SPEC_H__ */

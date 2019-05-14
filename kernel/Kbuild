@@ -16,11 +16,16 @@ ccflags-y += -Wall -Werror
 
 ccflags-$(CONFIG_FPGA_MGR_BACKPORT) += -DCONFIG_FPGA_MGR_BACKPORT
 ccflags-$(CONFIG_FPGA_MGR_BACKPORT) += $(CONFIG_FPGA_MGR_BACKPORT_INCLUDE)
+ccflags-y += -I$(FMC_ABS)/include
+
+# priority to I2C, FMC headers from our sources
+LINUXINCLUDE := -I$(FMC_ABS)/include -I$(FMC_ABS)/include/linux -I$(I2C_ABS)/include -I$(I2C_ABS)/include/linux $(LINUXINCLUDE)
 
 ifeq ($(CONFIG_FPGA_MGR_BACKPORT), y)
 LINUXINCLUDE := $(CONFIG_FPGA_MGR_BACKPORT_INCLUDE) $(LINUXINCLUDE)
 KBUILD_EXTRA_SYMBOLS += $(CONFIG_FPGA_MGR_BACKPORT_PATH_ABS)/drivers/fpga/Module.symvers
 endif
+KBUILD_EXTRA_SYMBOLS += $(FMC_ABS)/drivers/fmc/Module.symvers
 
 obj-m := spec.o
 
@@ -28,4 +33,5 @@ spec-objs := spec-core.o
 spec-objs += spec-fpga.o
 spec-objs += spec-irq.o
 spec-objs += spec-dbg.o
+spec-objs += spec-fmc.o
 spec-objs += spec-compat.o

@@ -156,6 +156,10 @@ static int spec_probe(struct pci_dev *pdev,
 	if (err)
 		goto err_fw;
 
+	err = spec_fmc_init(spec);
+	if (err)
+		goto err_fmc;
+
 	pci_set_drvdata(pdev, spec);
 	dev_info(spec->dev.parent, "Spec registered devptr=0x%p\n", spec->dev.parent);
 
@@ -163,6 +167,7 @@ static int spec_probe(struct pci_dev *pdev,
 
 	return 0;
 
+err_fmc:
 err_fw:
 	spec_irq_exit(spec);
 err_irq:
@@ -189,6 +194,7 @@ static void spec_remove(struct pci_dev *pdev)
 	int i;
 
 	spec_dbg_exit(spec);
+	spec_fmc_exit(spec);
 	spec_irq_exit(spec);
 	spec_fpga_exit(spec);
 
