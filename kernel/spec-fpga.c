@@ -92,10 +92,10 @@ static void gn4124_fpga_gpio_config(struct spec_dev *spec)
  */
 static void gn4124_fpga_gpio_restore(struct spec_dev *spec)
 {
+	gpio_out(spec, GNGPIO_OUTPUT_ENABLE, GPIO_BOOTSEL0, 1);
+	gpio_out(spec, GNGPIO_OUTPUT_ENABLE, GPIO_BOOTSEL1, 1);
 	gpio_out(spec, GNGPIO_OUTPUT_VALUE, GPIO_BOOTSEL0, 0);
 	gpio_out(spec, GNGPIO_OUTPUT_VALUE, GPIO_BOOTSEL1, 0);
-	gpio_out(spec, GNGPIO_OUTPUT_ENABLE, GPIO_BOOTSEL0, 0);
-	gpio_out(spec, GNGPIO_OUTPUT_ENABLE, GPIO_BOOTSEL1, 0);
 }
 
 
