@@ -16,13 +16,23 @@ enum htvic_mem_resources {
 	GN412X_MEM_BASE = 0,
 };
 
+static uint32_t gn412x_ioread32(struct gn412x_dev *gn412x, int reg)
+{
+	return ioread32(gn412x->mem + reg);
+}
+
+static void gn412x_iowrite32(struct gn412x_dev *gn412x, uint32_t val, int reg)
+{
+	return iowrite32(val, gn412x->mem + reg);
+}
+
 
 static int gn412x_gpio_reg_read(struct gpio_chip *chip,
 				int reg, unsigned offset)
 {
 	struct gn412x_dev *gn412x = to_gn412x_dev_gpio(chip);
 
-	return readl(gn412x->mem + reg) & BIT(offset);
+	return gn412x_ioread32(gn412x, reg) & BIT(offset);
 }
 
 static void gn412x_gpio_reg_write(struct gpio_chip *chip,
@@ -31,12 +41,12 @@ static void gn412x_gpio_reg_write(struct gpio_chip *chip,
 	struct gn412x_dev *gn412x = to_gn412x_dev_gpio(chip);
 	uint32_t regval;
 
-	regval = readl(gn412x->mem + reg);
+	regval = gn412x_ioread32(gn412x, reg);
 	if (value)
 		regval |= BIT(offset);
 	else
 		regval &= ~BIT(offset);
-	writel(regval, gn412x->mem + reg);
+	gn412x_iowrite32(gn412x, regval, reg);
 }
 
 
