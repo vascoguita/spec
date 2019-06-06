@@ -216,4 +216,17 @@ void gpiod_remove_lookup_table(struct gpiod_lookup_table *table)
 
 	mutex_unlock(gpio_lookup_lock_p);
 }
+
+void gpiochip_irqchip_remove(struct gpio_chip *gpiochip)
+{
+	void (*gpiochip_irqchip_remove_p)(struct gpio_chip *gpiochip);
+
+	gpiochip_irqchip_remove_p = (void *) kallsyms_lookup_name("gpiochip_irqchip_remove");
+
+	if (gpiochip_irqchip_remove_p)
+		gpiochip_irqchip_remove_p(gpiochip);
+	else
+		WARN(1, "Cannot find 'gpiochip_irqchip_remove'");
+}
+
 #endif

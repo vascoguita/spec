@@ -6,25 +6,25 @@
 
 #include <linux/module.h>
 #include <linux/fs.h>
+#include <linux/gpio/consumer.h>
 
 #include "spec.h"
 #include "spec-compat.h"
 
-
 static int spec_irq_dbg_info(struct seq_file *s, void *offset)
 {
 	struct spec_dev *spec = s->private;
-	int i;
 
 	seq_printf(s, "'%s':\n",dev_name(spec->dev.parent));
 
 	seq_printf(s, "  redirect: %d\n", to_pci_dev(spec->dev.parent)->irq);
 	seq_printf(s, "  irq-mapping:\n");
-	for (i = 0; i < GN4124_GPIO_IRQ_MAX; ++i) {
-		seq_printf(s, "    - hardware: %d\n", i);
-		seq_printf(s, "      linux: %d\n",
-			   irq_find_mapping(spec->gpio_domain, i));
-	}
+	seq_printf(s, "    - hardware: 8\n");
+	seq_printf(s, "      linux: %d\n",
+		   gpiod_to_irq(spec->gpiod[GN4124_GPIO_IRQ0]));
+	seq_printf(s, "    - hardware: 9\n");
+	seq_printf(s, "      linux: %d\n",
+		   gpiod_to_irq(spec->gpiod[GN4124_GPIO_IRQ1]));
 
 	return 0;
 }

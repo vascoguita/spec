@@ -58,8 +58,6 @@ enum spec_fpga_select {
 	SPEC_FPGA_SELECT_SPI,
 };
 
-#define GN4124_GPIO_IRQ_MAX 16
-
 /* Registers for GN4124 access */
 enum {
 	/* page 106 */
@@ -126,10 +124,17 @@ enum {
 #define GNINT_STAT_SW1 BIT(3)
 #define GNINT_STAT_SW_ALL (GNINT_STAT_SW0 | GNINT_STAT_SW1)
 
-
+/**
+ * struct gn412x_dev GN412X device descriptor
+ * @compl: for IRQ testing
+ * @int_cfg_gpio: INT_CFG used for GPIO interrupts
+ */
 struct gn412x_dev {
 	void __iomem *mem;
 	struct gpio_chip gpiochip;
+
+	struct completion	compl;
+	int int_cfg_gpio;
 };
 
 static inline struct gn412x_dev *to_gn412x_dev_gpio(struct gpio_chip *chip)
@@ -141,18 +146,14 @@ static inline struct gn412x_dev *to_gn412x_dev_gpio(struct gpio_chip *chip)
  * struct spec_dev - SPEC instance
  * It describes a SPEC device instance.
  * @dev Linux device instance descriptor
- * @gpio_domain: IRQ domain for GN4124 chip
  * @flags collection of bit flags
  * @remap ioremap of PCI bar 0, 2, 4
  * @slot_info: information about FMC slot
  * @i2c_pdev: platform device for I2C master
  * @i2c_adapter: the I2C master device to be used
- * @compl: for IRQ testing
  */
 struct spec_dev {
 	struct device dev;
-
-	struct irq_domain *gpio_domain;
 
 	struct fpga_manager *mgr;
 
@@ -168,8 +169,6 @@ struct spec_dev {
 	struct dentry *dbg_info;
 #define SPEC_DBG_FW_NAME "fpga_firmware"
 	struct dentry *dbg_fw;
-
-	struct completion	compl;
 
 	struct gn412x_dev gn412x;
 
@@ -223,8 +222,11 @@ static inline void gennum_mask_val(struct spec_dev *spec,
 	gennum_writel(spec, v, reg);
 }
 
-extern int gn412x_gpio_init(struct gn412x_dev *spec);
+extern int gn412x_gpio_init(struct device *parent, struct gn412x_dev *spec);
 extern void gn412x_gpio_exit(struct gn412x_dev *spec);
+extern int gn412x_int_gpio_enable(struct gn412x_dev *gn412x,
+				  unsigned int cfg_n);
+extern void gn412x_int_gpio_disable(struct gn412x_dev *gn412x);
 
 extern int spec_fpga_init(struct spec_dev *spec);
 extern void spec_fpga_exit(struct spec_dev *spec);

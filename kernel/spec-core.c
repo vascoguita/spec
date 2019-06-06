@@ -145,7 +145,7 @@ static int spec_probe(struct pci_dev *pdev,
 	spec->dev.driver = pdev->dev.driver;
 
 	spec->gn412x.mem = spec->remap[2];
-	err = gn412x_gpio_init(&spec->gn412x);
+	err = gn412x_gpio_init(&spec->dev, &spec->gn412x);
 	if (err)
 		goto err_ggpio;
 
@@ -156,10 +156,6 @@ static int spec_probe(struct pci_dev *pdev,
 	err = spec_fpga_init(spec);
 	if (err)
 		goto err_fpga;
-
-	err = spec_irq_init(spec);
-	if (err)
-		goto err_irq;
 
 	err = spec_fw_load_init(spec);
 	if (err)
@@ -178,8 +174,6 @@ static int spec_probe(struct pci_dev *pdev,
 
 err_fmc:
 err_fw:
-	spec_irq_exit(spec);
-err_irq:
 	spec_fpga_exit(spec);
 err_fpga:
 	spec_gpio_exit(spec);
@@ -208,7 +202,6 @@ static void spec_remove(struct pci_dev *pdev)
 
 	spec_dbg_exit(spec);
 	spec_fmc_exit(spec);
-	spec_irq_exit(spec);
 	spec_fpga_exit(spec);
 	spec_gpio_exit(spec);
 	gn412x_gpio_exit(&spec->gn412x);

@@ -105,8 +105,39 @@ int spec_gpio_init(struct spec_dev *spec)
 	if (err)
 		goto err_out1;
 
+
+	spec->gpiod[GN4124_GPIO_IRQ0] = gpiod_get_index(&spec->dev,
+							"irq", 0,
+							GPIOD_IN);
+	if (IS_ERR(spec->gpiod[GN4124_GPIO_IRQ0])) {
+		err = PTR_ERR(spec->gpiod[GN4124_GPIO_IRQ0]);
+		goto err_irq0;
+	}
+	spec->gpiod[GN4124_GPIO_IRQ1] = gpiod_get_index(&spec->dev,
+							"irq", 1,
+							GPIOD_IN);
+	if (IS_ERR(spec->gpiod[GN4124_GPIO_IRQ1])) {
+		err = PTR_ERR(spec->gpiod[GN4124_GPIO_IRQ1]);
+		goto err_irq1;
+	}
+	/* Because of a BUG in RedHat kernel 3.10 we re-set direction */
+	err = gpiod_direction_input(spec->gpiod[GN4124_GPIO_IRQ0]);
+	if (err)
+		goto err_in0;
+	err = gpiod_direction_input(spec->gpiod[GN4124_GPIO_IRQ1]);
+	if (err)
+		goto err_in1;
+
+	gn412x_int_gpio_enable(&spec->gn412x, 0);
+
 	return 0;
 
+err_in1:
+err_in0:
+	gpiod_put(spec->gpiod[GN4124_GPIO_IRQ1]);
+err_irq1:
+	gpiod_put(spec->gpiod[GN4124_GPIO_IRQ0]);
+err_irq0:
 err_out1:
 err_out0:
 	gpiod_put(spec->gpiod[GN4124_GPIO_BOOTSEL1]);
@@ -125,6 +156,10 @@ err_dup:
 
 void spec_gpio_exit(struct spec_dev *spec)
 {
+	gn412x_int_gpio_disable(&spec->gn412x);
+	gpiod_put(spec->gpiod[GN4124_GPIO_IRQ0]);
+	gpiod_put(spec->gpiod[GN4124_GPIO_IRQ1]);
+
 	gpiod_put(spec->gpiod[GN4124_GPIO_BOOTSEL0]);
 	gpiod_put(spec->gpiod[GN4124_GPIO_BOOTSEL1]);
 
