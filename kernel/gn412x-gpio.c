@@ -111,6 +111,7 @@ int gn412x_gpio_init(struct gn412x_dev *gn412x)
 	int err;
 
 	memset(&gn412x->gpiochip, 0, sizeof(gn412x->gpiochip));
+	gn412x->gpiochip.dev = parent;
 	gn412x->gpiochip.label = "gn412x-gpio";
 	gn412x->gpiochip.owner = THIS_MODULE;
 	gn412x->gpiochip.request = gn412x_gpio_request;
