@@ -49,6 +49,25 @@ static void gn412x_gpio_reg_write(struct gpio_chip *chip,
 	gn412x_iowrite32(gn412x, regval, reg);
 }
 
+static int gn412x_gpio_request(struct gpio_chip *chip, unsigned offset)
+{
+	int val;
+
+	val = gn412x_gpio_reg_read(chip, GNGPIO_BYPASS_MODE, offset);
+	if (val) {
+		dev_err(chip->dev, "%s GPIO %d is in BYPASS mode\n",
+			chip->label, offset);
+		return -EBUSY;
+	}
+
+	return 0;
+}
+
+static void gn412x_gpio_free(struct gpio_chip *chip, unsigned offset)
+{
+	/* set it as input to avoid to drive anything */
+	gn412x_gpio_reg_write(chip, GNGPIO_DIRECTION_MODE, offset, 1);
+}
 
 static int gn412x_gpio_get_direction(struct gpio_chip *chip,
 				     unsigned offset)
@@ -92,6 +111,8 @@ int gn412x_gpio_init(struct gn412x_dev *gn412x)
 	memset(&gn412x->gpiochip, 0, sizeof(gn412x->gpiochip));
 	gn412x->gpiochip.label = "gn412x-gpio";
 	gn412x->gpiochip.owner = THIS_MODULE;
+	gn412x->gpiochip.request = gn412x_gpio_request;
+	gn412x->gpiochip.free = gn412x_gpio_free;
 	gn412x->gpiochip.get_direction = gn412x_gpio_get_direction,
 	gn412x->gpiochip.direction_input = gn412x_gpio_direction_input,
 	gn412x->gpiochip.direction_output = gn412x_gpio_direction_output,
