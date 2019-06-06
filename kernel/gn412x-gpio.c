@@ -7,6 +7,7 @@
 #include <linux/gpio/driver.h>
 
 #include "spec.h"
+#include "spec-compat.h"
 
 enum gn412x_gpio_versions {
 	GN412X_VER = 0,
