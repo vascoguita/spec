@@ -72,12 +72,13 @@ static void gn412x_gpio_free(struct gpio_chip *chip, unsigned offset)
 static int gn412x_gpio_get_direction(struct gpio_chip *chip,
 				     unsigned offset)
 {
-	return !gn412x_gpio_reg_read(chip, GNGPIO_OUTPUT_ENABLE, offset);
+	return !gn412x_gpio_reg_read(chip, GNGPIO_DIRECTION_MODE, offset);
 }
 
 static int gn412x_gpio_direction_input(struct gpio_chip *chip,
 				       unsigned offset)
 {
+	gn412x_gpio_reg_write(chip, GNGPIO_DIRECTION_MODE, offset, 1);
 	gn412x_gpio_reg_write(chip, GNGPIO_OUTPUT_ENABLE, offset, 0);
 
 	return 0;
@@ -86,6 +87,7 @@ static int gn412x_gpio_direction_input(struct gpio_chip *chip,
 static int gn412x_gpio_direction_output(struct gpio_chip *chip,
 					unsigned offset, int value)
 {
+	gn412x_gpio_reg_write(chip, GNGPIO_DIRECTION_MODE, offset, 0);
 	gn412x_gpio_reg_write(chip, GNGPIO_OUTPUT_ENABLE, offset, 1);
 	gn412x_gpio_reg_write(chip, GNGPIO_OUTPUT_VALUE, offset, value);
 
