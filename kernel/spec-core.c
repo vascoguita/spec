@@ -227,7 +227,7 @@ static struct pci_driver spec_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
 	},
-	.name = "spec",
+	.name = "spec-fmc-carrier",
 	.probe = spec_probe,
 	.remove = spec_remove,
 	.id_table = spec_pci_tbl,
@@ -238,7 +238,7 @@ module_pci_driver(spec_driver);
 MODULE_AUTHOR("Federico Vaga <federico.vaga@cern.ch>");
 MODULE_LICENSE("GPL v2");
 MODULE_VERSION(VERSION);
-MODULE_DESCRIPTION("spec driver");
+MODULE_DESCRIPTION("Driver for the 'Simple PCIe FMC Carrier' a.k.a. SPEC");
 MODULE_DEVICE_TABLE(pci, spec_pci_tbl);
 
 ADDITIONAL_VERSIONS;

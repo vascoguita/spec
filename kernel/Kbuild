@@ -27,12 +27,12 @@ KBUILD_EXTRA_SYMBOLS += $(CONFIG_FPGA_MGR_BACKPORT_PATH_ABS)/drivers/fpga/Module
 endif
 KBUILD_EXTRA_SYMBOLS += $(FMC_ABS)/drivers/fmc/Module.symvers
 
-obj-m := spec.o
+obj-m := spec-fmc-carrier.o
 
-spec-objs := spec-core.o
-spec-objs += spec-fpga.o
-spec-objs += spec-dbg.o
-spec-objs += spec-fmc.o
-spec-objs += spec-compat.o
-spec-objs += gn412x-gpio.o
-spec-objs += spec-gpio.o
+spec-fmc-carrier-objs := spec-core.o
+spec-fmc-carrier-objs += spec-fpga.o
+spec-fmc-carrier-objs += spec-dbg.o
+spec-fmc-carrier-objs += spec-fmc.o
+spec-fmc-carrier-objs += spec-compat.o
+spec-fmc-carrier-objs += gn412x-gpio.o
+spec-fmc-carrier-objs += spec-gpio.o

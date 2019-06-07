@@ -1,5 +1,5 @@
 TOP_DIR ?= ../
-DRIVER_NAME := spec
+DRIVER_NAME := spec-fmc-carrier
 VERSION := $(shell git describe --abbrev=0)
 DIR_NAME := $(DRIVER_NAME)-$(VERSION)
 KEEP_TEMP ?= n
