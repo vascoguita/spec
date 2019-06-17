@@ -1,0 +1,89 @@
+memory-map:
+  name: golden_devices
+  bus: wb-32-be
+  size: 0x400
+  children:
+    - submap:
+       name: metadata
+       description: a ROM containing the carrier metadata
+       size: 0x40
+       interface: sram
+    - reg:
+       address: 0x40
+       name: app_offset
+       description: offset to the application metadata
+       access: ro
+       width: 32
+    - submap:
+        name: therm_id
+        description: Thermometer and unique id
+        size: 0x10
+        interface: wb-32-be
+        x-hdl:
+          busgroup: True
+    - block:
+       name: csr
+       description: carrier and fmc status and control
+       children:
+       - reg:
+          name: resets
+          description: global and application resets
+          access: rw
+          width: 32
+          children:
+           - field:
+              name: global
+              range: 0
+           - field:
+              name: appl
+              range: 1
+       - reg:
+          name: fmc_presence
+          description: presence lines for the fmcs
+          access: ro
+          width: 32
+    - submap:
+        name: fmc_i2c
+        description: i2c controllers to the fmcs
+        address: 0x80
+        size: 0x20
+        interface: wb-32-be
+        x-hdl:
+          busgroup: True
+    - submap:
+        name: flash_spi
+        description: spi controller to the flash
+        address: 0xa0
+        size: 0x20
+        interface: wb-32-be
+        x-hdl:
+          busgroup: True
+    - submap:
+        name: dma
+        description: dma registers for the gennum core
+        address: 0xc0
+        size: 0x40
+        interface: wb-32-be
+        x-hdl:
+          busgroup: True
+    - submap:
+        name: vic
+        description: vector interrupt controller
+        size: 0x100
+        interface: wb-32-be
+        x-hdl:
+          busgroup: True
+    - submap:
+        name: wrc
+        description: white-rabbit core
+        size: 0x100
+        interface: wb-32-be
+        x-hdl:
+          busgroup: True
+    - submap:
+        name: app
+        description: the application
+        size: 0x100
+        interface: wb-32-be
+        x-hdl:
+          busgroup: True
