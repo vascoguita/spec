@@ -161,6 +161,11 @@ architecture rtl of spec_init is
   signal fmc0_scl_oen, fmc0_sda_oen : std_logic;
 
   signal fmc_presence : std_logic_vector(31 downto 0);
+
+  signal irq_master : std_logic;
+  
+  constant num_interrupts : natural := 3;
+  signal irqs : std_logic_vector(num_interrupts - 1 downto 0);
 begin
 
   cmp_sys_clk_pll : PLL_BASE
@@ -259,8 +264,8 @@ begin
 
       ---------------------------------------------------------
       -- Interrupt interface
-      dma_irq_o => open,
-      irq_p_i   => '0',
+      dma_irq_o => irqs(1 downto 0),
+      irq_p_i   => irq_master,
       irq_p_o   => GPIO(0),
 
       ---------------------------------------------------------
@@ -407,7 +412,7 @@ begin
       slave_o => fmc_i2c_in,
       desc_o  => open,
   
-      int_o   => open,
+      int_o   => irqs(2),
   
       scl_pad_i (0) => fmc0_scl_b,
       scl_pad_o (0) => fmc0_scl_out,
@@ -420,6 +425,21 @@ begin
   fmc0_scl_b <= fmc0_scl_out when fmc0_scl_oen = '0' else 'Z';
   fmc0_sda_b <= fmc0_sda_out when fmc0_sda_oen = '0' else 'Z';
 
+  i_vic: entity work.xwb_vic
+    generic map (
+      g_address_granularity => BYTE,
+      g_num_interrupts => num_interrupts
+    )
+    port map (
+      clk_sys_i => clk_sys,
+      rst_n_i => rst_gbl_n,
+      slave_i => vic_out,
+      slave_o => vic_in,
+      irqs_i => irqs,
+      irq_master_o => irq_master
+    );
+  --  vic_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
+  
   sfp_mod_def1_b <= 'Z';
   sfp_mod_def2_b <= 'Z';
   sfp_tx_disable_o <= '0';
@@ -427,7 +447,6 @@ begin
   --  Not used.
   therm_id_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
   flash_spi_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
-  vic_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
   wrc_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
   app_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
 end rtl;
