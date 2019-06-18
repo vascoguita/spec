@@ -12,19 +12,11 @@
 #include "spec-compat.h"
 
 #define SPEC_FMC_SLOTS 1
-
-#define SPEC_I2C_SIZE		32
-#define SPEC_I2C_ADDR_START	0x14000
-#define SPEC_I2C_ADDR_END	((SPEC_I2C_ADDR_START + SPEC_I2C_SIZE) - 1)
-
-static inline u8 spec_fmc_slot_nr(struct spec_dev *spec)
-{
-	return (ioread32be(spec->remap[0] + 0x0) & 0x1);
-}
+#define SPEC_FMC_PRESENCE (SPEC_CORE_FPGA + 0x64)
 
 static inline u8 spec_fmc_presence(struct spec_dev *spec)
 {
-	return (ioread32(spec->remap[0] + 0x0) & 0x1);
+	return (ioread32(spec->fpga + SPEC_FMC_PRESENCE) & 0x1);
 }
 
 static int spec_fmc_is_present(struct fmc_carrier *carrier,
@@ -32,59 +24,13 @@ static int spec_fmc_is_present(struct fmc_carrier *carrier,
 {
 	struct spec_dev *spec = carrier->priv;
 
-	return (spec_fmc_presence(spec) & BIT(slot->ga));
+	return spec_fmc_presence(spec);
 }
 
 static const struct fmc_carrier_operations spec_fmc_ops = {
 	.owner = THIS_MODULE,
 	.is_present = spec_fmc_is_present,
 };
-
-
-static const struct ocores_i2c_platform_data pdata = {
-	.reg_shift = 2, /* 32bit aligned */
-	.reg_io_width = 4,
-	.clock_khz = 62500,
-	.big_endian = 1,
-	.num_devices = 0,
-	.devices = NULL,
-};
-
-static int id;
-
-/**
- * It builds the platform_device_info necessary to register the
- * I2C master device.
- * @spec the SPEC instance
- *
- * Return: an array of I2C master devices
- */
-static int spec_i2c_add(struct spec_dev *spec)
-{
-	struct resource res = {
-		.name = "i2c-ocores-mem",
-		.flags = IORESOURCE_MEM,
-		.start = pci_resource_start(to_pci_dev(spec->dev.parent), 0) + SPEC_I2C_ADDR_START,
-		.end = pci_resource_start(to_pci_dev(spec->dev.parent), 0) + SPEC_I2C_ADDR_END,
-	};
-
-	/* FIXME find better ID */
-	spec->i2c_pdev = platform_device_register_resndata(spec->dev.parent,
-							   "i2c-ohwr", id++,
-							   &res, 1,
-							   &pdata,
-							   sizeof(pdata));
-	if (!spec->i2c_pdev)
-		return -ENODEV;
-
-	return 0;
-}
-
-static void spec_i2c_del(struct spec_dev *spec)
-{
-	if (spec->i2c_pdev)
-		platform_device_unregister(spec->i2c_pdev);
-}
 
 static int spec_i2c_find_adapter(struct device *dev, void *data)
 {
@@ -126,27 +72,14 @@ int spec_fmc_init(struct spec_dev *spec)
 {
 	int err;
 
-	pr_info("%s:%d\n", __func__, __LINE__);
-	if (spec_fmc_slot_nr(spec) != SPEC_FMC_SLOTS) {
-		dev_err(spec->dev.parent,
-			"Invalid SPEC FPGA (slot count: %d)\n",
-			spec_fmc_slot_nr(spec));
-		return -EINVAL;
-	}
-
-	pr_info("%s:%d\n", __func__, __LINE__);
-	err = spec_i2c_add(spec);
-	if (err)
-		goto err_i2c;
-	pr_info("%s:%d\n", __func__, __LINE__);
 	spec->slot_info.i2c_bus_nr = spec_i2c_get_bus(spec);
 	if (spec->slot_info.i2c_bus_nr <= 0)
-		goto err_i2c_bus;
+		return -ENODEV;
 	spec->slot_info.ga = 0;
 	spec->slot_info.lun = 1;
-	pr_info("%s:%d\n", __func__, __LINE__);
+
 	err = fmc_carrier_register(&spec->dev, &spec_fmc_ops,
-				   spec_fmc_slot_nr(spec), &spec->slot_info,
+				   SPEC_FMC_SLOTS, &spec->slot_info,
 				   spec);
 	if (err) {
 		dev_err(spec->dev.parent,
@@ -158,20 +91,10 @@ int spec_fmc_init(struct spec_dev *spec)
 	return 0;
 
 err_fmc:
-err_i2c_bus:
-	spec_i2c_del(spec);
-err_i2c:
-	return -1;
+	return err;
 }
 
 int spec_fmc_exit(struct spec_dev *spec)
 {
-	int err;
-
-	err = fmc_carrier_unregister(&spec->dev);
-	if (err)
-		dev_err(spec->dev.parent,
-			"Failed to unregister from FMC\n");
-	spec_i2c_del(spec);
-	return err;
+	return fmc_carrier_unregister(&spec->dev);
 }

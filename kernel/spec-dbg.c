@@ -70,6 +70,47 @@ static const struct file_operations spec_dbg_fw_ops = {
 	.write = spec_dbg_fw_write,
 };
 
+
+static int spec_dbg_meta(struct seq_file *s, void *offset)
+{
+	struct spec_dev *spec = s->private;
+
+	seq_printf(s, "'%s':\n", dev_name(spec->dev.parent));
+	seq_printf(s, "Metadata:\n");
+	seq_printf(s, "  - Vendor: 0x%08x\n", spec->meta->vendor);
+	seq_printf(s, "  - Device: 0x%08x\n", spec->meta->device);
+	seq_printf(s, "  - Version: 0x%08x\n", spec->meta->version);
+	seq_printf(s, "  - BOM: 0x%08x\n", spec->meta->bom);
+	seq_printf(s, "  - SourceID: 0x%08x%08x%08x%08x\n",
+		   spec->meta->src[0],
+		   spec->meta->src[1],
+		   spec->meta->src[2],
+		   spec->meta->src[3]);
+	seq_printf(s, "  - CapabilityMask: 0x%08x\n", spec->meta->cap);
+	seq_printf(s, "  - VendorUUID: 0x%08x%08x%08x%08x\n",
+		   spec->meta->uuid[0],
+		   spec->meta->uuid[1],
+		   spec->meta->uuid[2],
+		   spec->meta->uuid[3]);
+
+	return 0;
+}
+
+static int spec_dbg_meta_open(struct inode *inode, struct file *file)
+{
+	struct spec_dev *spec = inode->i_private;
+
+	return single_open(file, spec_dbg_meta, spec);
+}
+
+static const struct file_operations spec_dbg_meta_ops = {
+	.owner = THIS_MODULE,
+	.open  = spec_dbg_meta_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
 /**
  * It initializes the debugfs interface
  * @spec: SPEC device instance
@@ -104,6 +145,16 @@ int spec_dbg_init(struct spec_dev *spec)
 			"Cannot create debugfs file \"%s\" (%ld)\n",
 			SPEC_DBG_FW_NAME, PTR_ERR(spec->dbg_fw));
 		return PTR_ERR(spec->dbg_fw);
+	}
+
+	spec->dbg_meta = debugfs_create_file(SPEC_DBG_META_NAME, 0200,
+					     spec->dbg_dir, spec,
+					     &spec_dbg_meta_ops);
+	if (IS_ERR_OR_NULL(spec->dbg_meta)) {
+		dev_err(&spec->dev,
+			"Cannot create debugfs file \"%s\" (%ld)\n",
+			SPEC_DBG_META_NAME, PTR_ERR(spec->dbg_meta));
+		return PTR_ERR(spec->dbg_meta);
 	}
 
 	return 0;

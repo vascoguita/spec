@@ -163,6 +163,10 @@ static int spec_probe(struct pci_dev *pdev,
 	if (err)
 		goto err_fw;
 
+	err = spec_core_fpga_init(spec);
+	if (err)
+		goto err_core_fpga;
+
 	err = spec_fmc_init(spec);
 	if (err)
 		goto err_fmc;
@@ -174,6 +178,8 @@ static int spec_probe(struct pci_dev *pdev,
 	return 0;
 
 err_fmc:
+	spec_core_fpga_exit(spec);
+err_core_fpga:
 err_fw:
 	spec_fpga_exit(spec);
 err_fpga:
@@ -203,6 +209,7 @@ static void spec_remove(struct pci_dev *pdev)
 
 	spec_dbg_exit(spec);
 	spec_fmc_exit(spec);
+	spec_core_fpga_exit(spec);
 	spec_fpga_exit(spec);
 	spec_gpio_exit(spec);
 	gn412x_gpio_exit(&spec->gn412x);

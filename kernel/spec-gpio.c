@@ -86,14 +86,14 @@ int spec_gpio_init(struct spec_dev *spec)
 		goto err_lookup;
 
 	spec->gpiod[GN4124_GPIO_BOOTSEL0] = gpiod_get_index(&spec->dev,
-							    "bootsel", 0,
-							    GPIOD_OUT_HIGH);
+								 "bootsel", 0,
+								 GPIOD_OUT_HIGH);
 	if (IS_ERR(spec->gpiod[GN4124_GPIO_BOOTSEL0]))
 		goto err_sel0;
 
 	spec->gpiod[GN4124_GPIO_BOOTSEL1] = gpiod_get_index(&spec->dev,
-							    "bootsel", 1,
-							    GPIOD_OUT_HIGH);
+								 "bootsel", 1,
+								 GPIOD_OUT_HIGH);
 	if (IS_ERR(spec->gpiod[GN4124_GPIO_BOOTSEL1]))
 		goto err_sel1;
 
@@ -107,15 +107,15 @@ int spec_gpio_init(struct spec_dev *spec)
 
 
 	spec->gpiod[GN4124_GPIO_IRQ0] = gpiod_get_index(&spec->dev,
-							"irq", 0,
-							GPIOD_IN);
+							     "irq", 0,
+							     GPIOD_IN);
 	if (IS_ERR(spec->gpiod[GN4124_GPIO_IRQ0])) {
 		err = PTR_ERR(spec->gpiod[GN4124_GPIO_IRQ0]);
 		goto err_irq0;
 	}
 	spec->gpiod[GN4124_GPIO_IRQ1] = gpiod_get_index(&spec->dev,
-							"irq", 1,
-							GPIOD_IN);
+							     "irq", 1,
+							     GPIOD_IN);
 	if (IS_ERR(spec->gpiod[GN4124_GPIO_IRQ1])) {
 		err = PTR_ERR(spec->gpiod[GN4124_GPIO_IRQ1]);
 		goto err_irq1;
@@ -127,8 +127,6 @@ int spec_gpio_init(struct spec_dev *spec)
 	err = gpiod_direction_input(spec->gpiod[GN4124_GPIO_IRQ1]);
 	if (err)
 		goto err_in1;
-
-	gn412x_int_gpio_enable(&spec->gn412x, 0);
 
 	return 0;
 
@@ -156,13 +154,10 @@ err_dup:
 
 void spec_gpio_exit(struct spec_dev *spec)
 {
-	gn412x_int_gpio_disable(&spec->gn412x);
-	gpiod_put(spec->gpiod[GN4124_GPIO_IRQ0]);
 	gpiod_put(spec->gpiod[GN4124_GPIO_IRQ1]);
-
-	gpiod_put(spec->gpiod[GN4124_GPIO_BOOTSEL0]);
+	gpiod_put(spec->gpiod[GN4124_GPIO_IRQ0]);
 	gpiod_put(spec->gpiod[GN4124_GPIO_BOOTSEL1]);
-
+	gpiod_put(spec->gpiod[GN4124_GPIO_BOOTSEL0]);
 	gpiod_remove_lookup_table(spec->gpiod_table);
 	kfree(spec->gpiod_table->dev_id);
 }

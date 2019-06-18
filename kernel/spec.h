@@ -34,7 +34,7 @@
 
 #define SPEC_MINOR_MAX (64)
 #define SPEC_FLAG_BITS (8)
-#define SPEC_FLAG_UNLOCK BIT(0)
+#define SPEC_FLAG_THERM_BIT 0
 
 #define GN4124_GPIO_MAX 16
 #define GN4124_GPIO_BOOTSEL0 15
@@ -118,11 +118,50 @@ enum {
 	PCI_SYS_CFG_SYSTEM	= 0x800
 };
 
+enum {
+	/* Metadata */
+	SPEC_CORE_FPGA = 0x0,
+	SPEC_META_BASE = SPEC_CORE_FPGA + 0x00,
+	SPEC_META_VENDOR = SPEC_META_BASE + 0x00,
+	SPEC_META_DEVICE = SPEC_META_BASE + 0x04,
+	SPEC_META_VERSION = SPEC_META_BASE + 0x08,
+	SPEC_META_BOM = SPEC_META_BASE + 0x0C,
+	SPEC_META_SRC = SPEC_META_BASE + 0x10,
+	SPEC_META_CAP = SPEC_META_BASE + 0x20,
+	SPEC_META_UUID = SPEC_META_BASE + 0x30,
+};
+
+#define SPEC_META_VENDOR_ID PCI_VENDOR_ID_CERN
+#define SPEC_META_DEVICE_ID 0x53504543
+#define SPEC_META_BOM_LE 0xFFFE0000
+#define SPEC_META_BOM_END_MASK 0xFFFF0000
+#define SPEC_META_BOM_VER_MASK 0x0000FFFF
+#define SPEC_META_VERSION_1_4 0x01040000
+#define SPEC_META_CAP_VIC BIT(0)
+#define SPEC_META_CAP_THERM BIT(0)
+#define SPEC_META_CAP_SPI BIT(0)
+#define SPEC_META_CAP_DMA BIT(0)
+#define SPEC_META_CAP_WR BIT(0)
+
+
+/**
+ * struct spec_meta_id Metadata
+ */
+struct spec_meta_id {
+	uint32_t vendor;
+	uint32_t device;
+	uint32_t version;
+	uint32_t bom;
+	uint32_t src[4];
+	uint32_t cap;
+	uint32_t uuid[4];
+};
 
 #define GNINT_STAT_GPIO BIT(15)
 #define GNINT_STAT_SW0 BIT(2)
 #define GNINT_STAT_SW1 BIT(3)
 #define GNINT_STAT_SW_ALL (GNINT_STAT_SW0 | GNINT_STAT_SW1)
+
 
 /**
  * struct gn412x_dev GN412X device descriptor
@@ -159,9 +198,13 @@ struct spec_dev {
 
 	DECLARE_BITMAP(flags, SPEC_FLAG_BITS);
 	void __iomem *remap[3];	/* ioremap of bar 0, 2, 4 */
+	void __iomem *fpga;
+	struct spec_meta_id __iomem *meta;
 
 	struct platform_device *i2c_pdev;
-	struct i2c_adapter *i2c_adapter;
+	struct platform_device *vic_pdev;
+	struct platform_device *app_pdev;
+
 	struct fmc_slot_info slot_info;
 
 	struct dentry *dbg_dir;
@@ -169,6 +212,8 @@ struct spec_dev {
 	struct dentry *dbg_info;
 #define SPEC_DBG_FW_NAME "fpga_firmware"
 	struct dentry *dbg_fw;
+#define SPEC_DBG_META_NAME "fpga_device_metadata"
+	struct dentry *dbg_meta;
 
 	struct gn412x_dev gn412x;
 
@@ -244,5 +289,8 @@ extern void spec_gpio_fpga_select(struct spec_dev *spec,
 				  enum spec_fpga_select sel);
 extern int spec_gpio_init(struct spec_dev *spec);
 extern void spec_gpio_exit(struct spec_dev *spec);
+
+extern int spec_core_fpga_init(struct spec_dev *spec);
+extern void spec_core_fpga_exit(struct spec_dev *spec);
 
 #endif /* __SPEC_H__ */
