@@ -110,6 +110,8 @@ static int spec_probe(struct pci_dev *pdev,
 	if (!spec)
 		return -ENOMEM;
 
+	pci_set_drvdata(pdev, spec);
+
 	err = pci_enable_device(pdev);
 	if (err)
 		goto err_enable;
@@ -165,7 +167,6 @@ static int spec_probe(struct pci_dev *pdev,
 	if (err)
 		goto err_fmc;
 
-	pci_set_drvdata(pdev, spec);
 	dev_info(spec->dev.parent, "Spec registered devptr=0x%p\n", spec->dev.parent);
 
 	spec_dbg_init(spec);
