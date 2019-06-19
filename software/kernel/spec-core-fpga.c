@@ -53,15 +53,7 @@ static const struct resource spec_core_fpga_res[] = {
 };
 
 
-static const struct ocores_i2c_platform_data i2c_pdata = {
-	.reg_shift = 2, /* 32bit aligned */
-	.reg_io_width = 4,
-	.clock_khz = 62500,
-	.big_endian = 0,
-	.num_devices = 0,
-	.devices = NULL,
-};
-
+/* Vector Interrupt Controller */
 static int spec_core_fpga_vic_init(struct spec_dev *spec)
 {
 	struct pci_dev *pcidev = to_pci_dev(spec->dev.parent);
@@ -97,6 +89,17 @@ static void spec_core_fpga_vic_exit(struct spec_dev *spec)
 		spec->vic_pdev = NULL;
 	}
 }
+
+
+/* FMC I2C Master */
+static const struct ocores_i2c_platform_data i2c_pdata = {
+	.reg_shift = 2, /* 32bit aligned */
+	.reg_io_width = 4,
+	.clock_khz = 62500,
+	.big_endian = 0,
+	.num_devices = 0,
+	.devices = NULL,
+};
 
 static int spec_core_fpga_i2c_init(struct spec_dev *spec)
 {
@@ -144,11 +147,11 @@ static void spec_core_fpga_i2c_exit(struct spec_dev *spec)
 	}
 }
 
+/* Thermometer */
 #define SPEC_CORE_FPGA_THERM_BASE (SPEC_CORE_FPGA + 0x50)
 #define SPEC_CORE_FPGA_THERM_SERID_MSB (SPEC_CORE_FPGA_THERM_BASE + 0x0)
 #define SPEC_CORE_FPGA_THERM_SERID_LSB (SPEC_CORE_FPGA_THERM_BASE + 0x4)
 #define SPEC_CORE_FPGA_THERM_TEMP (SPEC_CORE_FPGA_THERM_BASE + 0x8)
-
 static ssize_t temperature_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
@@ -208,8 +211,9 @@ static void spec_core_fpga_therm_exit(struct spec_dev *spec)
 	sysfs_remove_group(&spec->dev.kobj, &spec_core_fpga_therm_group);
 }
 
-#define SPEC_CORE_FPGA_APP_OFF (SPEC_CORE_FPGA + 0x40)
 
+/* FPGA Application */
+#define SPEC_CORE_FPGA_APP_OFF (SPEC_CORE_FPGA + 0x40)
 static void spec_core_fpga_app_id_build(struct spec_dev *spec,
 					unsigned long app_off,
 					char *id, unsigned int size)
