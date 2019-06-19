@@ -164,7 +164,7 @@ err_i2c:
 	return -1;
 }
 
-void spec_fmc_exit(struct spec_dev *spec)
+int spec_fmc_exit(struct spec_dev *spec)
 {
 	int err;
 
@@ -173,4 +173,5 @@ void spec_fmc_exit(struct spec_dev *spec)
 		dev_err(spec->dev.parent,
 			"Failed to unregister from FMC\n");
 	spec_i2c_del(spec);
+	return err;
 }
