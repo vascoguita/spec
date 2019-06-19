@@ -358,6 +358,9 @@ int spec_core_fpga_init(struct spec_dev *spec)
 	err = spec_core_fpga_i2c_init(spec);
 	if (err)
 		goto err_i2c;
+	err = spec_fmc_init(spec);
+	if (err)
+		goto err_fmc;
 	err = spec_core_fpga_therm_init(spec);
 	if (err)
 		goto err_therm;
@@ -370,6 +373,8 @@ int spec_core_fpga_init(struct spec_dev *spec)
 err_app:
 	spec_core_fpga_therm_exit(spec);
 err_therm:
+	spec_fmc_exit(spec);
+err_fmc:
 	spec_core_fpga_i2c_exit(spec);
 err_i2c:
 	spec_core_fpga_vic_exit(spec);
@@ -377,10 +382,13 @@ err_vic:
 	return err;
 }
 
-void spec_core_fpga_exit(struct spec_dev *spec)
+int spec_core_fpga_exit(struct spec_dev *spec)
 {
 	spec_core_fpga_app_exit(spec);
 	spec_core_fpga_therm_exit(spec);
+	spec_fmc_exit(spec);
 	spec_core_fpga_i2c_exit(spec);
 	spec_core_fpga_vic_exit(spec);
+
+	return 0;
 }

@@ -203,21 +203,12 @@ static int spec_probe(struct pci_dev *pdev,
 
 	err = spec_core_fpga_init(spec);
 	if (err)
-		goto err_core_fpga;
-
-	err = spec_fmc_init(spec);
-	if (err)
-		goto err_fmc;
-
-	dev_info(spec->dev.parent, "Spec registered devptr=0x%p\n", spec->dev.parent);
+		dev_warn(&spec->dev, "FPGA incorrectly programmed or empty\n");
 
 	spec_dbg_init(spec);
 
 	return 0;
 
-err_fmc:
-	spec_core_fpga_exit(spec);
-err_core_fpga:
 err_fw:
 	spec_fpga_exit(spec);
 err_fpga:
@@ -246,7 +237,6 @@ static void spec_remove(struct pci_dev *pdev)
 	int i;
 
 	spec_dbg_exit(spec);
-	spec_fmc_exit(spec);
 	spec_core_fpga_exit(spec);
 	spec_fpga_exit(spec);
 	spec_gpio_exit(spec);
