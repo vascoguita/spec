@@ -197,10 +197,6 @@ static int spec_probe(struct pci_dev *pdev,
 	if (err)
 		goto err_fpga;
 
-	err = spec_fw_load_init(spec);
-	if (err)
-		goto err_fw;
-
 	err = spec_core_fpga_init(spec);
 	if (err)
 		dev_warn(&spec->dev, "FPGA incorrectly programmed or empty\n");
@@ -209,8 +205,6 @@ static int spec_probe(struct pci_dev *pdev,
 
 	return 0;
 
-err_fw:
-	spec_fpga_exit(spec);
 err_fpga:
 	spec_gpio_exit(spec);
 err_sgpio:
