@@ -177,6 +177,10 @@ NET "P2L_CLKp" TNM_NET = "p2l_clkp_grp";
 NET "P2L_CLKn" TNM_NET = "p2l_clkn_grp";
 TIMESPEC TS_cmp_gn4124_core_cmp_clk_in_P_clk = PERIOD "cmp_gn4124_core/cmp_clk_in/P_clk" 5 ns HIGH 50%;
 
+# Onewire interface -> thermometer
+NET "onewire_b" LOC = D4;
+NET "onewire_b" IOSTANDARD = "LVCMOS25";
+
 #----------------------------------------
 # FMC slot management
 #----------------------------------------

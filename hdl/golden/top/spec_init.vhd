@@ -34,6 +34,11 @@ use work.wishbone_pkg.all;
 
 
 entity spec_init is
+  generic (
+    --  If true, instantiate a VIC
+    g_with_vic : boolean := True;
+    g_with_onewire : boolean := True
+  );
   port
     (
       -- Global ports
@@ -84,6 +89,8 @@ entity spec_init is
       --  FMC presence  (there is a pull-up)
       fmc0_prsnt_m2c_n_i: in std_logic;
 
+      onewire_b : inout std_logic;
+  
 --      button1_i : in std_logic;
 --      button2_i : in std_logic;
 
@@ -387,6 +394,12 @@ begin
         when x"8" =>
           -- capability mask
           metadata_data <= x"00000000";
+          if g_with_vic then
+            metadata_data(0) <= '1';
+          end if;
+          if g_with_onewire then
+            metadata_data(1) <= '1';
+          end if;
         when others =>
           metadata_data <= x"00000000";
       end case;
@@ -425,27 +438,54 @@ begin
   fmc0_scl_b <= fmc0_scl_out when fmc0_scl_oen = '0' else 'Z';
   fmc0_sda_b <= fmc0_sda_out when fmc0_sda_oen = '0' else 'Z';
 
-  i_vic: entity work.xwb_vic
-    generic map (
-      g_address_granularity => BYTE,
-      g_num_interrupts => num_interrupts
-    )
-    port map (
-      clk_sys_i => clk_sys,
-      rst_n_i => rst_gbl_n,
-      slave_i => vic_out,
-      slave_o => vic_in,
-      irqs_i => irqs,
-      irq_master_o => irq_master
-    );
-  --  vic_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
+  g_vic: if g_with_vic generate
+    i_vic: entity work.xwb_vic
+      generic map (
+        g_address_granularity => BYTE,
+        g_num_interrupts => num_interrupts
+      )
+      port map (
+        clk_sys_i => clk_sys,
+        rst_n_i => rst_gbl_n,
+        slave_i => vic_out,
+        slave_o => vic_in,
+        irqs_i => irqs,
+        irq_master_o => irq_master
+      );
+  end generate;
+
+  g_no_vic: if not g_with_vic generate
+     vic_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
+     irq_master <= '0';
+  end generate;
   
+  g_onewire: if g_with_onewire generate
+    i_onewire: entity work.xwb_ds182x_readout
+      generic map (
+      g_CLOCK_FREQ_KHZ => 62_500,
+      g_USE_INTERNAL_PPS => True)
+    port map (
+      clk_i => clk_sys,
+      rst_n_i => rst_gbl_n,
+  
+      wb_i => therm_id_out,
+      wb_o => therm_id_in,
+  
+      pps_p_i => '0',
+      onewire_b => onewire_b
+    );
+  end generate;
+
+  g_no_onewire: if not g_with_onewire generate
+    therm_id_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
+    onewire_b <= 'Z';
+  end generate;
+
   sfp_mod_def1_b <= 'Z';
   sfp_mod_def2_b <= 'Z';
   sfp_tx_disable_o <= '0';
 
   --  Not used.
-  therm_id_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
   flash_spi_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
   wrc_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
   app_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
