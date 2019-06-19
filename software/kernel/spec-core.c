@@ -21,9 +21,9 @@
 
 static int mfd_id; /* FIXME look for something better */
 
-static char *spec_fw_name_45t = "spec-init-45T.bin";
-static char *spec_fw_name_100t = "spec-init-100T.bin";
-static char *spec_fw_name_150t = "spec-init-150T.bin";
+static char *spec_fw_name_45t = "spec-golden-45T.bin";
+static char *spec_fw_name_100t = "spec-golden-100T.bin";
+static char *spec_fw_name_150t = "spec-golden-150T.bin";
 
 char *spec_fw_name = "";
 module_param_named(fw_name, spec_fw_name, charp, 0444);
@@ -93,16 +93,23 @@ static const char *spec_fw_name_init_get(struct spec_dev *spec)
  */
 static int spec_fw_load(struct spec_dev *spec, const char *name)
 {
-	return compat_spec_fw_load(spec, name);
-}
+	int err;
 
-/**
- * Return: True if the FPGA is programmed, otherwise false
- */
-static bool spec_fw_is_pre_programmed(struct spec_dev *spec)
-{
+	err = spec_core_fpga_exit(spec);
+	if (err) {
+		dev_err(&spec->dev,
+			"Cannot remove FPGA device instances. Remove them manually and reload SPEC device instance\n");
+		return err;
+	}
 
-	return false;
+	err = compat_spec_fw_load(spec, name);
+	if (err)
+		return err;
+
+	err = spec_core_fpga_init(spec);
+	if (err)
+		dev_warn(&spec->dev, "FPGA incorrectly programmed\n");
+	return 0;
 }
 
 /**
@@ -113,9 +120,6 @@ static bool spec_fw_is_pre_programmed(struct spec_dev *spec)
  */
 static int spec_fw_load_init(struct spec_dev *spec)
 {
-	if (spec_fw_is_pre_programmed(spec))
-		return 0;
-
 	return spec_fw_load(spec, spec_fw_name_init_get(spec));
 }
 
@@ -129,10 +133,38 @@ static int spec_uevent(struct device *dev, struct kobj_uevent_env *env)
 	return 0;
 }
 
+static ssize_t load_golden_fpga_store(struct device *dev,
+				      struct device_attribute *attr,
+				      const char *buf, size_t count)
+{
+	struct spec_dev *spec = to_spec_dev(dev);
+	int err;
+
+	err = spec_fw_load_init(spec);
+
+	return err < 0 ? err : count;
+}
+static DEVICE_ATTR_WO(load_golden_fpga);
+
+static struct attribute *spec_type_attrs[] = {
+	&dev_attr_load_golden_fpga.attr,
+	NULL,
+};
+
+static const struct attribute_group spec_type_group = {
+	.attrs = spec_type_attrs,
+};
+
+static const struct attribute_group *spec_type_groups[] = {
+	&spec_type_group,
+	NULL,
+};
+
 static const struct device_type spec_dev_type = {
 	.name = "spec",
 	.release = spec_release,
 	.uevent = spec_uevent,
+	.groups = spec_type_groups,
 };
 
 
