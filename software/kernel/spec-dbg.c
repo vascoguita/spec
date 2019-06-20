@@ -15,14 +15,14 @@ static int spec_irq_dbg_info(struct seq_file *s, void *offset)
 {
 	struct spec_dev *spec = s->private;
 
-	seq_printf(s, "'%s':\n",dev_name(spec->dev.parent));
+	seq_printf(s, "'%s':\n", dev_name(spec->dev.parent));
 
 	seq_printf(s, "  redirect: %d\n", to_pci_dev(spec->dev.parent)->irq);
-	seq_printf(s, "  irq-mapping:\n");
-	seq_printf(s, "    - hardware: 8\n");
+	seq_puts(s, "  irq-mapping:\n");
+	seq_puts(s, "    - hardware: 8\n");
 	seq_printf(s, "      linux: %d\n",
 		   gpiod_to_irq(spec->gpiod[GN4124_GPIO_IRQ0]));
-	seq_printf(s, "    - hardware: 9\n");
+	seq_puts(s, "    - hardware: 9\n");
 	seq_printf(s, "      linux: %d\n",
 		   gpiod_to_irq(spec->gpiod[GN4124_GPIO_IRQ1]));
 
@@ -76,7 +76,7 @@ static int spec_dbg_meta(struct seq_file *s, void *offset)
 	struct spec_dev *spec = s->private;
 
 	seq_printf(s, "'%s':\n", dev_name(spec->dev.parent));
-	seq_printf(s, "Metadata:\n");
+	seq_puts(s, "Metadata:\n");
 	seq_printf(s, "  - Vendor: 0x%08x\n", spec->meta->vendor);
 	seq_printf(s, "  - Device: 0x%08x\n", spec->meta->device);
 	seq_printf(s, "  - Version: 0x%08x\n", spec->meta->version);
@@ -166,6 +166,5 @@ int spec_dbg_init(struct spec_dev *spec)
  */
 void spec_dbg_exit(struct spec_dev *spec)
 {
-	if (spec->dbg_dir)
-		debugfs_remove_recursive(spec->dbg_dir);
+	debugfs_remove_recursive(spec->dbg_dir);
 }

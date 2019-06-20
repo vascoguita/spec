@@ -1,9 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
- * Copyright (C) 2010-2018 CERN (www.cern.ch)
+ * Copyright (C) 2010-2019 CERN (www.cern.ch)
  * Author: Federico Vaga <federico.vaga@cern.ch>
  * Author: Alessandro Rubini <rubini@gnudd.com>
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #ifndef __SPEC_H__
 #define __SPEC_H__
@@ -53,7 +52,7 @@
  * @SPEC_FPGA_SELECT_SPI: the SPI flash is accessible from GN4124
  */
 enum spec_fpga_select {
-	SPEC_FPGA_SELECT_FLASH=0,
+	SPEC_FPGA_SELECT_FLASH = 0,
 	SPEC_FPGA_SELECT_GN4124,
 	SPEC_FPGA_SELECT_SPI,
 };
@@ -176,6 +175,7 @@ static inline void gennum_mask_val(struct spec_dev *spec,
 				   uint32_t mask, uint32_t val, int reg)
 {
 	uint32_t v = gennum_readl(spec, reg);
+
 	v &= ~mask;
 	v |= val;
 	gennum_writel(spec, v, reg);

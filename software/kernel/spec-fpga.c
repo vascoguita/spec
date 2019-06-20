@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2017 CERN (www.cern.ch)
+ * Copyright (C) 2019 CERN (www.cern.ch)
  * Author: Federico Vaga <federico.vaga@cern.ch>
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  */
 #include <linux/fpga/fpga-mgr.h>
 #include <linux/gpio/consumer.h>
@@ -92,17 +91,25 @@ static int gn4124_fpga_fcl_init(struct spec_dev *spec, int last_word_size)
 	gennum_writel(spec, 0x40, FCL_CTRL); /* Reset */
 	i = gennum_readl(spec, FCL_CTRL);
 	if (i != 0x40) {
-		printk(KERN_ERR "%s: %i: error\n", __func__, __LINE__);
+		pr_err("%s: %i: error\n", __func__, __LINE__);
 		return -EIO;
 	}
 	gennum_writel(spec, 0x00, FCL_CTRL);
 	gennum_writel(spec, 0x00, FCL_IRQ); /* clear pending irq */
 
-	switch(last_word_size) {
-	case 3: ctrl = 0x116; break;
-	case 2: ctrl = 0x126; break;
-	case 1: ctrl = 0x136; break;
-	case 0: ctrl = 0x106; break;
+	switch (last_word_size) {
+	case 3:
+		ctrl = 0x116;
+		break;
+	case 2:
+		ctrl = 0x126;
+		break;
+	case 1:
+		ctrl = 0x136;
+		break;
+	case 0:
+		ctrl = 0x106;
+		break;
 	default: return -EINVAL;
 	}
 	gennum_writel(spec, ctrl, FCL_CTRL);
@@ -171,16 +178,16 @@ static int gn4124_fpga_load(struct spec_dev *spec, const void *data, int len)
 	int done = 0, wrote = 0;
 	const uint32_t *data32 = data;
 
-	while(size32 > 0)
-	{
+	while (size32 > 0) {
 		/* Check to see if FPGA configuation has error */
 		int i = gennum_readl(spec, FCL_IRQ);
-		if ( (i & 8) && wrote) {
+
+		if ((i & 8) && wrote) {
 			done = 1;
-			printk("%s: %i: done after %i\n", __func__, __LINE__,
+			pr_err("%s: %i: done after %i\n", __func__, __LINE__,
 				wrote);
-		} else if ( (i & 0x4) && !done) {
-			printk("%s: %i: error after %i\n", __func__, __LINE__,
+		} else if ((i & 0x4) && !done) {
+			pr_err("%s: %i: error after %i\n", __func__, __LINE__,
 				wrote);
 			return -EIO;
 		}
@@ -237,7 +244,8 @@ err:
 	return err;
 }
 
-static int spec_fpga_write(struct fpga_manager *mgr, const char *buf, size_t count)
+static int spec_fpga_write(struct fpga_manager *mgr,
+			   const char *buf, size_t count)
 {
 	struct spec_dev *spec = mgr->priv;
 

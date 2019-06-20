@@ -60,11 +60,13 @@ static const struct gpiod_lookup_table spec_gpiod_table = {
 
 static inline size_t spec_gpiod_table_size(void)
 {
-	return sizeof(struct gpiod_lookup_table) + (sizeof(struct gpiod_lookup) * 9);
+	return sizeof(struct gpiod_lookup_table) +
+	       (sizeof(struct gpiod_lookup) * 9);
 }
 
 int spec_gpio_init(struct spec_dev *spec)
 {
+	struct gpio_desc *gpiod;
 	struct gpiod_lookup_table *lookup;
 	int err = 0;
 
@@ -87,17 +89,19 @@ int spec_gpio_init(struct spec_dev *spec)
 	if (err)
 		goto err_lookup;
 
-	spec->gpiod[GN4124_GPIO_BOOTSEL0] = gpiod_get_index(&spec->dev,
-								 "bootsel", 0,
-								 GPIOD_OUT_HIGH);
-	if (IS_ERR(spec->gpiod[GN4124_GPIO_BOOTSEL0]))
+	gpiod = gpiod_get_index(&spec->dev, "bootsel", 0, GPIOD_OUT_HIGH);
+	if (IS_ERR(gpiod)) {
+		err = PTR_ERR(gpiod);
 		goto err_sel0;
+	}
+	spec->gpiod[GN4124_GPIO_BOOTSEL0] = gpiod;
 
-	spec->gpiod[GN4124_GPIO_BOOTSEL1] = gpiod_get_index(&spec->dev,
-								 "bootsel", 1,
-								 GPIOD_OUT_HIGH);
-	if (IS_ERR(spec->gpiod[GN4124_GPIO_BOOTSEL1]))
+	gpiod = gpiod_get_index(&spec->dev, "bootsel", 1, GPIOD_OUT_HIGH);
+	if (IS_ERR(gpiod)) {
+		err = PTR_ERR(gpiod);
 		goto err_sel1;
+	}
+	spec->gpiod[GN4124_GPIO_BOOTSEL1] = gpiod;
 
 	/* Because of a BUG in RedHat kernel 3.10 we re-set direction */
 	err = gpiod_direction_output(spec->gpiod[GN4124_GPIO_BOOTSEL0], 1);
@@ -108,20 +112,20 @@ int spec_gpio_init(struct spec_dev *spec)
 		goto err_out1;
 
 
-	spec->gpiod[GN4124_GPIO_IRQ0] = gpiod_get_index(&spec->dev,
-							     "irq", 0,
-							     GPIOD_IN);
-	if (IS_ERR(spec->gpiod[GN4124_GPIO_IRQ0])) {
-		err = PTR_ERR(spec->gpiod[GN4124_GPIO_IRQ0]);
+	gpiod = gpiod_get_index(&spec->dev, "irq", 0, GPIOD_IN);
+	if (IS_ERR(gpiod)) {
+		err = PTR_ERR(gpiod);
 		goto err_irq0;
 	}
-	spec->gpiod[GN4124_GPIO_IRQ1] = gpiod_get_index(&spec->dev,
-							     "irq", 1,
-							     GPIOD_IN);
-	if (IS_ERR(spec->gpiod[GN4124_GPIO_IRQ1])) {
-		err = PTR_ERR(spec->gpiod[GN4124_GPIO_IRQ1]);
+	spec->gpiod[GN4124_GPIO_IRQ0] = gpiod;
+
+	gpiod = gpiod_get_index(&spec->dev, "irq", 1, GPIOD_IN);
+	if (IS_ERR(gpiod)) {
+		err = PTR_ERR(gpiod);
 		goto err_irq1;
 	}
+	spec->gpiod[GN4124_GPIO_IRQ1] = gpiod;
+
 	/* Because of a BUG in RedHat kernel 3.10 we re-set direction */
 	err = gpiod_direction_input(spec->gpiod[GN4124_GPIO_IRQ0]);
 	if (err)

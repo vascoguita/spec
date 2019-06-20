@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
- * Copyright (C) 2017 CERN (www.cern.ch)
+ * Copyright (C) 2019 CERN (www.cern.ch)
  * Author: Federico Vaga <federico.vaga@cern.ch>
  */
 #include <linux/fpga/fpga-mgr.h>
@@ -9,8 +9,8 @@
 #include <linux/gpio/driver.h>
 #include "spec.h"
 
-#if KERNEL_VERSION(4,10,0) <= LINUX_VERSION_CODE
-#if KERNEL_VERSION(4,16,0) > LINUX_VERSION_CODE
+#if KERNEL_VERSION(4, 10, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(4, 16, 0) > LINUX_VERSION_CODE
 /* So that we select the buffer size because smaller */
 #define compat_fpga_ops_initial_header_size .initial_header_size = 0xFFFFFFFF,
 #else
@@ -20,13 +20,13 @@
 #define compat_fpga_ops_initial_header_size
 #endif
 
-#if KERNEL_VERSION(4,16,0) > LINUX_VERSION_CODE && ! defined(CONFIG_FPGA_MGR_BACKPORT)
+#if KERNEL_VERSION(4, 16, 0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
 #define compat_fpga_ops_groups
 #else
 #define compat_fpga_ops_groups .groups = NULL,
 #endif
 
-#if KERNEL_VERSION(4,10,0) > LINUX_VERSION_CODE && ! defined(CONFIG_FPGA_MGR_BACKPORT)
+#if KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
 struct fpga_image_info;
 #endif
 
@@ -36,7 +36,7 @@ int spec_fpga_write_init(struct fpga_manager *mgr,
 int spec_fpga_write_complete(struct fpga_manager *mgr,
 			     struct fpga_image_info *info);
 
-#if KERNEL_VERSION(4,10,0) > LINUX_VERSION_CODE && ! defined(CONFIG_FPGA_MGR_BACKPORT)
+#if KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
 int compat_spec_fpga_write_init(struct fpga_manager *mgr, u32 flags,
 				const char *buf, size_t count);
 int compat_spec_fpga_write_complete(struct fpga_manager *mgr, u32 flags);

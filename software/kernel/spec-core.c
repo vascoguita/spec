@@ -1,8 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2017 CERN (www.cern.ch)
+ * Copyright (C) 2019 CERN (www.cern.ch)
  * Author: Federico Vaga <federico.vaga@cern.ch>
- *
- * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Driver for SPEC (Simple PCI FMC carrier) board.
  */

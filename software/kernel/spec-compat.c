@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
- * Copyright (C) 2017 CERN (www.cern.ch)
+ * Copyright (C) 2019 CERN (www.cern.ch)
  * Author: Federico Vaga <federico.vaga@cern.ch>
  */
 #include <linux/kallsyms.h>
@@ -12,14 +12,14 @@
 
 int compat_get_fpga_last_word_size(struct fpga_image_info *info, size_t count)
 {
-#if KERNEL_VERSION(4,16,0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
+#if KERNEL_VERSION(4, 16, 0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
 	return count;
 #else
 	return info ? info->count : count;
 #endif
 }
 
-#if KERNEL_VERSION(4,10,0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
+#if KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
 int compat_spec_fpga_write_init(struct fpga_manager *mgr,
 				u32 flags,
 				const char *buf, size_t count)
@@ -45,7 +45,7 @@ int compat_spec_fpga_write_complete(struct fpga_manager *mgr,
 }
 #endif
 
-#if KERNEL_VERSION(4,18,0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
+#if KERNEL_VERSION(4, 18, 0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
 struct fpga_manager *compat_fpga_mgr_create(struct device *dev, const char *name,
 					    const struct fpga_manager_ops *mops,
 					    void *priv)
@@ -99,7 +99,7 @@ void compat_fpga_mgr_unregister(struct fpga_manager *mgr)
 
 
 
-#if KERNEL_VERSION(4,10,0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
+#if KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
 struct fpga_manager *__fpga_mgr_get(struct device *dev)
 {
 	struct fpga_manager *mgr;
@@ -156,8 +156,8 @@ struct fpga_manager *fpga_mgr_get(struct device *dev)
 
 static int __compat_spec_fw_load(struct fpga_manager *mgr, const char *name)
 {
-#if KERNEL_VERSION(4,16,0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
-#if KERNEL_VERSION(4,10,0) > LINUX_VERSION_CODE
+#if KERNEL_VERSION(4, 16, 0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
+#if KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE
 	return fpga_mgr_firmware_load(mgr, 0, name);
 #else
 	struct fpga_image_info image;
