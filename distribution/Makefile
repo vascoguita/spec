@@ -9,9 +9,6 @@ BUILD_DKMSSOURCE := $(BUILD_DKMS)/source
 BUILD_DKMSTREE := $(BUILD_DKMS)/tree
 
 
-SRC := $(TOP_DIR)/Makefile
-SRC += $(TOP_DIR)/Makefile
-
 DKMS_OPT := --dkmstree $(BUILD_DKMSTREE) -m $(DRIVER_NAME)/$(VERSION)
 
 all: kernel
