@@ -28,6 +28,7 @@ static char *spec_fw_name_150t = "spec-golden-150T.bin";
 char *spec_fw_name = "";
 module_param_named(fw_name, spec_fw_name, charp, 0444);
 
+
 static struct gn412x_platform_data gn412x_gpio_pdata = {
 	.int_cfg = 0,
 };
@@ -49,6 +50,7 @@ static struct resource gn412x_gpio_res[] = {
 enum spec_mfd_enum {
 	SPEC_MFD_GN412X_GPIO = 0,
 };
+
 static const struct mfd_cell spec_mfd_devs[] = {
 	[SPEC_MFD_GN412X_GPIO] = {
 		.name = "gn412x-gpio",
@@ -58,6 +60,7 @@ static const struct mfd_cell spec_mfd_devs[] = {
 		.resources = gn412x_gpio_res,
 	},
 };
+
 
 /**
  * Return the SPEC defult FPGA firmware name based on PCI ID
@@ -98,7 +101,7 @@ static int spec_fw_load(struct spec_dev *spec, const char *name)
 	err = spec_core_fpga_exit(spec);
 	if (err) {
 		dev_err(&spec->dev,
-			"Cannot remove FPGA device instances. Remove them manually and reload SPEC device instance\n");
+			"Cannot remove FPGA device instances. Try to remove them manually and to reload this device instance\n");
 		return err;
 	}
 
@@ -133,6 +136,9 @@ static int spec_uevent(struct device *dev, struct kobj_uevent_env *env)
 	return 0;
 }
 
+/**
+ * Load golden bitstream on FGPA
+ */
 static ssize_t load_golden_fpga_store(struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t count)
