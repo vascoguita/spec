@@ -8,7 +8,6 @@
 #define __SPEC_H__
 #include <linux/debugfs.h>
 #include <linux/device.h>
-#include <linux/fpga/fpga-mgr.h>
 #include <linux/i2c.h>
 #include <linux/irqdomain.h>
 #include <linux/pci.h>
@@ -109,8 +108,6 @@ struct spec_meta_id {
 struct spec_dev {
 	struct device dev;
 
-	struct fpga_manager *mgr;
-
 	DECLARE_BITMAP(flags, SPEC_FLAG_BITS);
 	void __iomem *remap[3];	/* ioremap of bar 0, 2, 4 */
 	void __iomem *fpga;
@@ -180,9 +177,6 @@ static inline void gennum_mask_val(struct spec_dev *spec,
 	v |= val;
 	gennum_writel(spec, v, reg);
 }
-
-extern int spec_fpga_init(struct spec_dev *spec);
-extern void spec_fpga_exit(struct spec_dev *spec);
 
 extern int spec_irq_init(struct spec_dev *spec);
 extern void spec_irq_exit(struct spec_dev *spec);

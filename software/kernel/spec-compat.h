@@ -49,14 +49,8 @@ int compat_spec_fpga_write_complete(struct fpga_manager *mgr,
 #endif
 int compat_get_fpga_last_word_size(struct fpga_image_info *info,
 				   size_t count);
-struct fpga_manager *compat_fpga_mgr_create(struct device *dev,
-					    const char *name,
-					    const struct fpga_manager_ops *mops,
-					    void *priv);
-void compat_fpga_mgr_free(struct fpga_manager *mgr);
-int compat_fpga_mgr_register(struct fpga_manager *mgr);
-void compat_fpga_mgr_unregister(struct fpga_manager *mgr);
-int compat_spec_fw_load(struct spec_dev *spec, const char *name);
+int compat_spec_fw_load(struct spec_dev *spec, const struct mfd_cell *cell,
+			const char *name);
 
 #if KERNEL_VERSION(3, 11, 0) > LINUX_VERSION_CODE
 #define __ATTR_RW(_name) __ATTR(_name, (S_IWUSR | S_IRUGO),	\

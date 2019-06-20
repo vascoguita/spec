@@ -46,8 +46,23 @@ static struct resource gn412x_gpio_res[] = {
 	}
 };
 
+static struct resource gn412x_fcl_res[] = {
+	{
+		.name = "gn412x-fcl-mem",
+		.flags = IORESOURCE_MEM,
+		.start = 0,
+		.end = 0x1000 - 1,
+	}, {
+		.name = "gn412x-fcl-irq",
+		.flags = IORESOURCE_IRQ,
+		.start = 0,
+		.end = 0,
+	}
+};
+
 enum spec_mfd_enum {
 	SPEC_MFD_GN412X_GPIO = 0,
+	SPEC_MFD_GN412X_FCL,
 };
 
 static const struct mfd_cell spec_mfd_devs[] = {
@@ -57,6 +72,13 @@ static const struct mfd_cell spec_mfd_devs[] = {
 		.pdata_size = sizeof(gn412x_gpio_pdata),
 		.num_resources = ARRAY_SIZE(gn412x_gpio_res),
 		.resources = gn412x_gpio_res,
+	},
+	[SPEC_MFD_GN412X_FCL] = {
+		.name = "gn412x-fcl",
+		.platform_data = NULL,
+		.pdata_size = 0,
+		.num_resources = ARRAY_SIZE(gn412x_fcl_res),
+		.resources = gn412x_fcl_res,
 	},
 };
 
@@ -104,14 +126,21 @@ static int spec_fw_load(struct spec_dev *spec, const char *name)
 		return err;
 	}
 
-	err = compat_spec_fw_load(spec, name);
+
+	spec_gpio_fpga_select(spec, SPEC_FPGA_SELECT_GN4124);
+
+	err = compat_spec_fw_load(spec, &spec_mfd_devs[SPEC_MFD_GN412X_FCL], name);
 	if (err)
-		return err;
+		goto out;
 
 	err = spec_core_fpga_init(spec);
 	if (err)
 		dev_warn(&spec->dev, "FPGA incorrectly programmed\n");
-	return 0;
+
+out:
+	spec_gpio_fpga_select(spec, SPEC_FPGA_SELECT_FLASH);
+
+	return err;
 }
 
 /**
@@ -230,10 +259,6 @@ static int spec_probe(struct pci_dev *pdev,
 	if (err)
 		goto err_sgpio;
 
-	err = spec_fpga_init(spec);
-	if (err)
-		goto err_fpga;
-
 	err = spec_core_fpga_init(spec);
 	if (err)
 		dev_warn(&spec->dev, "FPGA incorrectly programmed or empty\n");
@@ -242,8 +267,6 @@ static int spec_probe(struct pci_dev *pdev,
 
 	return 0;
 
-err_fpga:
-	spec_gpio_exit(spec);
 err_sgpio:
 	mfd_remove_devices(&spec->dev);
 err_mfd:
@@ -269,7 +292,6 @@ static void spec_remove(struct pci_dev *pdev)
 
 	spec_dbg_exit(spec);
 	spec_core_fpga_exit(spec);
-	spec_fpga_exit(spec);
 	spec_gpio_exit(spec);
 
 	mfd_remove_devices(&spec->dev);
