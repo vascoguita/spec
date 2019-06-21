@@ -7,9 +7,30 @@
 #include <linux/gpio/driver.h>
 
 #include "spec.h"
-#include "spec-compat.h"
+#include "gn412x.h"
+#include "platform_data/gn412x-gpio.h"
 
-#define GN412X_INT_CFG_MAX 7
+/**
+ * struct gn412x_gpio_dev GN412X device descriptor
+ * @compl: for IRQ testing
+ * @int_cfg_gpio: INT_CFG used for GPIO interrupts
+ */
+struct gn412x_gpio_dev {
+	void __iomem *mem;
+	struct gpio_chip gpiochip;
+
+	struct completion	compl;
+	struct gn412x_platform_data *pdata;
+};
+
+static struct gn412x_platform_data gn412x_gpio_pdata_default = {
+	.int_cfg = 0,
+};
+
+static inline struct gn412x_gpio_dev *to_gn412x_gpio_dev_gpio(struct gpio_chip *chip)
+{
+	return container_of(chip, struct gn412x_gpio_dev, gpiochip);
+}
 
 enum gn412x_gpio_versions {
 	GN412X_VER = 0,
@@ -19,12 +40,12 @@ enum htvic_mem_resources {
 	GN412X_MEM_BASE = 0,
 };
 
-static uint32_t gn412x_ioread32(struct gn412x_dev *gn412x, int reg)
+static uint32_t gn412x_ioread32(struct gn412x_gpio_dev *gn412x, int reg)
 {
 	return ioread32(gn412x->mem + reg);
 }
 
-static void gn412x_iowrite32(struct gn412x_dev *gn412x, uint32_t val, int reg)
+static void gn412x_iowrite32(struct gn412x_gpio_dev *gn412x, uint32_t val, int reg)
 {
 	return iowrite32(val, gn412x->mem + reg);
 }
@@ -33,7 +54,7 @@ static void gn412x_iowrite32(struct gn412x_dev *gn412x, uint32_t val, int reg)
 static int gn412x_gpio_reg_read(struct gpio_chip *chip,
 				int reg, unsigned offset)
 {
-	struct gn412x_dev *gn412x = to_gn412x_dev_gpio(chip);
+	struct gn412x_gpio_dev *gn412x = to_gn412x_gpio_dev_gpio(chip);
 
 	return gn412x_ioread32(gn412x, reg) & BIT(offset);
 }
@@ -41,7 +62,7 @@ static int gn412x_gpio_reg_read(struct gpio_chip *chip,
 static void gn412x_gpio_reg_write(struct gpio_chip *chip,
 				  int reg, unsigned offset, int value)
 {
-	struct gn412x_dev *gn412x = to_gn412x_dev_gpio(chip);
+	struct gn412x_gpio_dev *gn412x = to_gn412x_gpio_dev_gpio(chip);
 	uint32_t regval;
 
 	regval = gn412x_ioread32(gn412x, reg);
@@ -50,6 +71,36 @@ static void gn412x_gpio_reg_write(struct gpio_chip *chip,
 	else
 		regval &= ~BIT(offset);
 	gn412x_iowrite32(gn412x, regval, reg);
+}
+
+/**
+ * Enable GPIO interrupts
+ * @gn412x gn412x device
+ *
+ * Return: 0 on success, otherwise a negative error number
+ */
+static void gn412x_gpio_int_cfg_enable(struct gn412x_gpio_dev *gn412x)
+{
+	uint32_t int_cfg;
+
+	int_cfg = gn412x_ioread32(gn412x, GNINT_CFG(gn412x->pdata->int_cfg));
+	int_cfg |= GNINT_STAT_GPIO;
+	gn412x_iowrite32(gn412x, int_cfg, GNINT_CFG(gn412x->pdata->int_cfg));
+}
+
+/**
+ * Disable GPIO interrupts from a single configuration space
+ * @gn412x gn412x device
+ *
+ * Return: 0 on success, otherwise a negative error number
+ */
+static void gn412x_gpio_int_cfg_disable(struct gn412x_gpio_dev *gn412x)
+{
+	uint32_t int_cfg;
+
+	int_cfg = gn412x_ioread32(gn412x, GNINT_CFG(gn412x->pdata->int_cfg));
+	int_cfg &= ~GNINT_STAT_GPIO;
+	gn412x_iowrite32(gn412x, int_cfg, GNINT_CFG(gn412x->pdata->int_cfg));
 }
 
 static int gn412x_gpio_request(struct gpio_chip *chip, unsigned offset)
@@ -109,14 +160,13 @@ static void gn412x_gpio_set(struct gpio_chip *chip,
 	gn412x_gpio_reg_write(chip, GNGPIO_OUTPUT_VALUE, offset, value);
 }
 
-
 /**
  * (disable)
  */
 static void gn412x_gpio_irq_mask(struct irq_data *d)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-	struct gn412x_dev *gn412x = to_gn412x_dev_gpio(gc);
+	struct gn412x_gpio_dev *gn412x = to_gn412x_gpio_dev_gpio(gc);
 
 	gn412x_iowrite32(gn412x, BIT(d->hwirq), GNGPIO_INT_MASK_SET);
 }
@@ -128,7 +178,7 @@ static void gn412x_gpio_irq_mask(struct irq_data *d)
 static void gn412x_gpio_irq_unmask(struct irq_data *d)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
-	struct gn412x_dev *gn412x = to_gn412x_dev_gpio(gc);
+	struct gn412x_gpio_dev *gn412x = to_gn412x_gpio_dev_gpio(gc);
 
 	gn412x_iowrite32(gn412x, BIT(d->hwirq), GNGPIO_INT_MASK_CLR);
 }
@@ -231,7 +281,7 @@ static struct irq_chip gn412x_gpio_irq_chip = {
  */
 static irqreturn_t spec_irq_sw_handler(int irq, void *arg)
 {
-	struct gn412x_dev *gn412x = arg;
+	struct gn412x_gpio_dev *gn412x = arg;
 
 	/* Ack the interrupts */
 	gn412x_ioread32(gn412x, GNINT_STAT);
@@ -243,71 +293,14 @@ static irqreturn_t spec_irq_sw_handler(int irq, void *arg)
 }
 
 /**
- * Enable GPIO interrupts
- * @gn412x gn412x device
- * @cfg_n interrupt configuration register number
- *
- * Return: 0 on success, otherwise a negative error number
- */
-int gn412x_int_gpio_enable(struct gn412x_dev *gn412x, unsigned int cfg_n)
-{
-	uint32_t int_cfg;
-
-	if (WARN(cfg_n > GN412X_INT_CFG_MAX, "Unexistent GN412X INT_CFG(%d)",
-		 cfg_n))
-		return -EINVAL;
-
-	gn412x->int_cfg_gpio = cfg_n;
-	int_cfg = gn412x_ioread32(gn412x, GNINT_CFG(gn412x->int_cfg_gpio));
-	int_cfg |= GNINT_STAT_GPIO;
-	gn412x_iowrite32(gn412x, int_cfg, GNINT_CFG(gn412x->int_cfg_gpio));
-
-	return 0;
-}
-
-/**
- * Disable GPIO interrupts from a single configuration space
- * @gn412x gn412x device
- *
- * Return: 0 on success, otherwise a negative error number
- */
-void gn412x_int_gpio_disable(struct gn412x_dev *gn412x)
-{
-	uint32_t int_cfg;
-
-	int_cfg = gn412x_ioread32(gn412x, GNINT_CFG(gn412x->int_cfg_gpio));
-	int_cfg &= ~GNINT_STAT_GPIO;
-	gn412x_iowrite32(gn412x, int_cfg, GNINT_CFG(gn412x->int_cfg_gpio));
-}
-
-
-/**
- * Disable GPIO interrupts from all configuration spaces
- * @gn412x gn412x device
- */
-static void gn412x_int_gpio_disable_all(struct gn412x_dev *gn412x)
-{
-	int i;
-
-	for (i = 0; i <= GN412X_INT_CFG_MAX; ++i) {
-		uint32_t int_cfg;
-
-		int_cfg = gn412x_ioread32(gn412x, GNINT_CFG(i));
-		int_cfg &= ~GNINT_STAT_GPIO;
-		gn412x_iowrite32(gn412x, int_cfg, GNINT_CFG(i));
-	}
-}
-
-
-/**
  * Handle IRQ from the GPIO block
  */
 static irqreturn_t gn412x_gpio_irq_handler_t(int irq, void *arg)
 {
-	struct gn412x_dev *gn412x = arg;
+	struct gn412x_gpio_dev *gn412x = arg;
 	struct gpio_chip *gc = &gn412x->gpiochip;
 	unsigned int cascade_irq;
-	uint32_t gpio_int_status, int_cfg;
+	uint32_t gpio_int_status;
 	unsigned long loop;
 	irqreturn_t ret = IRQ_NONE;
 	int i;
@@ -330,9 +323,7 @@ static irqreturn_t gn412x_gpio_irq_handler_t(int irq, void *arg)
 
 out_enable_irq:
 	/* Re-enable the GPIO interrupts, we are done here */
-	int_cfg = gn412x_ioread32(gn412x, GNINT_CFG(gn412x->int_cfg_gpio));
-	int_cfg |= GNINT_STAT_GPIO;
-	gn412x_iowrite32(gn412x, int_cfg, GNINT_CFG(gn412x->int_cfg_gpio));
+	gn412x_gpio_int_cfg_enable(gn412x);
 
 	return ret;
 }
@@ -340,10 +331,10 @@ out_enable_irq:
 
 static irqreturn_t gn412x_gpio_irq_handler_h(int irq, void *arg)
 {
-	struct gn412x_dev *gn412x = arg;
+	struct gn412x_gpio_dev *gn412x = arg;
 	uint32_t int_stat, int_cfg;
 
-	int_cfg = gn412x_ioread32(gn412x, GNINT_CFG(gn412x->int_cfg_gpio));
+	int_cfg = gn412x_ioread32(gn412x, GNINT_CFG(gn412x->pdata->int_cfg));
 	int_stat = gn412x_ioread32(gn412x, GNINT_STAT);
 	if (unlikely(!(int_stat & int_cfg)))
 		return IRQ_NONE;
@@ -360,14 +351,13 @@ static irqreturn_t gn412x_gpio_irq_handler_h(int irq, void *arg)
 	 * let's disable interrupts. Within the thread we will re-enable them
 	 * when we are ready (like IRQF_ONESHOT).
 	 */
-	int_cfg &= ~GNINT_STAT_GPIO;
-	gn412x_iowrite32(gn412x, int_cfg, GNINT_CFG(gn412x->int_cfg_gpio));
+	gn412x_gpio_int_cfg_disable(gn412x);
 
 	return IRQ_WAKE_THREAD;
 }
 
 
-static void gn412x_gpio_irq_set_nested_thread(struct gn412x_dev *gn412x,
+static void gn412x_gpio_irq_set_nested_thread(struct gn412x_gpio_dev *gn412x,
 					      unsigned int gpio, bool nest)
 {
 	int irq;
@@ -376,7 +366,7 @@ static void gn412x_gpio_irq_set_nested_thread(struct gn412x_dev *gn412x,
 	irq_set_nested_thread(irq, nest);
 }
 
-static void gn412x_gpio_irq_set_nested_thread_all(struct gn412x_dev *gn412x,
+static void gn412x_gpio_irq_set_nested_thread_all(struct gn412x_gpio_dev *gn412x,
 						  bool nest)
 {
 	int i;
@@ -385,30 +375,53 @@ static void gn412x_gpio_irq_set_nested_thread_all(struct gn412x_dev *gn412x,
 		gn412x_gpio_irq_set_nested_thread(gn412x, i, nest);
 }
 
-int gn412x_gpio_init(struct device *parent, struct gn412x_dev *gn412x)
+static int gn412x_gpio_probe(struct platform_device *pdev)
 {
-	int err, irq;
+	struct gn412x_gpio_dev *gn412x;
+	struct resource *r;
+	int err;
 
-	memset(&gn412x->gpiochip, 0, sizeof(gn412x->gpiochip));
-	gn412x->gpiochip.dev = parent;
+	gn412x = devm_kzalloc(&pdev->dev, sizeof(*gn412x), GFP_KERNEL);
+	if (!gn412x)
+		return -ENOMEM;
+
+	platform_set_drvdata(pdev, gn412x);
+
+	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!r) {
+		dev_err(&pdev->dev, "Missing memory resource\n");
+		err = -EINVAL;
+		goto err_res_mem;
+	}
+	gn412x->mem = devm_ioremap(&pdev->dev, r->start, resource_size(r));
+	if (!gn412x->mem) {
+		err = -EADDRNOTAVAIL;
+		goto err_map;
+	}
+	gn412x->pdata = dev_get_platdata(&pdev->dev);
+	if (!gn412x->pdata) {
+		dev_warn(&pdev->dev, "Missing platform data, use default\n");
+		gn412x->pdata = &gn412x_gpio_pdata_default;
+	}
+	gn412x->gpiochip.dev = &pdev->dev;
 	gn412x->gpiochip.label = "gn412x-gpio";
 	gn412x->gpiochip.owner = THIS_MODULE;
 	gn412x->gpiochip.request = gn412x_gpio_request;
 	gn412x->gpiochip.free = gn412x_gpio_free;
-	gn412x->gpiochip.get_direction = gn412x_gpio_get_direction,
-	gn412x->gpiochip.direction_input = gn412x_gpio_direction_input,
-	gn412x->gpiochip.direction_output = gn412x_gpio_direction_output,
-	gn412x->gpiochip.get = gn412x_gpio_get,
-	gn412x->gpiochip.set = gn412x_gpio_set,
-	gn412x->gpiochip.base = -1,
-	gn412x->gpiochip.ngpio = GN4124_GPIO_MAX,
+	gn412x->gpiochip.get_direction = gn412x_gpio_get_direction;
+	gn412x->gpiochip.direction_input = gn412x_gpio_direction_input;
+	gn412x->gpiochip.direction_output = gn412x_gpio_direction_output;
+	gn412x->gpiochip.get = gn412x_gpio_get;
+	gn412x->gpiochip.set = gn412x_gpio_set;
+	gn412x->gpiochip.base = -1;
+	gn412x->gpiochip.ngpio = GN4124_GPIO_MAX;
 	gn412x->gpiochip.can_sleep = 0;
 
 	err = gpiochip_add(&gn412x->gpiochip);
 	if (err)
 		goto err_add;
 
-	gn412x_int_gpio_disable_all(gn412x);
+	gn412x_gpio_int_cfg_disable(gn412x);
 	gn412x_iowrite32(gn412x, 0xFFFF, GNGPIO_INT_MASK_SET);
 	err = gpiochip_irqchip_add(&gn412x->gpiochip,
 				   &gn412x_gpio_irq_chip,
@@ -418,8 +431,8 @@ int gn412x_gpio_init(struct device *parent, struct gn412x_dev *gn412x)
 		goto err_add_irq;
 
 	gn412x_gpio_irq_set_nested_thread_all(gn412x, true);
-	irq = to_pci_dev(gn412x->gpiochip.dev->parent)->irq;
-	err = request_threaded_irq(irq,
+
+	err = request_threaded_irq(platform_get_irq(pdev, 0),
 				   gn412x_gpio_irq_handler_h,
 				   gn412x_gpio_irq_handler_t,
 				   IRQF_SHARED,
@@ -427,29 +440,59 @@ int gn412x_gpio_init(struct device *parent, struct gn412x_dev *gn412x)
 				   gn412x);
 	if (err) {
 		dev_err(gn412x->gpiochip.dev, "Can't request IRQ %d (%d)\n",
-			irq, err);
+			platform_get_irq(pdev, 0), err);
 		goto err_req;
 	}
+
+	gn412x_gpio_int_cfg_enable(gn412x);
 
 	return 0;
 
 err_req:
 	gn412x_gpio_irq_set_nested_thread_all(gn412x, false);
-	gpiochip_irqchip_remove(&gn412x->gpiochip);
 err_add_irq:
 	gpiochip_remove(&gn412x->gpiochip);
 err_add:
+	devm_iounmap(&pdev->dev, gn412x->mem);
+err_map:
+err_res_mem:
+	devm_kfree(&pdev->dev, gn412x);
 	return err;
 }
-void gn412x_gpio_exit(struct gn412x_dev *gn412x)
+
+static int gn412x_gpio_remove(struct platform_device *pdev)
 {
-	int irq;
+	struct gn412x_gpio_dev *gn412x = platform_get_drvdata(pdev);
 
-	gn412x_int_gpio_disable_all(gn412x);
+	gn412x_gpio_int_cfg_disable(gn412x);
 
-	irq = to_pci_dev(gn412x->gpiochip.dev->parent)->irq;
-	free_irq(irq, gn412x);
+	free_irq(platform_get_irq(pdev, 0), gn412x);
 	gn412x_gpio_irq_set_nested_thread_all(gn412x, false);
-	gpiochip_irqchip_remove(&gn412x->gpiochip);
 	gpiochip_remove(&gn412x->gpiochip);
+
+	return 0;
 }
+
+static const struct platform_device_id gn412x_gpio_id[] = {
+	{
+		.name = "gn412x-gpio",
+	},
+	{ .name = "" }, /* last */
+};
+
+static struct platform_driver gn412x_gpio_platform_driver = {
+	.driver = {
+		.name = KBUILD_MODNAME,
+	},
+	.probe = gn412x_gpio_probe,
+	.remove = gn412x_gpio_remove,
+	.id_table = gn412x_gpio_id,
+};
+
+module_platform_driver(gn412x_gpio_platform_driver);
+
+MODULE_AUTHOR("Federico Vaga <federico.vaga@cern.ch>");
+MODULE_DESCRIPTION("GN412X GPIO driver");
+MODULE_LICENSE("GPL");
+MODULE_VERSION(VERSION);
+MODULE_DEVICE_TABLE(platform, gn412x_gpio_id);

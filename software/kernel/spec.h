@@ -7,7 +7,6 @@
  */
 #ifndef __SPEC_H__
 #define __SPEC_H__
-#include <linux/completion.h>
 #include <linux/debugfs.h>
 #include <linux/device.h>
 #include <linux/fpga/fpga-mgr.h>
@@ -15,9 +14,10 @@
 #include <linux/irqdomain.h>
 #include <linux/pci.h>
 #include <linux/platform_device.h>
-#include <linux/gpio/driver.h>
 #include <linux/spinlock.h>
 #include <linux/fmc.h>
+
+#include "gn412x.h"
 
 #define SPEC_FMC_SLOTS 1
 
@@ -58,65 +58,6 @@ enum spec_fpga_select {
 	SPEC_FPGA_SELECT_SPI,
 };
 
-/* Registers for GN4124 access */
-enum {
-	/* page 106 */
-	GNPPCI_MSI_CONTROL	= 0x48,		/* actually, 3 smaller regs */
-	GNPPCI_MSI_ADDRESS_LOW	= 0x4c,
-	GNPPCI_MSI_ADDRESS_HIGH	= 0x50,
-	GNPPCI_MSI_DATA		= 0x54,
-
-	GNPCI_SYS_CFG_SYSTEM	= 0x800,
-
-	/* page 130 ff */
-	GNINT_CTRL		= 0x810,
-	GNINT_STAT		= 0x814,
-	GNINT_CFG_0		= 0x820,
-	GNINT_CFG_1		= 0x824,
-	GNINT_CFG_2		= 0x828,
-	GNINT_CFG_3		= 0x82c,
-	GNINT_CFG_4		= 0x830,
-	GNINT_CFG_5		= 0x834,
-	GNINT_CFG_6		= 0x838,
-	GNINT_CFG_7		= 0x83c,
-#define GNINT_CFG(x) (GNINT_CFG_0 + 4 * (x))
-
-	/* page 146 ff */
-	GNGPIO_BASE = 0xA00,
-	GNGPIO_BYPASS_MODE	= GNGPIO_BASE,
-	GNGPIO_DIRECTION_MODE	= GNGPIO_BASE + 0x04, /* 0 == output */
-	GNGPIO_OUTPUT_ENABLE	= GNGPIO_BASE + 0x08,
-	GNGPIO_OUTPUT_VALUE	= GNGPIO_BASE + 0x0C,
-	GNGPIO_INPUT_VALUE	= GNGPIO_BASE + 0x10,
-	GNGPIO_INT_MASK	= GNGPIO_BASE + 0x14, /* 1 == disabled */
-	GNGPIO_INT_MASK_CLR	= GNGPIO_BASE + 0x18, /* irq enable */
-	GNGPIO_INT_MASK_SET	= GNGPIO_BASE + 0x1C, /* irq disable */
-	GNGPIO_INT_STATUS	= GNGPIO_BASE + 0x20,
-	GNGPIO_INT_TYPE	= GNGPIO_BASE + 0x24, /* 1 == level */
-	GNGPIO_INT_VALUE	= GNGPIO_BASE + 0x28, /* 1 == high/rise */
-	GNGPIO_INT_ON_ANY	= GNGPIO_BASE + 0x2C, /* both edges */
-
-	/* page 158 ff */
-	FCL_BASE		= 0xB00,
-	FCL_CTRL		= FCL_BASE,
-	FCL_STATUS		= FCL_BASE + 0x04,
-	FCL_IODATA_IN		= FCL_BASE + 0x08,
-	FCL_IODATA_OUT		= FCL_BASE + 0x0C,
-	FCL_EN			= FCL_BASE + 0x10,
-	FCL_TIMER_0		= FCL_BASE + 0x14,
-	FCL_TIMER_1		= FCL_BASE + 0x18,
-	FCL_CLK_DIV		= FCL_BASE + 0x1C,
-	FCL_IRQ		= FCL_BASE + 0x20,
-	FCL_TIMER_CTRL		= FCL_BASE + 0x24,
-	FCL_IM			= FCL_BASE + 0x28,
-	FCL_TIMER2_0		= FCL_BASE + 0x2C,
-	FCL_TIMER2_1		= FCL_BASE + 0x30,
-	FCL_DBG_STS		= FCL_BASE + 0x34,
-
-	FCL_FIFO		= 0xE00,
-
-	PCI_SYS_CFG_SYSTEM	= 0x800
-};
 
 enum {
 	/* Metadata */
@@ -143,7 +84,6 @@ enum {
 #define SPEC_META_CAP_DMA BIT(0)
 #define SPEC_META_CAP_WR BIT(0)
 
-
 /**
  * struct spec_meta_id Metadata
  */
@@ -156,30 +96,6 @@ struct spec_meta_id {
 	uint32_t cap;
 	uint32_t uuid[4];
 };
-
-#define GNINT_STAT_GPIO BIT(15)
-#define GNINT_STAT_SW0 BIT(2)
-#define GNINT_STAT_SW1 BIT(3)
-#define GNINT_STAT_SW_ALL (GNINT_STAT_SW0 | GNINT_STAT_SW1)
-
-
-/**
- * struct gn412x_dev GN412X device descriptor
- * @compl: for IRQ testing
- * @int_cfg_gpio: INT_CFG used for GPIO interrupts
- */
-struct gn412x_dev {
-	void __iomem *mem;
-	struct gpio_chip gpiochip;
-
-	struct completion	compl;
-	int int_cfg_gpio;
-};
-
-static inline struct gn412x_dev *to_gn412x_dev_gpio(struct gpio_chip *chip)
-{
-	return container_of(chip, struct gn412x_dev, gpiochip);
-}
 
 /**
  * struct spec_dev - SPEC instance
@@ -214,8 +130,6 @@ struct spec_dev {
 	struct dentry *dbg_fw;
 #define SPEC_DBG_META_NAME "fpga_device_metadata"
 	struct dentry *dbg_meta;
-
-	struct gn412x_dev gn412x;
 
 	struct gpiod_lookup_table *gpiod_table;
 	struct gpio_desc *gpiod[GN4124_GPIO_MAX];
@@ -266,12 +180,6 @@ static inline void gennum_mask_val(struct spec_dev *spec,
 	v |= val;
 	gennum_writel(spec, v, reg);
 }
-
-extern int gn412x_gpio_init(struct device *parent, struct gn412x_dev *spec);
-extern void gn412x_gpio_exit(struct gn412x_dev *spec);
-extern int gn412x_int_gpio_enable(struct gn412x_dev *gn412x,
-				  unsigned int cfg_n);
-extern void gn412x_int_gpio_disable(struct gn412x_dev *gn412x);
 
 extern int spec_fpga_init(struct spec_dev *spec);
 extern void spec_fpga_exit(struct spec_dev *spec);

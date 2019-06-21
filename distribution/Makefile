@@ -23,9 +23,10 @@ dkms-src: dkms-tree
 	$(eval $@_src := $(shell git ls-tree -r --name-only HEAD $(TOP_DIR) | grep "kernel" | tr '\n' ' '))
 	$(eval $@_dir := $(BUILD_DKMSSOURCE)/$(DRIVER_NAME)-$(VERSION))
 
-	@mkdir -p $($@_dir)
-	@cp $($@_src) $(TOP_DIR)/distribution/dkms.conf $($@_dir)
-	@cp $(TOP_DIR)/LICENSES/GPL-2.0.txt $($@_dir)/LICENSE
+	@mkdir -p $($@_dir)/platform_data
+	@cp -a $($@_src) $(TOP_DIR)/distribution/dkms.conf $($@_dir)
+	@mv $($@_dir)/gn412x-gpio.h $($@_dir)/platform_data
+	@cp -a $(TOP_DIR)/LICENSES/GPL-2.0.txt $($@_dir)/LICENSE
 	@sed -r -i -e "s/^VERSION\s=\s.*/VERSION = $(VERSION)/" $($@_dir)/Makefile
 	@sed -r -i -e "s/@PKGNAME@/$(DRIVER_NAME)/" $($@_dir)/dkms.conf
 	@sed -r -i -e "s/@PKGVER@/$(VERSION)/" $($@_dir)/dkms.conf

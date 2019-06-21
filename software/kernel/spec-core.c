@@ -13,9 +13,13 @@
 #include <linux/pci.h>
 #include <linux/firmware.h>
 #include <linux/moduleparam.h>
+#include <linux/mfd/core.h>
 
+#include "platform_data/gn412x-gpio.h"
 #include "spec.h"
 #include "spec-compat.h"
+
+static int mfd_id; /* FIXME look for something better */
 
 static char *spec_fw_name_45t = "spec-init-45T.bin";
 static char *spec_fw_name_100t = "spec-init-100T.bin";
@@ -23,6 +27,37 @@ static char *spec_fw_name_150t = "spec-init-150T.bin";
 
 char *spec_fw_name = "";
 module_param_named(fw_name, spec_fw_name, charp, 0444);
+
+static struct gn412x_platform_data gn412x_gpio_pdata = {
+	.int_cfg = 0,
+};
+
+static struct resource gn412x_gpio_res[] = {
+	{
+		.name = "gn412x-gpio-mem",
+		.flags = IORESOURCE_MEM,
+		.start = 0,
+		.end = 0x1000 - 1,
+	}, {
+		.name = "gn412x-gpio-irq",
+		.flags = IORESOURCE_IRQ,
+		.start = 0,
+		.end = 0,
+	}
+};
+
+enum spec_mfd_enum {
+	SPEC_MFD_GN412X_GPIO = 0,
+};
+static const struct mfd_cell spec_mfd_devs[] = {
+	[SPEC_MFD_GN412X_GPIO] = {
+		.name = "gn412x-gpio",
+		.platform_data = &gn412x_gpio_pdata,
+		.pdata_size = sizeof(gn412x_gpio_pdata),
+		.num_resources = ARRAY_SIZE(gn412x_gpio_res),
+		.resources = gn412x_gpio_res,
+	},
+};
 
 /**
  * Return the SPEC defult FPGA firmware name based on PCI ID
@@ -100,6 +135,7 @@ static const struct device_type spec_dev_type = {
 	.uevent = spec_uevent,
 };
 
+
 static int spec_probe(struct pci_dev *pdev,
 		      const struct pci_device_id *id)
 {
@@ -146,10 +182,12 @@ static int spec_probe(struct pci_dev *pdev,
 	/* This virtual device is assciated with this driver */
 	spec->dev.driver = pdev->dev.driver;
 
-	spec->gn412x.mem = spec->remap[2];
-	err = gn412x_gpio_init(&spec->dev, &spec->gn412x);
+	err = mfd_add_devices(&spec->dev, mfd_id++,
+			      spec_mfd_devs,
+			      ARRAY_SIZE(spec_mfd_devs),
+			      &pdev->resource[4], pdev->irq, NULL);
 	if (err)
-		goto err_ggpio;
+		goto err_mfd;
 
 	err = spec_gpio_init(spec);
 	if (err)
@@ -185,8 +223,8 @@ err_fw:
 err_fpga:
 	spec_gpio_exit(spec);
 err_sgpio:
-	gn412x_gpio_exit(&spec->gn412x);
-err_ggpio:
+	mfd_remove_devices(&spec->dev);
+err_mfd:
 	device_unregister(&spec->dev);
 err_dev:
 err_name:
@@ -212,7 +250,8 @@ static void spec_remove(struct pci_dev *pdev)
 	spec_core_fpga_exit(spec);
 	spec_fpga_exit(spec);
 	spec_gpio_exit(spec);
-	gn412x_gpio_exit(&spec->gn412x);
+
+	mfd_remove_devices(&spec->dev);
 
 	for (i = 0; i < 3; i++)
 		if (spec->remap[i])

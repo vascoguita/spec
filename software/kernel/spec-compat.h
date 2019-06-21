@@ -6,6 +6,7 @@
 #include <linux/fpga/fpga-mgr.h>
 #include <linux/types.h>
 #include <linux/version.h>
+#include <linux/gpio/driver.h>
 #include "spec.h"
 
 #if KERNEL_VERSION(4,10,0) <= LINUX_VERSION_CODE
@@ -81,5 +82,4 @@ extern int compat_gpiod_add_lookup_table(struct gpiod_lookup_table *table);
 
 #if KERNEL_VERSION(4, 3, 0) > LINUX_VERSION_CODE
 extern void gpiod_remove_lookup_table(struct gpiod_lookup_table *table);
-extern void gpiochip_irqchip_remove(struct gpio_chip *gpiochip);
 #endif

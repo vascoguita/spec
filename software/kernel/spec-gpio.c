@@ -66,13 +66,15 @@ static inline size_t spec_gpiod_table_size(void)
 int spec_gpio_init(struct spec_dev *spec)
 {
 	struct gpiod_lookup_table *lookup;
-	int err;
+	int err = 0;
 
 	lookup = devm_kzalloc(&spec->dev,
 			      spec_gpiod_table_size(),
 			      GFP_KERNEL);
-	if (!lookup)
-		return -ENOMEM;
+	if (!lookup) {
+		err = -ENOMEM;
+		goto err_alloc;
+	}
 
 	memcpy(lookup, &spec_gpiod_table, spec_gpiod_table_size());
 
@@ -148,8 +150,9 @@ err_lookup:
 err_dup:
 	devm_kfree(&spec->dev, lookup);
 	spec->gpiod_table = NULL;
+err_alloc:
 
-	return -ENODEV;
+	return err;
 }
 
 void spec_gpio_exit(struct spec_dev *spec)
