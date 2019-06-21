@@ -178,6 +178,8 @@ static inline void gennum_mask_val(struct spec_dev *spec,
 	gennum_writel(spec, v, reg);
 }
 
+extern int spec_fw_load(struct spec_dev *spec, const char *name);
+
 extern int spec_irq_init(struct spec_dev *spec);
 extern void spec_irq_exit(struct spec_dev *spec);
 

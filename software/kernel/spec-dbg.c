@@ -51,7 +51,7 @@ static ssize_t spec_dbg_fw_write(struct file *file,
 	struct spec_dev *spec = file->private_data;
 	int err;
 
-	err = compat_spec_fw_load(spec, buf);
+	err = spec_fw_load(spec, buf);
 	if (err)
 		return err;
 	return count;

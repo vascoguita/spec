@@ -115,7 +115,7 @@ static const char *spec_fw_name_init_get(struct spec_dev *spec)
  *
  * Return: 0 on success, otherwise a negative error number
  */
-static int spec_fw_load(struct spec_dev *spec, const char *name)
+int spec_fw_load(struct spec_dev *spec, const char *name)
 {
 	int err;
 
