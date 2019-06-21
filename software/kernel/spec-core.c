@@ -143,17 +143,6 @@ out:
 	return err;
 }
 
-/**
- * Load default FPGA code
- * @spec: SPEC device
- *
- * Return: 0 on success, otherwise a negative error number
- */
-static int spec_fw_load_init(struct spec_dev *spec)
-{
-	return spec_fw_load(spec, spec_fw_name_init_get(spec));
-}
-
 static void spec_release(struct device *dev)
 {
 
@@ -174,7 +163,7 @@ static ssize_t load_golden_fpga_store(struct device *dev,
 	struct spec_dev *spec = to_spec_dev(dev);
 	int err;
 
-	err = spec_fw_load_init(spec);
+	err = spec_fw_load(spec, spec_fw_name_init_get(spec));
 
 	return err < 0 ? err : count;
 }
