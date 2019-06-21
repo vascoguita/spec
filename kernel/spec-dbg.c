@@ -59,9 +59,7 @@ static ssize_t spec_dbg_fw_write(struct file *file,
 
 static int spec_dbg_fw_open(struct inode *inode, struct file *file)
 {
-	struct htvic_device *htvic = inode->i_private;
-
-	file->private_data = htvic;
+	file->private_data = inode->i_private;
 
 	return 0;
 }
