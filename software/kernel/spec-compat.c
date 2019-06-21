@@ -120,12 +120,16 @@ int compat_spec_fw_load(struct spec_dev *spec, const struct mfd_cell *cell,
 	if (IS_ERR(mgr))
 		return -ENODEV;
 
+	err = fpga_mgr_lock(mgr);
+	if (err)
+		goto out;
 	err = __compat_spec_fw_load(mgr, name);
+	fpga_mgr_unlock(mgr);
+out:
 	fpga_mgr_put(mgr);
 
 	return err;
 }
-
 
 
 int compat_gpiod_add_lookup_table(struct gpiod_lookup_table *table)
