@@ -1,1 +1,2 @@
-files = ["spec_init.vhd", "spec_devices.vhd", "spec_init.ucf"]
+files = ["spec_golden.vhd", "spec_devices.vhd", "spec_golden.ucf"]
+modules = {'local': ["../../template"]}
