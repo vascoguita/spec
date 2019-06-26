@@ -135,6 +135,8 @@ static struct resource spec_fpga_spi_res[] = {
 static struct spi_ocores_platform_data spec_fpga_spi_pdata = {
 	.big_endian = 0,
 	.clock_hz = 65200000,
+	.num_devices = 0,
+	.devices = NULL,
 };
 
 

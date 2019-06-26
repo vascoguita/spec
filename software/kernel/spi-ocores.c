@@ -598,6 +598,7 @@ static int spi_ocores_probe(struct platform_device *pdev)
 	struct resource *r;
 	int err;
 	int irq;
+	int i;
 
 	pr_info("%s:%d\n", __func__, __LINE__);
 	master = spi_alloc_master(&pdev->dev, sizeof(*sp));
@@ -663,6 +664,16 @@ static int spi_ocores_probe(struct platform_device *pdev)
 	err = spi_register_master(master);
 	if (err)
 		goto err_reg_spi;
+
+	for (i = 0; i < pdata->num_devices; ++i) {
+		struct spi_device *sdev;
+
+		sdev = spi_new_device(master, &pdata->devices[i]);
+		if (!sdev)
+			dev_err(&pdev->dev,
+				"Cannot register SPI device '%s'\n",
+				pdata->devices[i].modalias);
+	}
 
 	return 0;
 
