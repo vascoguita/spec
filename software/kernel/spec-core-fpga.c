@@ -13,11 +13,22 @@
 #include "spec.h"
 #include "spec-compat.h"
 
+#include "platform_data/spi-ocores.h"
+
 
 /* FIXME find better ID */
 static int vic_id;
 static int mfd_id;
 static int app_id;
+
+enum spec_core_fpga_mem_offsets {
+	SPEC_CORE_FPGA_MEM_VIC_START = SPEC_CORE_FPGA + 0x0100,
+	SPEC_CORE_FPGA_MEM_VIC_END = SPEC_CORE_FPGA + 0x01FF,
+	SPEC_CORE_FPGA_MEM_FMC_I2C_START = SPEC_CORE_FPGA + 0x0080,
+	SPEC_CORE_FPGA_MEM_FMC_I2C_END = SPEC_CORE_FPGA + 0x009F,
+	SPEC_CORE_FPGA_MEM_SPI_START = SPEC_CORE_FPGA + 0x0100,
+	SPEC_CORE_FPGA_MEM_SPI_END = SPEC_CORE_FPGA + 0x01FF,
+};
 
 enum spec_core_fpga_irq_lines {
 	SPEC_CORE_FPGA_IRQ_DMA_DONE = 0,
@@ -30,8 +41,8 @@ static struct resource spec_core_fpga_vic_res[] = {
 	{
 		.name = "htvic-mem",
 		.flags = IORESOURCE_MEM,
-		.start = SPEC_CORE_FPGA + 0x0100,
-		.end = SPEC_CORE_FPGA + 0x01FF,
+		.start = SPEC_CORE_FPGA_MEM_VIC_START,
+		.end = SPEC_CORE_FPGA_MEM_VIC_END,
 	}, {
 		.name = "htvic-irq",
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
@@ -39,21 +50,6 @@ static struct resource spec_core_fpga_vic_res[] = {
 		.end = 0,
 	},
 };
-
-static struct resource spec_core_fpga_fmc_i2c_res[] = {
-	{
-		.name = "i2c-ocores-mem",
-		.flags = IORESOURCE_MEM,
-		.start = SPEC_CORE_FPGA + 0x0080,
-		.end = SPEC_CORE_FPGA + 0x009F,
-	}, {
-		.name = "i2c-ocores-irq",
-		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
-		.start = SPEC_CORE_FPGA_IRQ_FMC_I2C,
-		.end = SPEC_CORE_FPGA_IRQ_FMC_I2C,
-	},
-};
-
 
 /* Vector Interrupt Controller */
 static int spec_core_fpga_vic_init(struct spec_dev *spec)
@@ -94,6 +90,21 @@ static void spec_core_fpga_vic_exit(struct spec_dev *spec)
 /* MFD devices */
 enum spce_core_fpga_mfd_devs_enum {
 	SPEC_CORE_FPGA_MFD_FMC_I2C = 0,
+	SPEC_CORE_FPGA_MFD_SPI,
+};
+
+static struct resource spec_core_fpga_fmc_i2c_res[] = {
+	{
+		.name = "i2c-ocores-mem",
+		.flags = IORESOURCE_MEM,
+		.start = SPEC_CORE_FPGA_MEM_FMC_I2C_START,
+		.end = SPEC_CORE_FPGA_MEM_FMC_I2C_END,
+	}, {
+		.name = "i2c-ocores-irq",
+		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
+		.start = SPEC_CORE_FPGA_IRQ_FMC_I2C,
+		.end = SPEC_CORE_FPGA_IRQ_FMC_I2C,
+	},
 };
 
 static struct ocores_i2c_platform_data spec_core_fpga_fmc_i2c_pdata = {
@@ -105,6 +116,26 @@ static struct ocores_i2c_platform_data spec_core_fpga_fmc_i2c_pdata = {
 	.devices = NULL,
 };
 
+static struct resource spec_core_fpga_spi_res[] = {
+	{
+		.name = "spi-ocores-mem",
+		.flags = IORESOURCE_MEM,
+		.start = SPEC_CORE_FPGA_MEM_SPI_START,
+		.end = SPEC_CORE_FPGA_MEM_SPI_END,
+	}, {
+		.name = "spi-ocores-irq",
+		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
+		.start = SPEC_CORE_FPGA_IRQ_SPI,
+		.end = SPEC_CORE_FPGA_IRQ_SPI,
+	},
+};
+
+static struct spi_ocores_platform_data spec_core_fpga_spi_pdata = {
+	.big_endian = 0,
+	.clock_hz = 65200000,
+};
+
+
 static const struct mfd_cell spec_core_fpga_mfd_devs[] = {
 	[SPEC_CORE_FPGA_MFD_FMC_I2C] = {
 		.name = "i2c-ohwr",
@@ -112,6 +143,13 @@ static const struct mfd_cell spec_core_fpga_mfd_devs[] = {
 		.pdata_size = sizeof(spec_core_fpga_fmc_i2c_pdata),
 		.num_resources = ARRAY_SIZE(spec_core_fpga_fmc_i2c_res),
 		.resources = spec_core_fpga_fmc_i2c_res,
+	},
+	[SPEC_CORE_FPGA_MFD_SPI] = {
+		.name = "spi-ocores",
+		.platform_data = &spec_core_fpga_spi_pdata,
+		.pdata_size = sizeof(spec_core_fpga_spi_pdata),
+		.num_resources = ARRAY_SIZE(spec_core_fpga_spi_res),
+		.resources = spec_core_fpga_spi_res,
 	},
 };
 
@@ -140,10 +178,16 @@ static int spec_core_fpga_devices_init(struct spec_dev *spec)
 	       sizeof(fpga_mfd_devs[n_mfd]));
 	n_mfd++;
 
+	memcpy(&fpga_mfd_devs[n_mfd],
+	       &spec_core_fpga_mfd_devs[SPEC_CORE_FPGA_MFD_SPI],
+	       sizeof(fpga_mfd_devs[n_mfd]));
+	n_mfd++;
+
 	vic_domain = irq_find_host((void *)&spec->vic_pdev->dev);
 	if (!vic_domain) {
 		/* Remove IRQ resource from all devices */
-		fpga_mfd_devs[0].num_resources = 1;
+		fpga_mfd_devs[0].num_resources = 1;  /* FMC I2C */
+		fpga_mfd_devs[1].num_resources = 1;  /* SPI */
 	}
 	err = mfd_add_devices(&spec->dev, mfd_id++,
 			      fpga_mfd_devs, n_mfd,
@@ -370,6 +414,9 @@ int spec_core_fpga_init(struct spec_dev *spec)
 	if (!spec_core_fpga_is_valid(spec))
 		return -EINVAL;
 
+	err = spec_core_fpga_therm_init(spec);
+	if (err)
+		goto err_therm;
 	err = spec_core_fpga_vic_init(spec);
 	if (err)
 		goto err_vic;
@@ -379,9 +426,6 @@ int spec_core_fpga_init(struct spec_dev *spec)
 	err = spec_fmc_init(spec);
 	if (err)
 		goto err_fmc;
-	err = spec_core_fpga_therm_init(spec);
-	if (err)
-		goto err_therm;
 	err = spec_core_fpga_app_init(spec);
 	if (err)
 		goto err_app;
@@ -389,24 +433,24 @@ int spec_core_fpga_init(struct spec_dev *spec)
 	return 0;
 
 err_app:
-	spec_core_fpga_therm_exit(spec);
-err_therm:
 	spec_fmc_exit(spec);
 err_fmc:
 	spec_core_fpga_devices_exit(spec);
 err_dev:
 	spec_core_fpga_vic_exit(spec);
 err_vic:
+	spec_core_fpga_therm_exit(spec);
+err_therm:
 	return err;
 }
 
 int spec_core_fpga_exit(struct spec_dev *spec)
 {
 	spec_core_fpga_app_exit(spec);
-	spec_core_fpga_therm_exit(spec);
 	spec_fmc_exit(spec);
 	spec_core_fpga_devices_exit(spec);
 	spec_core_fpga_vic_exit(spec);
+	spec_core_fpga_therm_exit(spec);
 
 	return 0;
 }
