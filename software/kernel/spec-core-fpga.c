@@ -25,33 +25,13 @@ enum spec_core_fpga_irq_lines {
 	SPEC_CORE_FPGA_IRQ_SPI,
 };
 
-enum spec_core_fpga_res_enum {
-	SPEC_CORE_FPGA_FMC_I2C_MEM = 0,
-	SPEC_CORE_FPGA_FMC_I2C_IRQ,
-	SPEC_CORE_FPGA_VIC_MEM,
-	SPEC_CORE_FPGA_VIC_IRQ,
-};
-
-static const struct resource spec_core_fpga_res[] = {
-	[SPEC_CORE_FPGA_FMC_I2C_MEM] = {
-		.name = "i2c-ocores-mem",
-		.flags = IORESOURCE_MEM,
-		.start = SPEC_CORE_FPGA + 0x0080,
-		.end = SPEC_CORE_FPGA + 0x009F,
-	},
-	[SPEC_CORE_FPGA_FMC_I2C_IRQ] = {
-		.name = "i2c_ocores-irq",
-		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
-		.start = SPEC_CORE_FPGA_IRQ_FMC_I2C,
-		.end = SPEC_CORE_FPGA_IRQ_FMC_I2C,
-	},
-	[SPEC_CORE_FPGA_VIC_MEM] = {
+static struct resource spec_core_fpga_vic_res[] = {
+	{
 		.name = "htvic-mem",
 		.flags = IORESOURCE_MEM,
 		.start = SPEC_CORE_FPGA + 0x0100,
 		.end = SPEC_CORE_FPGA + 0x01FF,
-	},
-	[SPEC_CORE_FPGA_VIC_IRQ] = {
+	}, {
 		.name = "htvic-irq",
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
 		.start = 0,
@@ -59,21 +39,33 @@ static const struct resource spec_core_fpga_res[] = {
 	},
 };
 
+static struct resource spec_core_fpga_fmc_i2c_res[] = {
+	{
+		.name = "i2c-ocores-mem",
+		.flags = IORESOURCE_MEM,
+		.start = SPEC_CORE_FPGA + 0x0080,
+		.end = SPEC_CORE_FPGA + 0x009F,
+	}, {
+		.name = "i2c_ocores-irq",
+		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
+		.start = SPEC_CORE_FPGA_IRQ_FMC_I2C,
+		.end = SPEC_CORE_FPGA_IRQ_FMC_I2C,
+	},
+};
 
 /* Vector Interrupt Controller */
 static int spec_core_fpga_vic_init(struct spec_dev *spec)
 {
 	struct pci_dev *pcidev = to_pci_dev(spec->dev.parent);
 	unsigned long pci_start = pci_resource_start(pcidev, 0);
-	const unsigned int res_n = 2;
-	struct resource res[res_n];
+	const unsigned int res_n = ARRAY_SIZE(spec_core_fpga_vic_res);
+	struct resource res[ARRAY_SIZE(spec_core_fpga_vic_res)];
 	struct platform_device *pdev;
 
 	if (!(spec->meta->cap & SPEC_META_CAP_VIC))
 		return 0;
 
-	memcpy(&res, &spec_core_fpga_res[SPEC_CORE_FPGA_VIC_MEM],
-	       sizeof(struct resource) * res_n);
+	memcpy(&res, spec_core_fpga_vic_res, sizeof(spec_core_fpga_vic_res));
 	res[0].start += pci_start;
 	res[0].end += pci_start;
 	res[1].start = gpiod_to_irq(spec->gpiod[GN4124_GPIO_IRQ1]);
@@ -112,13 +104,13 @@ static int spec_core_fpga_i2c_init(struct spec_dev *spec)
 {
 	struct pci_dev *pcidev = to_pci_dev(spec->dev.parent);
 	unsigned long pci_start = pci_resource_start(pcidev, 0);
-	unsigned int res_n = 2;
-	struct resource res[res_n];
+	unsigned int res_n = ARRAY_SIZE(spec_core_fpga_fmc_i2c_res);
+	struct resource res[ARRAY_SIZE(spec_core_fpga_fmc_i2c_res)];
 	struct platform_device *pdev;
 	struct irq_domain *vic_domain;
 
-	memcpy(&res, &spec_core_fpga_res[SPEC_CORE_FPGA_FMC_I2C_MEM],
-	       sizeof(struct resource) * res_n);
+	memcpy(&res, spec_core_fpga_fmc_i2c_res,
+	       sizeof(spec_core_fpga_fmc_i2c_res));
 	res[0].start += pci_start;
 	res[0].end += pci_start;
 	if (spec->vic_pdev)
