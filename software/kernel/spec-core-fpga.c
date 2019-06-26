@@ -18,6 +18,13 @@ static int vic_id;
 static int i2c_id;
 static int app_id;
 
+enum spec_core_fpga_irq_lines {
+	SPEC_CORE_FPGA_IRQ_DMA_DONE = 0,
+	SPEC_CORE_FPGA_IRQ_DMA_ERROR,
+	SPEC_CORE_FPGA_IRQ_FMC_I2C,
+	SPEC_CORE_FPGA_IRQ_SPI,
+};
+
 enum spec_core_fpga_res_enum {
 	SPEC_CORE_FPGA_FMC_I2C_MEM = 0,
 	SPEC_CORE_FPGA_FMC_I2C_IRQ,
@@ -35,8 +42,8 @@ static const struct resource spec_core_fpga_res[] = {
 	[SPEC_CORE_FPGA_FMC_I2C_IRQ] = {
 		.name = "i2c_ocores-irq",
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
-		.start = 2,
-		.end = 2,
+		.start = SPEC_CORE_FPGA_IRQ_FMC_I2C,
+		.end = SPEC_CORE_FPGA_IRQ_FMC_I2C,
 	},
 	[SPEC_CORE_FPGA_VIC_MEM] = {
 		.name = "htvic-mem",
