@@ -90,6 +90,21 @@ static void spec_core_fpga_vic_exit(struct spec_dev *spec)
 	}
 }
 
+static int spec_core_fpga_vic_irq_find_mapping(struct platform_device *vic,
+					       unsigned int hwirq)
+{
+	struct irq_domain *domain;
+
+	if (!vic)
+		return -ENXIO;
+
+	domain = irq_find_host((void *)&vic->dev);
+	if (!domain)
+		return -ENXIO;
+
+	return irq_find_mapping(domain, hwirq);
+}
+
 
 /* FMC I2C Master */
 static const struct ocores_i2c_platform_data i2c_pdata = {
@@ -108,24 +123,15 @@ static int spec_core_fpga_i2c_init(struct spec_dev *spec)
 	unsigned int res_n = ARRAY_SIZE(spec_core_fpga_fmc_i2c_res);
 	struct resource res[ARRAY_SIZE(spec_core_fpga_fmc_i2c_res)];
 	struct platform_device *pdev;
-	struct irq_domain *vic_domain;
 
 	memcpy(&res, spec_core_fpga_fmc_i2c_res,
 	       sizeof(spec_core_fpga_fmc_i2c_res));
 	res[0].start += pci_start;
 	res[0].end += pci_start;
-	if (spec->vic_pdev)
-		vic_domain = irq_find_host((void *)&spec->vic_pdev->dev);
-	else
-		vic_domain = NULL;
 
-	if (vic_domain) {
-		res[1].start = irq_find_mapping(vic_domain,
-						res[1].start);
-		res[1].end = res[1].start;
-	} else {
-		res_n = 1;
-	}
+	res[1].start = spec_core_fpga_vic_irq_find_mapping(spec->vic_pdev,
+							   res[1].start);
+
 	pdev = platform_device_register_resndata(&spec->dev,
 						 "i2c-ohwr", i2c_id++,
 						 res, res_n,
