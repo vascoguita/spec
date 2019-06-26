@@ -4,10 +4,10 @@
  * Author: Federico Vaga <federico.vaga@cern.ch>
  */
 
-#ifndef __GN412X_GPIO_H__
-#define __GN412X_GPIO_H__
+#ifndef __SPI_OCORES_PDATA_H__
+#define __SPI_OCORES_PDATA_H__
 
-struct spi_gcores_platform_data {
+struct spi_ocores_platform_data {
 	unsigned int big_endian;
 	unsigned int clock_hz;
 };

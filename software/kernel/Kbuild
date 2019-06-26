@@ -30,7 +30,7 @@ KBUILD_EXTRA_SYMBOLS += $(FMC_ABS)/drivers/fmc/Module.symvers
 obj-m := spec-fmc-carrier.o
 obj-m += gn412x-gpio.o
 obj-m += gn412x-fcl.o
-obj-m += spi-gcore.o
+obj-m += spi-ocores.o
 
 spec-fmc-carrier-objs := spec-core.o
 spec-fmc-carrier-objs += spec-core-fpga.o
