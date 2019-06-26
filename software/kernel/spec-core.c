@@ -127,7 +127,7 @@ int spec_fw_load(struct spec_dev *spec, const char *name)
 	}
 
 
-	spec_gpio_fpga_select(spec, SPEC_FPGA_SELECT_GN4124);
+	spec_gpio_fpga_select_set(spec, SPEC_FPGA_SELECT_GN4124_FPGA);
 
 	err = compat_spec_fw_load(spec, name);
 	if (err)
@@ -138,7 +138,7 @@ int spec_fw_load(struct spec_dev *spec, const char *name)
 		dev_warn(&spec->dev, "FPGA incorrectly programmed\n");
 
 out:
-	spec_gpio_fpga_select(spec, SPEC_FPGA_SELECT_FLASH);
+	spec_gpio_fpga_select_set(spec, SPEC_FPGA_SELECT_FPGA_FLASH);
 
 	return err;
 }

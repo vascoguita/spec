@@ -8,25 +8,33 @@
 #include "spec.h"
 #include "spec-compat.h"
 
-void spec_gpio_fpga_select(struct spec_dev *spec, enum spec_fpga_select sel)
+void spec_gpio_fpga_select_set(struct spec_dev *spec,
+			       enum spec_fpga_select sel)
 {
 	switch (sel) {
-	case SPEC_FPGA_SELECT_FLASH:
-		gpiod_set_value(spec->gpiod[GN4124_GPIO_BOOTSEL0], 1);
-		gpiod_set_value(spec->gpiod[GN4124_GPIO_BOOTSEL1], 1);
-		break;
-	case SPEC_FPGA_SELECT_GN4124:
-		gpiod_set_value(spec->gpiod[GN4124_GPIO_BOOTSEL0], 1);
-		gpiod_set_value(spec->gpiod[GN4124_GPIO_BOOTSEL1], 0);
-		break;
-	case SPEC_FPGA_SELECT_SPI:
-		gpiod_set_value(spec->gpiod[GN4124_GPIO_BOOTSEL0], 0);
-		gpiod_set_value(spec->gpiod[GN4124_GPIO_BOOTSEL1], 0);
+	case SPEC_FPGA_SELECT_FPGA_FLASH:
+	case SPEC_FPGA_SELECT_GN4124_FPGA:
+	case SPEC_FPGA_SELECT_GN4124_FLASH:
+		gpiod_set_value(spec->gpiod[GN4124_GPIO_BOOTSEL0],
+				!!(sel & 0x1));
+		gpiod_set_value(spec->gpiod[GN4124_GPIO_BOOTSEL1],
+				!!(sel & 0x2));
 		break;
 	default:
 		break;
 	}
 }
+
+enum spec_fpga_select spec_gpio_fpga_select_get(struct spec_dev *spec)
+{
+	enum spec_fpga_select sel = 0;
+
+	sel |= !!gpiod_get_value(spec->gpiod[GN4124_GPIO_BOOTSEL1]) << 1;
+	sel |= !!gpiod_get_value(spec->gpiod[GN4124_GPIO_BOOTSEL0]) << 0;
+
+	return sel;
+}
+
 
 static const struct gpiod_lookup_table spec_gpiod_table = {
 	.table = {

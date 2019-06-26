@@ -45,15 +45,17 @@
 #define GN4124_GPIO_SDA 4
 
 /**
- * @SPEC_FPGA_SELECT_FLASH: (default) the FPGA takes its configuration from
- *                          flash
- * @SPEC_FPGA_SELECT_GN4124: the FPGA takes its configuration from GN4124
- * @SPEC_FPGA_SELECT_SPI: the SPI flash is accessible from GN4124
+ * @SPEC_FPGA_SELECT_FPGA_FLASH: (default) the FPGA is an SPI master that can
+ *                               access the flash (at boot it takes its
+ *                               configuration from flash)
+ * @SPEC_FPGA_SELECT_GN4124_FPGA: the GN4124 can configure the FPGA
+ * @SPEC_FPGA_SELECT_GN4124_FLASH: the GN4124 is an SPI master that can access
+ *                                 the flash
  */
 enum spec_fpga_select {
-	SPEC_FPGA_SELECT_FLASH = 0,
-	SPEC_FPGA_SELECT_GN4124,
-	SPEC_FPGA_SELECT_SPI,
+	SPEC_FPGA_SELECT_FPGA_FLASH = 0x3,
+	SPEC_FPGA_SELECT_GN4124_FPGA = 0x1,
+	SPEC_FPGA_SELECT_GN4124_FLASH = 0x0,
 };
 
 
@@ -188,8 +190,10 @@ extern void spec_dbg_exit(struct spec_dev *spec);
 extern int spec_fmc_init(struct spec_dev *spec);
 extern int spec_fmc_exit(struct spec_dev *spec);
 
-extern void spec_gpio_fpga_select(struct spec_dev *spec,
-				  enum spec_fpga_select sel);
+extern void spec_gpio_fpga_select_set(struct spec_dev *spec,
+				      enum spec_fpga_select sel);
+extern enum spec_fpga_select spec_gpio_fpga_select_get(struct spec_dev *spec);
+
 extern int spec_gpio_init(struct spec_dev *spec);
 extern void spec_gpio_exit(struct spec_dev *spec);
 
