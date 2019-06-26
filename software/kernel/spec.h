@@ -13,6 +13,7 @@
 #include <linux/pci.h>
 #include <linux/platform_device.h>
 #include <linux/spinlock.h>
+#include <linux/mutex.h>
 #include <linux/fmc.h>
 
 #include "gn412x.h"
@@ -101,6 +102,7 @@ struct spec_meta_id {
  * struct spec_dev - SPEC instance
  * It describes a SPEC device instance.
  * @dev Linux device instance descriptor
+ * @mtx: protect bootselect usage, fpga device load
  * @flags collection of bit flags
  * @remap ioremap of PCI bar 0, 2, 4
  * @slot_info: information about FMC slot
@@ -114,6 +116,8 @@ struct spec_dev {
 	void __iomem *remap[3];	/* ioremap of bar 0, 2, 4 */
 	void __iomem *fpga;
 	struct spec_meta_id __iomem *meta;
+
+	struct mutex mtx;
 
 	struct platform_device *vic_pdev;
 	struct platform_device *app_pdev;

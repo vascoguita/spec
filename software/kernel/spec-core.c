@@ -9,6 +9,7 @@
 #include <linux/device.h>
 #include <linux/ioport.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/pci.h>
 #include <linux/firmware.h>
 #include <linux/moduleparam.h>
@@ -117,6 +118,7 @@ static const char *spec_fw_name_init_get(struct spec_dev *spec)
  */
 int spec_fw_load(struct spec_dev *spec, const char *name)
 {
+	enum spec_fpga_select sel;
 	int err;
 
 	err = spec_fpga_exit(spec);
@@ -126,6 +128,9 @@ int spec_fw_load(struct spec_dev *spec, const char *name)
 		return err;
 	}
 
+
+	mutex_lock(&spec->mtx);
+	sel = spec_gpio_fpga_select_get(spec);
 
 	spec_gpio_fpga_select_set(spec, SPEC_FPGA_SELECT_GN4124_FPGA);
 
@@ -138,7 +143,8 @@ int spec_fw_load(struct spec_dev *spec, const char *name)
 		dev_warn(&spec->dev, "FPGA incorrectly programmed\n");
 
 out:
-	spec_gpio_fpga_select_set(spec, SPEC_FPGA_SELECT_FPGA_FLASH);
+	spec_gpio_fpga_select_set(spec, sel);
+	mutex_unlock(&spec->mtx);
 
 	return err;
 }
@@ -152,6 +158,56 @@ static int spec_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	return 0;
 }
+
+
+static ssize_t bootselect_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct spec_dev *spec = to_spec_dev(dev);
+	enum spec_fpga_select sel;
+
+	if (strncmp("fpga-flash", buf, 8) == 0) {
+		sel = SPEC_FPGA_SELECT_FPGA_FLASH;
+	} else if (strncmp("gn4124-fpga", buf, 8) == 0) {
+		sel = SPEC_FPGA_SELECT_GN4124_FPGA;
+	} else if (strncmp("gn4124-flash", buf, 8) == 0) {
+		sel = SPEC_FPGA_SELECT_GN4124_FLASH;
+	} else {
+		dev_err(dev, "Unknown bootselect option '%s'\n",
+			buf);
+		return -EINVAL;
+	}
+
+	mutex_lock(&spec->mtx);
+	spec_gpio_fpga_select_set(spec, sel);
+	mutex_unlock(&spec->mtx);
+
+	return count;
+
+}
+static ssize_t bootselect_show(struct device *dev,
+			       struct device_attribute *attr,
+			       char *buf)
+{
+	struct spec_dev *spec = to_spec_dev(dev);
+	enum spec_fpga_select sel;
+
+	sel = spec_gpio_fpga_select_get(spec);
+	switch (sel) {
+	case SPEC_FPGA_SELECT_FPGA_FLASH:
+		return snprintf(buf, PAGE_SIZE, "fpga-flash\n");
+	case SPEC_FPGA_SELECT_GN4124_FPGA:
+		return snprintf(buf, PAGE_SIZE, "gn4124-fpga\n");
+	case SPEC_FPGA_SELECT_GN4124_FLASH:
+		return snprintf(buf, PAGE_SIZE, "gn4124-flash\n");
+	default:
+		dev_err(dev, "Unknown bootselect option '%x'\n",
+			sel);
+		return -EINVAL;
+	}
+}
+static DEVICE_ATTR(bootselect, 0744, bootselect_show, bootselect_store);
 
 /**
  * Load golden bitstream on FGPA
@@ -171,6 +227,7 @@ static DEVICE_ATTR_WO(load_golden_fpga);
 
 static struct attribute *spec_type_attrs[] = {
 	&dev_attr_load_golden_fpga.attr,
+	&dev_attr_bootselect.attr,
 	NULL,
 };
 
@@ -201,6 +258,7 @@ static int spec_probe(struct pci_dev *pdev,
 	if (!spec)
 		return -ENOMEM;
 
+	mutex_init(&spec->mtx);
 	pci_set_drvdata(pdev, spec);
 
 	err = pci_enable_device(pdev);
@@ -248,9 +306,11 @@ static int spec_probe(struct pci_dev *pdev,
 	if (err)
 		goto err_sgpio;
 
+	mutex_lock(&spec->mtx);
 	err = spec_fpga_init(spec);
 	if (err)
 		dev_warn(&spec->dev, "FPGA incorrectly programmed or empty\n");
+	mutex_unlock(&spec->mtx);
 
 	spec_dbg_init(spec);
 
