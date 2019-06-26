@@ -129,7 +129,7 @@ int spec_fw_load(struct spec_dev *spec, const char *name)
 
 	spec_gpio_fpga_select(spec, SPEC_FPGA_SELECT_GN4124);
 
-	err = compat_spec_fw_load(spec, &spec_mfd_devs[SPEC_MFD_GN412X_FCL], name);
+	err = compat_spec_fw_load(spec, name);
 	if (err)
 		goto out;
 

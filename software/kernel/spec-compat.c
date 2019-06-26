@@ -90,33 +90,50 @@ static int __compat_spec_fw_load(struct fpga_manager *mgr, const char *name)
 #endif
 }
 
+struct mfd_find_data {
+	const char *name;
+	int id;
+};
 
 static int mfd_find_device_match(struct device *dev, void *data)
 {
-	struct mfd_cell *cell = data;
+	struct mfd_find_data *d = data;
 	struct platform_device *pdev = to_platform_device(dev);
 
-	return (strncmp(cell->name, mfd_get_cell(pdev)->name,
-			strnlen(cell->name, 32)) == 0);
+	if (strncmp(d->name, mfd_get_cell(pdev)->name,
+		    strnlen(d->name, 32)) != 0)
+		return 0;
+
+	if (d->id >= 0 && pdev->id != d->id)
+		return 0;
+
+	return 1;
 }
 
-static struct device *mfd_find_device(struct device *parent,
-				      const struct mfd_cell *cell)
+static struct platform_device *mfd_find_device(struct device *parent,
+					       const char *name,
+					       int id)
 {
-	return device_find_child(parent, (void *)cell, mfd_find_device_match);
+	struct mfd_find_data d = {name, id};
+	struct device *dev;
+
+	dev = device_find_child(parent, (void *)&d, mfd_find_device_match);
+	if (!dev)
+		return NULL;
+
+	return to_platform_device(dev);
 }
 
-int compat_spec_fw_load(struct spec_dev *spec, const struct mfd_cell *cell,
-			const char *name)
+int compat_spec_fw_load(struct spec_dev *spec, const char *name)
 {
 	struct fpga_manager *mgr;
-	struct device *fpga_dev;
+	struct platform_device *fpga_pdev;
 	int err;
 
-	fpga_dev = mfd_find_device(&spec->dev, cell);
-	if (!fpga_dev)
+	fpga_pdev = mfd_find_device(&spec->dev, "gn412x-fcl", -1);
+	if (!fpga_pdev)
 		return -ENODEV;
-	mgr = fpga_mgr_get(fpga_dev);
+	mgr = fpga_mgr_get(&fpga_pdev->dev);
 	if (IS_ERR(mgr))
 		return -ENODEV;
 
