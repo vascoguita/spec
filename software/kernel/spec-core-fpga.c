@@ -21,28 +21,30 @@ static int vic_id;
 static int mfd_id;
 static int app_id;
 
-enum spec_core_fpga_mem_offsets {
-	SPEC_CORE_FPGA_MEM_VIC_START = SPEC_CORE_FPGA + 0x0100,
-	SPEC_CORE_FPGA_MEM_VIC_END = SPEC_CORE_FPGA + 0x01FF,
-	SPEC_CORE_FPGA_MEM_FMC_I2C_START = SPEC_CORE_FPGA + 0x0080,
-	SPEC_CORE_FPGA_MEM_FMC_I2C_END = SPEC_CORE_FPGA + 0x009F,
-	SPEC_CORE_FPGA_MEM_SPI_START = SPEC_CORE_FPGA + 0x0100,
-	SPEC_CORE_FPGA_MEM_SPI_END = SPEC_CORE_FPGA + 0x01FF,
+enum spec_fpga_mem_offsets {
+	SPEC_FPGA_MEM_THERM_START = SPEC_CORE_FPGA + 0x50,
+	SPEC_FPGA_MEM_THERM_END = SPEC_CORE_FPGA + 0x5F,
+	SPEC_FPGA_MEM_FMC_I2C_START = SPEC_CORE_FPGA + 0x0080,
+	SPEC_FPGA_MEM_FMC_I2C_END = SPEC_CORE_FPGA + 0x009F,
+	SPEC_FPGA_MEM_VIC_START = SPEC_CORE_FPGA + 0x0100,
+	SPEC_FPGA_MEM_VIC_END = SPEC_CORE_FPGA + 0x01FF,
+	SPEC_FPGA_MEM_SPI_START = SPEC_CORE_FPGA + 0x0100,
+	SPEC_FPGA_MEM_SPI_END = SPEC_CORE_FPGA + 0x01FF,
 };
 
-enum spec_core_fpga_irq_lines {
-	SPEC_CORE_FPGA_IRQ_DMA_DONE = 0,
-	SPEC_CORE_FPGA_IRQ_DMA_ERROR,
-	SPEC_CORE_FPGA_IRQ_FMC_I2C,
-	SPEC_CORE_FPGA_IRQ_SPI,
+enum spec_fpga_irq_lines {
+	SPEC_FPGA_IRQ_DMA_DONE = 0,
+	SPEC_FPGA_IRQ_DMA_ERROR,
+	SPEC_FPGA_IRQ_FMC_I2C,
+	SPEC_FPGA_IRQ_SPI,
 };
 
-static struct resource spec_core_fpga_vic_res[] = {
+static struct resource spec_fpga_vic_res[] = {
 	{
 		.name = "htvic-mem",
 		.flags = IORESOURCE_MEM,
-		.start = SPEC_CORE_FPGA_MEM_VIC_START,
-		.end = SPEC_CORE_FPGA_MEM_VIC_END,
+		.start = SPEC_FPGA_MEM_VIC_START,
+		.end = SPEC_FPGA_MEM_VIC_END,
 	}, {
 		.name = "htvic-irq",
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
@@ -52,18 +54,18 @@ static struct resource spec_core_fpga_vic_res[] = {
 };
 
 /* Vector Interrupt Controller */
-static int spec_core_fpga_vic_init(struct spec_dev *spec)
+static int spec_fpga_vic_init(struct spec_dev *spec)
 {
 	struct pci_dev *pcidev = to_pci_dev(spec->dev.parent);
 	unsigned long pci_start = pci_resource_start(pcidev, 0);
-	const unsigned int res_n = ARRAY_SIZE(spec_core_fpga_vic_res);
-	struct resource res[ARRAY_SIZE(spec_core_fpga_vic_res)];
+	const unsigned int res_n = ARRAY_SIZE(spec_fpga_vic_res);
+	struct resource res[ARRAY_SIZE(spec_fpga_vic_res)];
 	struct platform_device *pdev;
 
 	if (!(spec->meta->cap & SPEC_META_CAP_VIC))
 		return 0;
 
-	memcpy(&res, spec_core_fpga_vic_res, sizeof(spec_core_fpga_vic_res));
+	memcpy(&res, spec_fpga_vic_res, sizeof(spec_fpga_vic_res));
 	res[0].start += pci_start;
 	res[0].end += pci_start;
 	res[1].start = gpiod_to_irq(spec->gpiod[GN4124_GPIO_IRQ1]);
@@ -79,7 +81,7 @@ static int spec_core_fpga_vic_init(struct spec_dev *spec)
 	return 0;
 }
 
-static void spec_core_fpga_vic_exit(struct spec_dev *spec)
+static void spec_fpga_vic_exit(struct spec_dev *spec)
 {
 	if (spec->vic_pdev) {
 		platform_device_unregister(spec->vic_pdev);
@@ -88,26 +90,26 @@ static void spec_core_fpga_vic_exit(struct spec_dev *spec)
 }
 
 /* MFD devices */
-enum spce_core_fpga_mfd_devs_enum {
-	SPEC_CORE_FPGA_MFD_FMC_I2C = 0,
-	SPEC_CORE_FPGA_MFD_SPI,
+enum spce_fpga_mfd_devs_enum {
+	SPEC_FPGA_MFD_FMC_I2C = 0,
+	SPEC_FPGA_MFD_SPI,
 };
 
-static struct resource spec_core_fpga_fmc_i2c_res[] = {
+static struct resource spec_fpga_fmc_i2c_res[] = {
 	{
 		.name = "i2c-ocores-mem",
 		.flags = IORESOURCE_MEM,
-		.start = SPEC_CORE_FPGA_MEM_FMC_I2C_START,
-		.end = SPEC_CORE_FPGA_MEM_FMC_I2C_END,
+		.start = SPEC_FPGA_MEM_FMC_I2C_START,
+		.end = SPEC_FPGA_MEM_FMC_I2C_END,
 	}, {
 		.name = "i2c-ocores-irq",
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
-		.start = SPEC_CORE_FPGA_IRQ_FMC_I2C,
-		.end = SPEC_CORE_FPGA_IRQ_FMC_I2C,
+		.start = SPEC_FPGA_IRQ_FMC_I2C,
+		.end = SPEC_FPGA_IRQ_FMC_I2C,
 	},
 };
 
-static struct ocores_i2c_platform_data spec_core_fpga_fmc_i2c_pdata = {
+static struct ocores_i2c_platform_data spec_fpga_fmc_i2c_pdata = {
 	.reg_shift = 2, /* 32bit aligned */
 	.reg_io_width = 4,
 	.clock_khz = 62500,
@@ -116,50 +118,50 @@ static struct ocores_i2c_platform_data spec_core_fpga_fmc_i2c_pdata = {
 	.devices = NULL,
 };
 
-static struct resource spec_core_fpga_spi_res[] = {
+static struct resource spec_fpga_spi_res[] = {
 	{
 		.name = "spi-ocores-mem",
 		.flags = IORESOURCE_MEM,
-		.start = SPEC_CORE_FPGA_MEM_SPI_START,
-		.end = SPEC_CORE_FPGA_MEM_SPI_END,
+		.start = SPEC_FPGA_MEM_SPI_START,
+		.end = SPEC_FPGA_MEM_SPI_END,
 	}, {
 		.name = "spi-ocores-irq",
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
-		.start = SPEC_CORE_FPGA_IRQ_SPI,
-		.end = SPEC_CORE_FPGA_IRQ_SPI,
+		.start = SPEC_FPGA_IRQ_SPI,
+		.end = SPEC_FPGA_IRQ_SPI,
 	},
 };
 
-static struct spi_ocores_platform_data spec_core_fpga_spi_pdata = {
+static struct spi_ocores_platform_data spec_fpga_spi_pdata = {
 	.big_endian = 0,
 	.clock_hz = 65200000,
 };
 
 
-static const struct mfd_cell spec_core_fpga_mfd_devs[] = {
-	[SPEC_CORE_FPGA_MFD_FMC_I2C] = {
+static const struct mfd_cell spec_fpga_mfd_devs[] = {
+	[SPEC_FPGA_MFD_FMC_I2C] = {
 		.name = "i2c-ohwr",
-		.platform_data = &spec_core_fpga_fmc_i2c_pdata,
-		.pdata_size = sizeof(spec_core_fpga_fmc_i2c_pdata),
-		.num_resources = ARRAY_SIZE(spec_core_fpga_fmc_i2c_res),
-		.resources = spec_core_fpga_fmc_i2c_res,
+		.platform_data = &spec_fpga_fmc_i2c_pdata,
+		.pdata_size = sizeof(spec_fpga_fmc_i2c_pdata),
+		.num_resources = ARRAY_SIZE(spec_fpga_fmc_i2c_res),
+		.resources = spec_fpga_fmc_i2c_res,
 	},
-	[SPEC_CORE_FPGA_MFD_SPI] = {
+	[SPEC_FPGA_MFD_SPI] = {
 		.name = "spi-ocores",
-		.platform_data = &spec_core_fpga_spi_pdata,
-		.pdata_size = sizeof(spec_core_fpga_spi_pdata),
-		.num_resources = ARRAY_SIZE(spec_core_fpga_spi_res),
-		.resources = spec_core_fpga_spi_res,
+		.platform_data = &spec_fpga_spi_pdata,
+		.pdata_size = sizeof(spec_fpga_spi_pdata),
+		.num_resources = ARRAY_SIZE(spec_fpga_spi_res),
+		.resources = spec_fpga_spi_res,
 	},
 };
 
 static inline size_t __fpga_mfd_devs_size(void)
 {
-#define SPEC_CORE_FPGA_MFD_DEVS_MAX 4
-	return (sizeof(struct mfd_cell) * SPEC_CORE_FPGA_MFD_DEVS_MAX);
+#define SPEC_FPGA_MFD_DEVS_MAX 4
+	return (sizeof(struct mfd_cell) * SPEC_FPGA_MFD_DEVS_MAX);
 }
 
-static int spec_core_fpga_devices_init(struct spec_dev *spec)
+static int spec_fpga_devices_init(struct spec_dev *spec)
 {
 	struct pci_dev *pcidev = to_pci_dev(spec->dev.parent);
 	struct mfd_cell *fpga_mfd_devs;
@@ -174,12 +176,12 @@ static int spec_core_fpga_devices_init(struct spec_dev *spec)
 		return -ENOMEM;
 
 	memcpy(&fpga_mfd_devs[n_mfd],
-	       &spec_core_fpga_mfd_devs[SPEC_CORE_FPGA_MFD_FMC_I2C],
+	       &spec_fpga_mfd_devs[SPEC_FPGA_MFD_FMC_I2C],
 	       sizeof(fpga_mfd_devs[n_mfd]));
 	n_mfd++;
 
 	memcpy(&fpga_mfd_devs[n_mfd],
-	       &spec_core_fpga_mfd_devs[SPEC_CORE_FPGA_MFD_SPI],
+	       &spec_fpga_mfd_devs[SPEC_FPGA_MFD_SPI],
 	       sizeof(fpga_mfd_devs[n_mfd]));
 	n_mfd++;
 
@@ -204,22 +206,21 @@ err_mfd:
 	return err;
 }
 
-static void spec_core_fpga_devices_exit(struct spec_dev *spec)
+static void spec_fpga_devices_exit(struct spec_dev *spec)
 {
 	mfd_remove_devices(&spec->dev);
 }
 
 /* Thermometer */
-#define SPEC_CORE_FPGA_THERM_BASE (SPEC_CORE_FPGA + 0x50)
-#define SPEC_CORE_FPGA_THERM_SERID_MSB (SPEC_CORE_FPGA_THERM_BASE + 0x0)
-#define SPEC_CORE_FPGA_THERM_SERID_LSB (SPEC_CORE_FPGA_THERM_BASE + 0x4)
-#define SPEC_CORE_FPGA_THERM_TEMP (SPEC_CORE_FPGA_THERM_BASE + 0x8)
+#define SPEC_FPGA_THERM_SERID_MSB (SPEC_FPGA_MEM_THERM_START + 0x0)
+#define SPEC_FPGA_THERM_SERID_LSB (SPEC_FPGA_MEM_THERM_START + 0x4)
+#define SPEC_FPGA_THERM_TEMP (SPEC_FPGA_MEM_THERM_START + 0x8)
 static ssize_t temperature_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
 {
 	struct spec_dev *spec = to_spec_dev(dev);
-	uint32_t temp = ioread32(spec->fpga + SPEC_CORE_FPGA_THERM_TEMP);
+	uint32_t temp = ioread32(spec->fpga + SPEC_FPGA_THERM_TEMP);
 
 	return snprintf(buf, PAGE_SIZE, "%d.%d C\n",
 			temp / 16, (temp & 0xF) * 1000 / 16);
@@ -233,23 +234,23 @@ static ssize_t serial_number_show(struct device *dev,
 	struct spec_dev *spec = to_spec_dev(dev);
 
 	return snprintf(buf, PAGE_SIZE, "0x%08x%08x\n",
-			ioread32(spec->fpga + SPEC_CORE_FPGA_THERM_SERID_MSB),
-			ioread32(spec->fpga + SPEC_CORE_FPGA_THERM_SERID_LSB));
+			ioread32(spec->fpga + SPEC_FPGA_THERM_SERID_MSB),
+			ioread32(spec->fpga + SPEC_FPGA_THERM_SERID_LSB));
 }
 static DEVICE_ATTR_RO(serial_number);
 
-static struct attribute *spec_core_fpga_therm_attrs[] = {
+static struct attribute *spec_fpga_therm_attrs[] = {
 	&dev_attr_serial_number.attr,
 	&dev_attr_temperature.attr,
 	NULL,
 };
 
-static const struct attribute_group spec_core_fpga_therm_group = {
+static const struct attribute_group spec_fpga_therm_group = {
 	.name = "thermometer",
-	.attrs = spec_core_fpga_therm_attrs,
+	.attrs = spec_fpga_therm_attrs,
 };
 
-static int spec_core_fpga_therm_init(struct spec_dev *spec)
+static int spec_fpga_therm_init(struct spec_dev *spec)
 {
 	int err;
 
@@ -258,7 +259,7 @@ static int spec_core_fpga_therm_init(struct spec_dev *spec)
 		return 0;
 
 	err = sysfs_create_group(&spec->dev.kobj,
-				 &spec_core_fpga_therm_group);
+				 &spec_fpga_therm_group);
 	if (err)
 		return err;
 
@@ -266,17 +267,17 @@ static int spec_core_fpga_therm_init(struct spec_dev *spec)
 	return 0;
 }
 
-static void spec_core_fpga_therm_exit(struct spec_dev *spec)
+static void spec_fpga_therm_exit(struct spec_dev *spec)
 {
 	if (!(test_bit(SPEC_FLAG_THERM_BIT, spec->flags)))
 		return;
-	sysfs_remove_group(&spec->dev.kobj, &spec_core_fpga_therm_group);
+	sysfs_remove_group(&spec->dev.kobj, &spec_fpga_therm_group);
 }
 
 
 /* FPGA Application */
-#define SPEC_CORE_FPGA_APP_OFF (SPEC_CORE_FPGA + 0x40)
-static void spec_core_fpga_app_id_build(struct spec_dev *spec,
+#define SPEC_FPGA_APP_OFF (SPEC_CORE_FPGA + 0x40)
+static void spec_fpga_app_id_build(struct spec_dev *spec,
 					unsigned long app_off,
 					char *id, unsigned int size)
 {
@@ -297,14 +298,14 @@ static void spec_core_fpga_app_id_build(struct spec_dev *spec,
 	}
 }
 
-static int spec_core_fpga_app_init(struct spec_dev *spec)
+static int spec_fpga_app_init(struct spec_dev *spec)
 {
-#define SPEC_CORE_FPGA_APP_NAME_MAX 47
-#define SPEC_CORE_FPGA_APP_IRQ_BASE 5
-#define SPEC_CORE_FPGA_APP_RES_N 28
+#define SPEC_FPGA_APP_NAME_MAX 47
+#define SPEC_FPGA_APP_IRQ_BASE 5
+#define SPEC_FPGA_APP_RES_N 28
 	struct pci_dev *pcidev = to_pci_dev(spec->dev.parent);
-	unsigned int res_n = SPEC_CORE_FPGA_APP_RES_N;
-	struct resource res[SPEC_CORE_FPGA_APP_RES_N] = {
+	unsigned int res_n = SPEC_FPGA_APP_RES_N;
+	struct resource res[SPEC_FPGA_APP_RES_N] = {
 		[0] = {
 			.name = "app-mem",
 			.flags = IORESOURCE_MEM,
@@ -312,10 +313,10 @@ static int spec_core_fpga_app_init(struct spec_dev *spec)
 	};
 	struct platform_device *pdev;
 	struct irq_domain *vic_domain;
-	char app_name[SPEC_CORE_FPGA_APP_NAME_MAX];
+	char app_name[SPEC_FPGA_APP_NAME_MAX];
 	unsigned long app_offset;
 
-	app_offset = ioread32(spec->fpga + SPEC_CORE_FPGA_APP_OFF);
+	app_offset = ioread32(spec->fpga + SPEC_FPGA_APP_OFF);
 	if (!app_offset) {
 		dev_warn(spec->dev.parent, "Application not found\n");
 		return 0;
@@ -332,8 +333,8 @@ static int spec_core_fpga_app_init(struct spec_dev *spec)
 	if (vic_domain) {
 		int i, hwirq;
 
-		for (i = 1, hwirq = SPEC_CORE_FPGA_APP_IRQ_BASE;
-		     i < SPEC_CORE_FPGA_APP_RES_N;
+		for (i = 1, hwirq = SPEC_FPGA_APP_IRQ_BASE;
+		     i < SPEC_FPGA_APP_RES_N;
 		     ++i, ++hwirq) {
 			res[i].name = "app-irq",
 			res[i].flags = IORESOURCE_IRQ,
@@ -344,8 +345,8 @@ static int spec_core_fpga_app_init(struct spec_dev *spec)
 		res_n = 1;
 	}
 
-	spec_core_fpga_app_id_build(spec, SPEC_CORE_FPGA_APP_OFF,
-				    app_name, SPEC_CORE_FPGA_APP_NAME_MAX);
+	spec_fpga_app_id_build(spec, SPEC_FPGA_APP_OFF,
+				    app_name, SPEC_FPGA_APP_NAME_MAX);
 	pdev = platform_device_register_resndata(&spec->dev,
 						 app_name, app_id++,
 						 res, res_n,
@@ -358,7 +359,7 @@ static int spec_core_fpga_app_init(struct spec_dev *spec)
 	return 0;
 }
 
-static void spec_core_fpga_app_exit(struct spec_dev *spec)
+static void spec_fpga_app_exit(struct spec_dev *spec)
 {
 	if (spec->app_pdev) {
 		platform_device_unregister(spec->app_pdev);
@@ -367,7 +368,7 @@ static void spec_core_fpga_app_exit(struct spec_dev *spec)
 }
 
 
-static bool spec_core_fpga_is_valid(struct spec_dev *spec)
+static bool spec_fpga_is_valid(struct spec_dev *spec)
 {
 	if ((spec->meta->bom & SPEC_META_BOM_END_MASK) != SPEC_META_BOM_LE) {
 		dev_err(spec->dev.parent,
@@ -404,29 +405,29 @@ static bool spec_core_fpga_is_valid(struct spec_dev *spec)
 /**
  * Initialize carrier devices on FPGA
  */
-int spec_core_fpga_init(struct spec_dev *spec)
+int spec_fpga_init(struct spec_dev *spec)
 {
 	int err;
 
 	spec->fpga = spec->remap[0];
 	spec->meta = spec->fpga + SPEC_META_BASE;
 
-	if (!spec_core_fpga_is_valid(spec))
+	if (!spec_fpga_is_valid(spec))
 		return -EINVAL;
 
-	err = spec_core_fpga_therm_init(spec);
+	err = spec_fpga_therm_init(spec);
 	if (err)
 		goto err_therm;
-	err = spec_core_fpga_vic_init(spec);
+	err = spec_fpga_vic_init(spec);
 	if (err)
 		goto err_vic;
-	err = spec_core_fpga_devices_init(spec);
+	err = spec_fpga_devices_init(spec);
 	if (err)
 		goto err_dev;
 	err = spec_fmc_init(spec);
 	if (err)
 		goto err_fmc;
-	err = spec_core_fpga_app_init(spec);
+	err = spec_fpga_app_init(spec);
 	if (err)
 		goto err_app;
 
@@ -435,22 +436,22 @@ int spec_core_fpga_init(struct spec_dev *spec)
 err_app:
 	spec_fmc_exit(spec);
 err_fmc:
-	spec_core_fpga_devices_exit(spec);
+	spec_fpga_devices_exit(spec);
 err_dev:
-	spec_core_fpga_vic_exit(spec);
+	spec_fpga_vic_exit(spec);
 err_vic:
-	spec_core_fpga_therm_exit(spec);
+	spec_fpga_therm_exit(spec);
 err_therm:
 	return err;
 }
 
-int spec_core_fpga_exit(struct spec_dev *spec)
+int spec_fpga_exit(struct spec_dev *spec)
 {
-	spec_core_fpga_app_exit(spec);
+	spec_fpga_app_exit(spec);
 	spec_fmc_exit(spec);
-	spec_core_fpga_devices_exit(spec);
-	spec_core_fpga_vic_exit(spec);
-	spec_core_fpga_therm_exit(spec);
+	spec_fpga_devices_exit(spec);
+	spec_fpga_vic_exit(spec);
+	spec_fpga_therm_exit(spec);
 
 	return 0;
 }

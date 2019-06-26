@@ -193,7 +193,7 @@ extern void spec_gpio_fpga_select(struct spec_dev *spec,
 extern int spec_gpio_init(struct spec_dev *spec);
 extern void spec_gpio_exit(struct spec_dev *spec);
 
-extern int spec_core_fpga_init(struct spec_dev *spec);
-extern int spec_core_fpga_exit(struct spec_dev *spec);
+extern int spec_fpga_init(struct spec_dev *spec);
+extern int spec_fpga_exit(struct spec_dev *spec);
 
 #endif /* __SPEC_H__ */

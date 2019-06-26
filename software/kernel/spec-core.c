@@ -119,7 +119,7 @@ int spec_fw_load(struct spec_dev *spec, const char *name)
 {
 	int err;
 
-	err = spec_core_fpga_exit(spec);
+	err = spec_fpga_exit(spec);
 	if (err) {
 		dev_err(&spec->dev,
 			"Cannot remove FPGA device instances. Try to remove them manually and to reload this device instance\n");
@@ -133,7 +133,7 @@ int spec_fw_load(struct spec_dev *spec, const char *name)
 	if (err)
 		goto out;
 
-	err = spec_core_fpga_init(spec);
+	err = spec_fpga_init(spec);
 	if (err)
 		dev_warn(&spec->dev, "FPGA incorrectly programmed\n");
 
@@ -248,7 +248,7 @@ static int spec_probe(struct pci_dev *pdev,
 	if (err)
 		goto err_sgpio;
 
-	err = spec_core_fpga_init(spec);
+	err = spec_fpga_init(spec);
 	if (err)
 		dev_warn(&spec->dev, "FPGA incorrectly programmed or empty\n");
 
@@ -280,7 +280,7 @@ static void spec_remove(struct pci_dev *pdev)
 	int i;
 
 	spec_dbg_exit(spec);
-	spec_core_fpga_exit(spec);
+	spec_fpga_exit(spec);
 	spec_gpio_exit(spec);
 
 	mfd_remove_devices(&spec->dev);
