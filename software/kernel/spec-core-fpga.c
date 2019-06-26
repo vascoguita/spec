@@ -46,12 +46,13 @@ static struct resource spec_core_fpga_fmc_i2c_res[] = {
 		.start = SPEC_CORE_FPGA + 0x0080,
 		.end = SPEC_CORE_FPGA + 0x009F,
 	}, {
-		.name = "i2c_ocores-irq",
+		.name = "i2c-ocores-irq",
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
 		.start = SPEC_CORE_FPGA_IRQ_FMC_I2C,
 		.end = SPEC_CORE_FPGA_IRQ_FMC_I2C,
 	},
 };
+
 
 /* Vector Interrupt Controller */
 static int spec_core_fpga_vic_init(struct spec_dev *spec)
