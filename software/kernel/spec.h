@@ -113,7 +113,6 @@ struct spec_dev {
 	void __iomem *fpga;
 	struct spec_meta_id __iomem *meta;
 
-	struct platform_device *i2c_pdev;
 	struct platform_device *vic_pdev;
 	struct platform_device *app_pdev;
 

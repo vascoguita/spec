@@ -46,7 +46,7 @@ static int spec_i2c_find_adapter(struct device *dev, void *data)
 		return 0;
 
 	/* We have a muxed I2C master */
-	if (&spec->i2c_pdev->dev != adap_parent->dev.parent)
+	if (&spec->dev != adap_parent->dev.parent->parent)
 		return 0;
 
 	/* Found! Return the bus ID */

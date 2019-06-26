@@ -8,6 +8,7 @@
 #include <linux/ioport.h>
 #include <linux/gpio/consumer.h>
 #include <linux/irqdomain.h>
+#include <linux/mfd/core.h>
 
 #include "spec.h"
 #include "spec-compat.h"
@@ -15,7 +16,7 @@
 
 /* FIXME find better ID */
 static int vic_id;
-static int i2c_id;
+static int mfd_id;
 static int app_id;
 
 enum spec_core_fpga_irq_lines {
@@ -90,24 +91,12 @@ static void spec_core_fpga_vic_exit(struct spec_dev *spec)
 	}
 }
 
-static int spec_core_fpga_vic_irq_find_mapping(struct platform_device *vic,
-					       unsigned int hwirq)
-{
-	struct irq_domain *domain;
+/* MFD devices */
+enum spce_core_fpga_mfd_devs_enum {
+	SPEC_CORE_FPGA_MFD_FMC_I2C = 0,
+};
 
-	if (!vic)
-		return -ENXIO;
-
-	domain = irq_find_host((void *)&vic->dev);
-	if (!domain)
-		return -ENXIO;
-
-	return irq_find_mapping(domain, hwirq);
-}
-
-
-/* FMC I2C Master */
-static const struct ocores_i2c_platform_data i2c_pdata = {
+static struct ocores_i2c_platform_data spec_core_fpga_fmc_i2c_pdata = {
 	.reg_shift = 2, /* 32bit aligned */
 	.reg_io_width = 4,
 	.clock_khz = 62500,
@@ -116,41 +105,64 @@ static const struct ocores_i2c_platform_data i2c_pdata = {
 	.devices = NULL,
 };
 
-static int spec_core_fpga_i2c_init(struct spec_dev *spec)
+static const struct mfd_cell spec_core_fpga_mfd_devs[] = {
+	[SPEC_CORE_FPGA_MFD_FMC_I2C] = {
+		.name = "i2c-ohwr",
+		.platform_data = &spec_core_fpga_fmc_i2c_pdata,
+		.pdata_size = sizeof(spec_core_fpga_fmc_i2c_pdata),
+		.num_resources = ARRAY_SIZE(spec_core_fpga_fmc_i2c_res),
+		.resources = spec_core_fpga_fmc_i2c_res,
+	},
+};
+
+static inline size_t __fpga_mfd_devs_size(void)
 {
-	struct pci_dev *pcidev = to_pci_dev(spec->dev.parent);
-	unsigned long pci_start = pci_resource_start(pcidev, 0);
-	unsigned int res_n = ARRAY_SIZE(spec_core_fpga_fmc_i2c_res);
-	struct resource res[ARRAY_SIZE(spec_core_fpga_fmc_i2c_res)];
-	struct platform_device *pdev;
-
-	memcpy(&res, spec_core_fpga_fmc_i2c_res,
-	       sizeof(spec_core_fpga_fmc_i2c_res));
-	res[0].start += pci_start;
-	res[0].end += pci_start;
-
-	res[1].start = spec_core_fpga_vic_irq_find_mapping(spec->vic_pdev,
-							   res[1].start);
-
-	pdev = platform_device_register_resndata(&spec->dev,
-						 "i2c-ohwr", i2c_id++,
-						 res, res_n,
-						 &i2c_pdata,
-						 sizeof(i2c_pdata));
-	if (IS_ERR(pdev))
-		return PTR_ERR(pdev);
-
-	spec->i2c_pdev = pdev;
-
-	return 0;
+#define SPEC_CORE_FPGA_MFD_DEVS_MAX 4
+	return (sizeof(struct mfd_cell) * SPEC_CORE_FPGA_MFD_DEVS_MAX);
 }
 
-static void spec_core_fpga_i2c_exit(struct spec_dev *spec)
+static int spec_core_fpga_devices_init(struct spec_dev *spec)
 {
-	if (spec->i2c_pdev) {
-		platform_device_unregister(spec->i2c_pdev);
-		spec->i2c_pdev = NULL;
+	struct pci_dev *pcidev = to_pci_dev(spec->dev.parent);
+	struct mfd_cell *fpga_mfd_devs;
+	struct irq_domain *vic_domain;
+	unsigned int n_mfd = 0;
+	int err;
+
+	fpga_mfd_devs = devm_kzalloc(&spec->dev,
+				     __fpga_mfd_devs_size(),
+				     GFP_KERNEL);
+	if (!fpga_mfd_devs)
+		return -ENOMEM;
+
+	memcpy(&fpga_mfd_devs[n_mfd],
+	       &spec_core_fpga_mfd_devs[SPEC_CORE_FPGA_MFD_FMC_I2C],
+	       sizeof(fpga_mfd_devs[n_mfd]));
+	n_mfd++;
+
+	vic_domain = irq_find_host((void *)&spec->vic_pdev->dev);
+	if (!vic_domain) {
+		/* Remove IRQ resource from all devices */
+		fpga_mfd_devs[0].num_resources = 1;
 	}
+	err = mfd_add_devices(&spec->dev, mfd_id++,
+			      fpga_mfd_devs, n_mfd,
+			      &pcidev->resource[0],
+			      0, vic_domain);
+	if (err)
+		goto err_mfd;
+
+	return 0;
+
+err_mfd:
+	devm_kfree(&spec->dev, fpga_mfd_devs);
+
+	return err;
+}
+
+static void spec_core_fpga_devices_exit(struct spec_dev *spec)
+{
+	mfd_remove_devices(&spec->dev);
 }
 
 /* Thermometer */
@@ -361,9 +373,9 @@ int spec_core_fpga_init(struct spec_dev *spec)
 	err = spec_core_fpga_vic_init(spec);
 	if (err)
 		goto err_vic;
-	err = spec_core_fpga_i2c_init(spec);
+	err = spec_core_fpga_devices_init(spec);
 	if (err)
-		goto err_i2c;
+		goto err_dev;
 	err = spec_fmc_init(spec);
 	if (err)
 		goto err_fmc;
@@ -381,8 +393,8 @@ err_app:
 err_therm:
 	spec_fmc_exit(spec);
 err_fmc:
-	spec_core_fpga_i2c_exit(spec);
-err_i2c:
+	spec_core_fpga_devices_exit(spec);
+err_dev:
 	spec_core_fpga_vic_exit(spec);
 err_vic:
 	return err;
@@ -393,7 +405,7 @@ int spec_core_fpga_exit(struct spec_dev *spec)
 	spec_core_fpga_app_exit(spec);
 	spec_core_fpga_therm_exit(spec);
 	spec_fmc_exit(spec);
-	spec_core_fpga_i2c_exit(spec);
+	spec_core_fpga_devices_exit(spec);
 	spec_core_fpga_vic_exit(spec);
 
 	return 0;
