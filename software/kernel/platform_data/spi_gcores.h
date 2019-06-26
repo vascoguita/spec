@@ -9,7 +9,6 @@
 
 struct spi_gcores_platform_data {
 	unsigned int big_endian;
-	unsigned int num_chipselect;
 	unsigned int clock_hz;
 };
 
