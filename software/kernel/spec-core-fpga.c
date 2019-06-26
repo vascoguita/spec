@@ -9,6 +9,8 @@
 #include <linux/gpio/consumer.h>
 #include <linux/irqdomain.h>
 #include <linux/mfd/core.h>
+#include <linux/spi/spi.h>
+#include <linux/spi/flash.h>
 
 #include "spec.h"
 #include "spec-compat.h"
@@ -138,11 +140,27 @@ static struct resource spec_fpga_spi_res[] = {
 	},
 };
 
+struct flash_platform_data spec_flash_pdata = {
+	.name = "spec-flash",
+	.parts = NULL,
+	.nr_parts = 0,
+	.type = "m25p32",
+};
+
+static struct spi_board_info spec_fpga_spi_devices_info[] = {
+	{
+		.modalias = "m25p32",
+		.max_speed_hz = 75000000,
+		.chip_select = 0,
+		.platform_data = &spec_flash_pdata,
+	}
+};
+
 static struct spi_ocores_platform_data spec_fpga_spi_pdata = {
 	.big_endian = 0,
 	.clock_hz = 65200000,
-	.num_devices = 0,
-	.devices = NULL,
+	.num_devices = ARRAY_SIZE(spec_fpga_spi_devices_info),
+	.devices = spec_fpga_spi_devices_info,
 };
 
 
