@@ -188,10 +188,12 @@ static int spec_fpga_devices_init(struct spec_dev *spec)
 	       sizeof(fpga_mfd_devs[n_mfd]));
 	n_mfd++;
 
-	memcpy(&fpga_mfd_devs[n_mfd],
-	       &spec_fpga_mfd_devs[SPEC_FPGA_MFD_SPI],
-	       sizeof(fpga_mfd_devs[n_mfd]));
-	n_mfd++;
+	if (spec->meta->cap & SPEC_META_CAP_SPI) {
+		memcpy(&fpga_mfd_devs[n_mfd],
+		       &spec_fpga_mfd_devs[SPEC_FPGA_MFD_SPI],
+		       sizeof(fpga_mfd_devs[n_mfd]));
+		n_mfd++;
+	}
 
 	vic_domain = irq_find_host((void *)&spec->vic_pdev->dev);
 	if (!vic_domain) {
