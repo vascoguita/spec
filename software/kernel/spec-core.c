@@ -262,8 +262,12 @@ static int spec_probe(struct pci_dev *pdev,
 	pci_set_drvdata(pdev, spec);
 
 	err = pci_enable_device(pdev);
-	if (err)
+	if (err) {
+		dev_err(spec->dev.parent,
+			"Failed to enable PCI device (%d)\n",
+		        err);
 		goto err_enable;
+	}
 
 	pci_set_master(pdev);
 
@@ -280,8 +284,11 @@ static int spec_probe(struct pci_dev *pdev,
 				err = -ENOMEM;
 		}
 	}
-	if (err)
+	if (err) {
+		dev_err(spec->dev.parent, "Failed to remap memory (%d)\n",
+		        err);
 		goto err_remap;
+	}
 
 	spec->dev.parent = &pdev->dev;
 	spec->dev.type = &spec_dev_type;
@@ -290,8 +297,11 @@ static int spec_probe(struct pci_dev *pdev,
 		goto err_name;
 
 	err = device_register(&spec->dev);
-	if (err)
+	if (err) {
+		dev_err(spec->dev.parent, "Failed to register '%s'\n",
+			dev_name(&spec->dev));
 		goto err_dev;
+	}
 	/* This virtual device is assciated with this driver */
 	spec->dev.driver = pdev->dev.driver;
 
@@ -299,17 +309,22 @@ static int spec_probe(struct pci_dev *pdev,
 			      spec_mfd_devs,
 			      ARRAY_SIZE(spec_mfd_devs),
 			      &pdev->resource[4], pdev->irq, NULL);
-	if (err)
+	if (err) {
+		dev_err(&spec->dev, "Failed to add MFD devices (%d)\n", err);
 		goto err_mfd;
+	}
 
 	err = spec_gpio_init(spec);
-	if (err)
+	if (err) {
+		dev_err(&spec->dev, "Failed to get GPIOs (%d)\n", err);
 		goto err_sgpio;
+	}
 
 	mutex_lock(&spec->mtx);
 	err = spec_fpga_init(spec);
 	if (err)
-		dev_warn(&spec->dev, "FPGA incorrectly programmed or empty\n");
+		dev_warn(&spec->dev,
+			 "FPGA incorrectly programmed or empty (%d)\n", err);
 	mutex_unlock(&spec->mtx);
 
 	spec_dbg_init(spec);
