@@ -290,6 +290,15 @@ static int spec_probe(struct pci_dev *pdev,
 		goto err_remap;
 	}
 
+	err = mfd_add_devices(&pdev->dev, mfd_id++,
+			      spec_mfd_devs,
+			      ARRAY_SIZE(spec_mfd_devs),
+			      &pdev->resource[4], pdev->irq, NULL);
+	if (err) {
+		dev_err(&spec->dev, "Failed to add MFD devices (%d)\n", err);
+		goto err_mfd;
+	}
+
 	spec->dev.parent = &pdev->dev;
 	spec->dev.type = &spec_dev_type;
 	err = dev_set_name(&spec->dev, "spec-%s", dev_name(&pdev->dev));
@@ -304,15 +313,6 @@ static int spec_probe(struct pci_dev *pdev,
 	}
 	/* This virtual device is assciated with this driver */
 	spec->dev.driver = pdev->dev.driver;
-
-	err = mfd_add_devices(&spec->dev, mfd_id++,
-			      spec_mfd_devs,
-			      ARRAY_SIZE(spec_mfd_devs),
-			      &pdev->resource[4], pdev->irq, NULL);
-	if (err) {
-		dev_err(&spec->dev, "Failed to add MFD devices (%d)\n", err);
-		goto err_mfd;
-	}
 
 	err = spec_gpio_init(spec);
 	if (err) {
@@ -332,11 +332,11 @@ static int spec_probe(struct pci_dev *pdev,
 	return 0;
 
 err_sgpio:
-	mfd_remove_devices(&spec->dev);
-err_mfd:
 	device_unregister(&spec->dev);
 err_dev:
 err_name:
+	mfd_remove_devices(&pdev->dev);
+err_mfd:
 	for (i = 0; i < 3; i++) {
 		if (spec->remap[i])
 			iounmap(spec->remap[i]);
@@ -357,13 +357,12 @@ static void spec_remove(struct pci_dev *pdev)
 	spec_dbg_exit(spec);
 	spec_fpga_exit(spec);
 	spec_gpio_exit(spec);
+	device_unregister(&spec->dev);
 
-	mfd_remove_devices(&spec->dev);
-
+	mfd_remove_devices(&pdev->dev);
 	for (i = 0; i < 3; i++)
 		if (spec->remap[i])
 			iounmap(spec->remap[i]);
-	device_unregister(&spec->dev);
 	pci_disable_device(pdev);
 	kfree(spec);
 }

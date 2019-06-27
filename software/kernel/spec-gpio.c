@@ -78,7 +78,7 @@ int spec_gpio_init(struct spec_dev *spec)
 	struct gpiod_lookup_table *lookup;
 	int err = 0;
 
-	lookup = devm_kzalloc(&spec->dev,
+	lookup = devm_kzalloc(spec->dev.parent,
 			      spec_gpiod_table_size(),
 			      GFP_KERNEL);
 	if (!lookup) {
@@ -88,7 +88,7 @@ int spec_gpio_init(struct spec_dev *spec)
 
 	memcpy(lookup, &spec_gpiod_table, spec_gpiod_table_size());
 
-	lookup->dev_id = kstrdup(dev_name(&spec->dev), GFP_KERNEL);
+	lookup->dev_id = kstrdup(dev_name(spec->dev.parent), GFP_KERNEL);
 	if (!lookup->dev_id)
 		goto err_dup;
 
@@ -97,14 +97,14 @@ int spec_gpio_init(struct spec_dev *spec)
 	if (err)
 		goto err_lookup;
 
-	gpiod = gpiod_get_index(&spec->dev, "bootsel", 0, GPIOD_OUT_HIGH);
+	gpiod = gpiod_get_index(spec->dev.parent, "bootsel", 0, GPIOD_OUT_HIGH);
 	if (IS_ERR(gpiod)) {
 		err = PTR_ERR(gpiod);
 		goto err_sel0;
 	}
 	spec->gpiod[GN4124_GPIO_BOOTSEL0] = gpiod;
 
-	gpiod = gpiod_get_index(&spec->dev, "bootsel", 1, GPIOD_OUT_HIGH);
+	gpiod = gpiod_get_index(spec->dev.parent, "bootsel", 1, GPIOD_OUT_HIGH);
 	if (IS_ERR(gpiod)) {
 		err = PTR_ERR(gpiod);
 		goto err_sel1;
@@ -120,14 +120,14 @@ int spec_gpio_init(struct spec_dev *spec)
 		goto err_out1;
 
 
-	gpiod = gpiod_get_index(&spec->dev, "irq", 0, GPIOD_IN);
+	gpiod = gpiod_get_index(spec->dev.parent, "irq", 0, GPIOD_IN);
 	if (IS_ERR(gpiod)) {
 		err = PTR_ERR(gpiod);
 		goto err_irq0;
 	}
 	spec->gpiod[GN4124_GPIO_IRQ0] = gpiod;
 
-	gpiod = gpiod_get_index(&spec->dev, "irq", 1, GPIOD_IN);
+	gpiod = gpiod_get_index(spec->dev.parent, "irq", 1, GPIOD_IN);
 	if (IS_ERR(gpiod)) {
 		err = PTR_ERR(gpiod);
 		goto err_irq1;
@@ -160,7 +160,7 @@ err_sel0:
 err_lookup:
 	kfree(lookup->dev_id);
 err_dup:
-	devm_kfree(&spec->dev, lookup);
+	devm_kfree(spec->dev.parent, lookup);
 	spec->gpiod_table = NULL;
 err_alloc:
 
