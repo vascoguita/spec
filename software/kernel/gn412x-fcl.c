@@ -286,11 +286,13 @@ static int gn4124_fpga_load(struct gn412x_fcl_dev *gn412x, const void *data, int
 
 		if ((i & 8) && wrote) {
 			done = 1;
-			pr_err("%s: %i: done after %i\n", __func__, __LINE__,
-				wrote);
+			pr_err("%s: %i: done after %i%i\n",
+			       __func__, __LINE__,
+			       wrote, ((len + 3) >> 2));
 		} else if ((i & 0x4) && !done) {
-			pr_err("%s: %i: error after %i\n", __func__, __LINE__,
-				wrote);
+			pr_err("%s: %i: error after %i/%i\n",
+			       __func__, __LINE__,
+				wrote, ((len + 3) >> 2));
 			return -EIO;
 		}
 
