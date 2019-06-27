@@ -300,6 +300,7 @@ static void spec_fpga_therm_exit(struct spec_dev *spec)
 	if (!(test_bit(SPEC_FLAG_THERM_BIT, spec->flags)))
 		return;
 	sysfs_remove_group(&spec->dev.kobj, &spec_fpga_therm_group);
+	clear_bit(SPEC_FLAG_THERM_BIT, spec->flags);
 }
 
 
