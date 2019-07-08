@@ -191,9 +191,6 @@ extern void spec_irq_exit(struct spec_dev *spec);
 extern int spec_dbg_init(struct spec_dev *spec);
 extern void spec_dbg_exit(struct spec_dev *spec);
 
-extern int spec_fmc_init(struct spec_dev *spec);
-extern int spec_fmc_exit(struct spec_dev *spec);
-
 extern void spec_gpio_fpga_select_set(struct spec_dev *spec,
 				      enum spec_fpga_select sel);
 extern enum spec_fpga_select spec_gpio_fpga_select_get(struct spec_dev *spec);
