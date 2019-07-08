@@ -186,7 +186,7 @@ entity spec_template_wr is
 end entity spec_template_wr;
 
 architecture top of spec_template_wr is
-  signal clk_sys          : std_logic;
+  signal clk_sys          : std_logic;  -- 62.5Mhz
 
   signal genum_wb_out : t_wishbone_master_out;
   signal genum_wb_in  : t_wishbone_master_in;
@@ -235,7 +235,6 @@ architecture top of spec_template_wr is
   signal irqs : std_logic_vector(num_interrupts - 1 downto 0);
 
   -- clock and reset
-  signal clk_sys_62m5   : std_logic;
   signal rst_sys_62m5_n : std_logic;
   signal rst_ref_125m_n : std_logic;
   signal clk_ref_125m   : std_logic;
@@ -449,7 +448,7 @@ begin  -- architecture top
     fmc_presence (0) <= not fmc0_prsnt_m2c_n_i;
     fmc_presence (31 downto 1) <= (others => '0');
     
-    rst_gbl_n <= gn_rst_n and (not csr_rst_gbl);
+    rst_gbl_n <= rst_sys_62m5_n and (not csr_rst_gbl);
     rst_app_n <= rst_gbl_n and (not csr_rst_app);
 
     i_i2c: entity work.xwb_i2c_master
@@ -522,7 +521,7 @@ begin  -- architecture top
       clk_125m_gtp_n_i    => clk_125m_gtp_n_i,
       clk_125m_gtp_p_i    => clk_125m_gtp_p_i,
       clk_10m_ext_i       => clk_ext_10m,
-      clk_sys_62m5_o      => clk_sys_62m5,
+      clk_sys_62m5_o      => clk_sys,
       clk_ref_125m_o      => clk_ref_125m,
       rst_sys_62m5_n_o    => rst_sys_62m5_n,
       rst_ref_125m_n_o    => rst_ref_125m_n,
