@@ -26,10 +26,10 @@ static int mfd_id;
 static int app_id;
 
 enum spec_fpga_mem_offsets {
-	SPEC_FPGA_MEM_THERM_START = SPEC_CORE_FPGA + 0x50,
-	SPEC_FPGA_MEM_THERM_END = SPEC_CORE_FPGA + 0x5F,
-	SPEC_FPGA_MEM_CSR_START = SPEC_CORE_FPGA + 0x60,
-	SPEC_FPGA_MEM_CSR_END = SPEC_CORE_FPGA + 0x7F,
+	SPEC_FPGA_MEM_CSR_START = SPEC_CORE_FPGA + 0x40,
+	SPEC_FPGA_MEM_CSR_END = SPEC_CORE_FPGA + 0x5F,
+	SPEC_FPGA_MEM_THERM_START = SPEC_CORE_FPGA + 0x70,
+	SPEC_FPGA_MEM_THERM_END = SPEC_CORE_FPGA + 0x7F,
 	SPEC_FPGA_MEM_FMC_I2C_START = SPEC_CORE_FPGA + 0x0080,
 	SPEC_FPGA_MEM_FMC_I2C_END = SPEC_CORE_FPGA + 0x009F,
 	SPEC_FPGA_MEM_SPI_START = SPEC_CORE_FPGA + 0x00A0,
@@ -48,6 +48,22 @@ enum spec_fpga_irq_lines {
 	SPEC_FPGA_IRQ_FMC_I2C,
 	SPEC_FPGA_IRQ_SPI,
 };
+
+enum spec_fpga_csr_offsets {
+	SPEC_FPGA_CSR_APP_OFF = SPEC_FPGA_MEM_CSR_START + 0x00,
+	SPEC_FPGA_CSR_R$ESETS = SPEC_FPGA_MEM_CSR_START + 0x04,
+	SPEC_FPGA_CSR_FMC_PRESENT = SPEC_FPGA_MEM_CSR_START + 0x08,
+	SPEC_FPGA_CSR_GN4124_STATUS = SPEC_FPGA_MEM_CSR_START + 0x0C,
+	SPEC_FPGA_CSR_DRR_STATUS = SPEC_FPGA_MEM_CSR_START + 0x10,
+	SPEC_FPGA_CSR_PCB_REV = SPEC_FPGA_MEM_CSR_START + 0x14,
+};
+
+enum spec_fpga_therm_offsets {
+	SPEC_FPGA_THERM_SERID_MSB = SPEC_FPGA_MEM_THERM_START + 0x0,
+	SPEC_FPGA_THERM_SERID_LSB = SPEC_FPGA_MEM_THERM_START + 0x4,
+	SPEC_FPGA_THERM_TEMP = SPEC_FPGA_MEM_THERM_START + 0x8,
+};
+
 
 static struct resource spec_fpga_vic_res[] = {
 	{
@@ -242,9 +258,6 @@ static void spec_fpga_devices_exit(struct spec_dev *spec)
 }
 
 /* Thermometer */
-#define SPEC_FPGA_THERM_SERID_MSB (SPEC_FPGA_MEM_THERM_START + 0x0)
-#define SPEC_FPGA_THERM_SERID_LSB (SPEC_FPGA_MEM_THERM_START + 0x4)
-#define SPEC_FPGA_THERM_TEMP (SPEC_FPGA_MEM_THERM_START + 0x8)
 static ssize_t temperature_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
@@ -307,11 +320,10 @@ static void spec_fpga_therm_exit(struct spec_dev *spec)
 
 /* FMC */
 #define SPEC_FMC_SLOTS 1
-#define SPEC_FMC_PRESENCE (SPEC_CORE_FPGA + 0x64)
 
 static inline u8 spec_fmc_presence(struct spec_dev *spec)
 {
-	return (ioread32(spec->fpga + SPEC_FMC_PRESENCE) & 0x1);
+	return (ioread32(spec->fpga + SPEC_FPGA_CSR_FMC_PRESENT) & 0x1);
 }
 
 static int spec_fmc_is_present(struct fmc_carrier *carrier,
@@ -395,7 +407,6 @@ static int spec_fmc_exit(struct spec_dev *spec)
 }
 
 /* FPGA Application */
-#define SPEC_FPGA_APP_OFF (SPEC_CORE_FPGA + 0x40)
 static void spec_fpga_app_id_build(struct spec_dev *spec,
 					unsigned long app_off,
 					char *id, unsigned int size)
@@ -435,7 +446,7 @@ static int spec_fpga_app_init(struct spec_dev *spec)
 	char app_name[SPEC_FPGA_APP_NAME_MAX];
 	unsigned long app_offset;
 
-	app_offset = ioread32(spec->fpga + SPEC_FPGA_APP_OFF);
+	app_offset = ioread32(spec->fpga + SPEC_FPGA_CSR_APP_OFF);
 	if (!app_offset) {
 		dev_warn(spec->dev.parent, "Application not found\n");
 		return 0;
@@ -464,8 +475,8 @@ static int spec_fpga_app_init(struct spec_dev *spec)
 		res_n = 1;
 	}
 
-	spec_fpga_app_id_build(spec, SPEC_FPGA_APP_OFF,
-				    app_name, SPEC_FPGA_APP_NAME_MAX);
+	spec_fpga_app_id_build(spec, SPEC_FPGA_CSR_APP_OFF,
+			       app_name, SPEC_FPGA_APP_NAME_MAX);
 	pdev = platform_device_register_resndata(&spec->dev,
 						 app_name, app_id++,
 						 res, res_n,
@@ -557,7 +568,6 @@ int spec_fpga_init(struct spec_dev *spec)
 	err = dev_set_name(&spec->dev, "spec-%s", dev_name(&spec->pdev->dev));
 	if (err)
 		goto err_name;
-
 
 	err = device_register(&spec->dev);
 	if (err) {
