@@ -110,6 +110,7 @@ struct spec_meta_id {
  * @i2c_adapter: the I2C master device to be used
  */
 struct spec_dev {
+	struct pci_dev *pdev;
 	struct device dev;
 
 	DECLARE_BITMAP(flags, SPEC_FLAG_BITS);

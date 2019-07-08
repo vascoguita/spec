@@ -490,14 +490,14 @@ static void spec_fpga_app_exit(struct spec_dev *spec)
 static bool spec_fpga_is_valid(struct spec_dev *spec)
 {
 	if ((spec->meta->bom & SPEC_META_BOM_END_MASK) != SPEC_META_BOM_LE) {
-		dev_err(spec->dev.parent,
+		dev_err(&spec->pdev->dev,
 			"Expected Little Endian devices BOM: 0x%x\n",
 		       spec->meta->bom);
 		return false;
 	}
 
 	if ((spec->meta->bom & SPEC_META_BOM_VER_MASK) != 0) {
-		dev_err(spec->dev.parent,
+		dev_err(&spec->pdev->dev,
 			"Unknow Metadata specification version BOM: 0x%x\n",
 			spec->meta->bom);
 		return false;
@@ -505,14 +505,14 @@ static bool spec_fpga_is_valid(struct spec_dev *spec)
 
 	if (spec->meta->vendor != SPEC_META_VENDOR_ID ||
 	    spec->meta->device != SPEC_META_DEVICE_ID) {
-		dev_err(spec->dev.parent,
+		dev_err(&spec->pdev->dev,
 			"Unknow vendor/device ID: %08x:%08x\n",
 			spec->meta->vendor, spec->meta->device);
 		return false;
 	}
 
 	if (spec->meta->version != SPEC_META_VERSION_1_4) {
-		dev_err(spec->dev.parent,
+		dev_err(&spec->pdev->dev,
 			"Unknow version: %08x\n", spec->meta->version);
 		return false;
 	}
@@ -520,6 +520,22 @@ static bool spec_fpga_is_valid(struct spec_dev *spec)
 	return true;
 }
 
+
+static void spec_release(struct device *dev)
+{
+
+}
+
+static int spec_uevent(struct device *dev, struct kobj_uevent_env *env)
+{
+	return 0;
+}
+
+static const struct device_type spec_dev_type = {
+	.name = "spec",
+	.release = spec_release,
+	.uevent = spec_uevent,
+};
 
 /**
  * Initialize carrier devices on FPGA
@@ -534,6 +550,22 @@ int spec_fpga_init(struct spec_dev *spec)
 	if (!spec_fpga_is_valid(spec))
 		return -EINVAL;
 
+	memset(&spec->dev, 0, sizeof(spec->dev));
+	spec->dev.parent = &spec->pdev->dev;
+	spec->dev.driver = spec->pdev->dev.driver;
+	spec->dev.type = &spec_dev_type;
+	err = dev_set_name(&spec->dev, "spec-%s", dev_name(&spec->pdev->dev));
+	if (err)
+		goto err_name;
+
+
+	err = device_register(&spec->dev);
+	if (err) {
+		dev_err(&spec->pdev->dev, "Failed to register '%s'\n",
+			dev_name(&spec->dev));
+		goto err_dev;
+	}
+
 	err = spec_fpga_therm_init(spec);
 	if (err)
 		goto err_therm;
@@ -542,7 +574,7 @@ int spec_fpga_init(struct spec_dev *spec)
 		goto err_vic;
 	err = spec_fpga_devices_init(spec);
 	if (err)
-		goto err_dev;
+		goto err_devs;
 	err = spec_fmc_init(spec);
 	if (err)
 		goto err_fmc;
@@ -556,11 +588,14 @@ err_app:
 	spec_fmc_exit(spec);
 err_fmc:
 	spec_fpga_devices_exit(spec);
-err_dev:
+err_devs:
 	spec_fpga_vic_exit(spec);
 err_vic:
 	spec_fpga_therm_exit(spec);
 err_therm:
+	device_unregister(&spec->dev);
+err_dev:
+err_name:
 	return err;
 }
 
@@ -571,6 +606,7 @@ int spec_fpga_exit(struct spec_dev *spec)
 	spec_fpga_devices_exit(spec);
 	spec_fpga_vic_exit(spec);
 	spec_fpga_therm_exit(spec);
+	device_unregister(&spec->dev);
 
 	return 0;
 }

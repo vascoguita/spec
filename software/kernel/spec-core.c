@@ -92,12 +92,10 @@ static const struct mfd_cell spec_mfd_devs[] = {
  */
 static const char *spec_fw_name_init_get(struct spec_dev *spec)
 {
-	struct pci_dev *pdev = to_pci_dev(spec->dev.parent);
-
 	if (strlen(spec_fw_name) > 0)
 		return spec_fw_name;
 
-	switch (pdev->device) {
+	switch (spec->pdev->device) {
 	case PCI_DEVICE_ID_SPEC_45T:
 		return spec_fw_name_45t;
 	case PCI_DEVICE_ID_SPEC_100T:
@@ -123,7 +121,7 @@ int spec_fw_load(struct spec_dev *spec, const char *name)
 
 	err = spec_fpga_exit(spec);
 	if (err) {
-		dev_err(&spec->dev,
+		dev_err(&spec->pdev->dev,
 			"Cannot remove FPGA device instances. Try to remove them manually and to reload this device instance\n");
 		return err;
 	}
@@ -140,7 +138,7 @@ int spec_fw_load(struct spec_dev *spec, const char *name)
 
 	err = spec_fpga_init(spec);
 	if (err)
-		dev_warn(&spec->dev, "FPGA incorrectly programmed\n");
+		dev_warn(&spec->pdev->dev, "FPGA incorrectly programmed\n");
 
 out:
 	spec_gpio_fpga_select_set(spec, sel);
@@ -149,22 +147,12 @@ out:
 	return err;
 }
 
-static void spec_release(struct device *dev)
-{
-
-}
-
-static int spec_uevent(struct device *dev, struct kobj_uevent_env *env)
-{
-	return 0;
-}
-
-
 static ssize_t bootselect_store(struct device *dev,
 				struct device_attribute *attr,
 				const char *buf, size_t count)
 {
-	struct spec_dev *spec = to_spec_dev(dev);
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct spec_dev *spec = pci_get_drvdata(pdev);
 	enum spec_fpga_select sel;
 
 	if (strncmp("fpga-flash", buf, 8) == 0) {
@@ -190,7 +178,8 @@ static ssize_t bootselect_show(struct device *dev,
 			       struct device_attribute *attr,
 			       char *buf)
 {
-	struct spec_dev *spec = to_spec_dev(dev);
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct spec_dev *spec = pci_get_drvdata(pdev);
 	enum spec_fpga_select sel;
 
 	sel = spec_gpio_fpga_select_get(spec);
@@ -216,7 +205,8 @@ static ssize_t load_golden_fpga_store(struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t count)
 {
-	struct spec_dev *spec = to_spec_dev(dev);
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct spec_dev *spec = pci_get_drvdata(pdev);
 	int err;
 
 	err = spec_fw_load(spec, spec_fw_name_init_get(spec));
@@ -225,28 +215,16 @@ static ssize_t load_golden_fpga_store(struct device *dev,
 }
 static DEVICE_ATTR_WO(load_golden_fpga);
 
-static struct attribute *spec_type_attrs[] = {
+static struct attribute *gn412x_fpga_attrs[] = {
 	&dev_attr_load_golden_fpga.attr,
 	&dev_attr_bootselect.attr,
 	NULL,
 };
 
-static const struct attribute_group spec_type_group = {
-	.attrs = spec_type_attrs,
+static const struct attribute_group gn412x_fpga_group = {
+	.name = "fpga-options",
+	.attrs = gn412x_fpga_attrs,
 };
-
-static const struct attribute_group *spec_type_groups[] = {
-	&spec_type_group,
-	NULL,
-};
-
-static const struct device_type spec_dev_type = {
-	.name = "spec",
-	.release = spec_release,
-	.uevent = spec_uevent,
-	.groups = spec_type_groups,
-};
-
 
 static int spec_probe(struct pci_dev *pdev,
 		      const struct pci_device_id *id)
@@ -260,11 +238,11 @@ static int spec_probe(struct pci_dev *pdev,
 
 	mutex_init(&spec->mtx);
 	pci_set_drvdata(pdev, spec);
+	spec->pdev = pdev;
 
 	err = pci_enable_device(pdev);
 	if (err) {
-		dev_err(spec->dev.parent,
-			"Failed to enable PCI device (%d)\n",
+		dev_err(&pdev->dev, "Failed to enable PCI device (%d)\n",
 		        err);
 		goto err_enable;
 	}
@@ -285,7 +263,7 @@ static int spec_probe(struct pci_dev *pdev,
 		}
 	}
 	if (err) {
-		dev_err(spec->dev.parent, "Failed to remap memory (%d)\n",
+		dev_err(&pdev->dev, "Failed to remap memory (%d)\n",
 		        err);
 		goto err_remap;
 	}
@@ -295,35 +273,25 @@ static int spec_probe(struct pci_dev *pdev,
 			      ARRAY_SIZE(spec_mfd_devs),
 			      &pdev->resource[4], pdev->irq, NULL);
 	if (err) {
-		dev_err(&spec->dev, "Failed to add MFD devices (%d)\n", err);
+		dev_err(&spec->pdev->dev, "Failed to add MFD devices (%d)\n",
+			err);
 		goto err_mfd;
 	}
 
-	spec->dev.parent = &pdev->dev;
-	spec->dev.type = &spec_dev_type;
-	err = dev_set_name(&spec->dev, "spec-%s", dev_name(&pdev->dev));
-	if (err)
-		goto err_name;
-
-	err = device_register(&spec->dev);
-	if (err) {
-		dev_err(spec->dev.parent, "Failed to register '%s'\n",
-			dev_name(&spec->dev));
-		goto err_dev;
-	}
-	/* This virtual device is assciated with this driver */
-	spec->dev.driver = pdev->dev.driver;
-
 	err = spec_gpio_init(spec);
 	if (err) {
-		dev_err(&spec->dev, "Failed to get GPIOs (%d)\n", err);
+		dev_err(&pdev->dev, "Failed to get GPIOs (%d)\n", err);
 		goto err_sgpio;
 	}
+
+	err = sysfs_create_group(&pdev->dev.kobj, &gn412x_fpga_group);
+	if (err)
+		goto err_sysfs;
 
 	mutex_lock(&spec->mtx);
 	err = spec_fpga_init(spec);
 	if (err)
-		dev_warn(&spec->dev,
+		dev_warn(&pdev->dev,
 			 "FPGA incorrectly programmed or empty (%d)\n", err);
 	mutex_unlock(&spec->mtx);
 
@@ -331,10 +299,9 @@ static int spec_probe(struct pci_dev *pdev,
 
 	return 0;
 
+err_sysfs:
+	spec_gpio_exit(spec);
 err_sgpio:
-	device_unregister(&spec->dev);
-err_dev:
-err_name:
 	mfd_remove_devices(&pdev->dev);
 err_mfd:
 	for (i = 0; i < 3; i++) {
@@ -356,8 +323,8 @@ static void spec_remove(struct pci_dev *pdev)
 
 	spec_dbg_exit(spec);
 	spec_fpga_exit(spec);
+	sysfs_remove_group(&pdev->dev.kobj, &gn412x_fpga_group);
 	spec_gpio_exit(spec);
-	device_unregister(&spec->dev);
 
 	mfd_remove_devices(&pdev->dev);
 	for (i = 0; i < 3; i++)

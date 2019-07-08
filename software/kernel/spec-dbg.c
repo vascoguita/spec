@@ -15,9 +15,9 @@ static int spec_irq_dbg_info(struct seq_file *s, void *offset)
 {
 	struct spec_dev *spec = s->private;
 
-	seq_printf(s, "'%s':\n", dev_name(spec->dev.parent));
+	seq_printf(s, "'%s':\n", dev_name(&spec->pdev->dev));
 
-	seq_printf(s, "  redirect: %d\n", to_pci_dev(spec->dev.parent)->irq);
+	seq_printf(s, "  redirect: %d\n", to_pci_dev(&spec->pdev->dev)->irq);
 	seq_puts(s, "  irq-mapping:\n");
 	seq_puts(s, "    - hardware: 8\n");
 	seq_printf(s, "      linux: %d\n",
@@ -75,7 +75,7 @@ static int spec_dbg_meta(struct seq_file *s, void *offset)
 {
 	struct spec_dev *spec = s->private;
 
-	seq_printf(s, "'%s':\n", dev_name(spec->dev.parent));
+	seq_printf(s, "'%s':\n", dev_name(&spec->pdev->dev));
 	seq_puts(s, "Metadata:\n");
 	seq_printf(s, "  - Vendor: 0x%08x\n", spec->meta->vendor);
 	seq_printf(s, "  - Device: 0x%08x\n", spec->meta->device);
@@ -119,7 +119,7 @@ static const struct file_operations spec_dbg_meta_ops = {
  */
 int spec_dbg_init(struct spec_dev *spec)
 {
-	spec->dbg_dir = debugfs_create_dir(dev_name(&spec->dev), NULL);
+	spec->dbg_dir = debugfs_create_dir(dev_name(&spec->pdev->dev), NULL);
 	if (IS_ERR_OR_NULL(spec->dbg_dir)) {
 		dev_err(&spec->dev,
 			"Cannot create debugfs directory (%ld)\n",
