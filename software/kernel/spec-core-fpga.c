@@ -64,6 +64,33 @@ enum spec_fpga_therm_offsets {
 	SPEC_FPGA_THERM_TEMP = SPEC_FPGA_MEM_THERM_START + 0x8,
 };
 
+static const struct debugfs_reg32 spec_fpga_debugfs_reg32[] = {
+	{
+		.name = "Application offset",
+		.offset = SPEC_FPGA_CSR_APP_OFF,
+	},
+	{
+		.name = "Resets",
+		.offset = SPEC_FPGA_CSR_RESETS,
+	},
+	{
+		.name = "FMC present",
+		.offset = SPEC_FPGA_CSR_FMC_PRESENT,
+	},
+	{
+		.name = "GN4124 Status",
+		.offset = SPEC_FPGA_CSR_GN4124_STATUS,
+	},
+	{
+		.name = "DDR Status",
+		.offset = SPEC_FPGA_CSR_DDR_STATUS,
+	},
+	{
+		.name = "PCB revision",
+		.offset = SPEC_FPGA_CSR_PCB_REV,
+	},
+};
+
 
 static struct resource spec_fpga_vic_res[] = {
 	{
@@ -592,8 +619,36 @@ int spec_fpga_init(struct spec_dev *spec)
 	if (err)
 		goto err_app;
 
+	spec->dbg_dir_fpga = debugfs_create_dir(dev_name(&spec->dev),
+						spec->dbg_dir);
+	if (IS_ERR_OR_NULL(spec->dbg_dir_fpga)) {
+		err = PTR_ERR(spec->dbg_dir_fpga);
+		dev_err(&spec->dev,
+			"Cannot create debugfs directory \"%s\" (%d)\n",
+			dev_name(&spec->dev), err);
+		goto err_dbg_dir;
+	}
+
+	spec->dbg_csr_reg.regs = spec_fpga_debugfs_reg32;
+	spec->dbg_csr_reg.nregs = ARRAY_SIZE(spec_fpga_debugfs_reg32);
+	spec->dbg_csr_reg.base = spec->fpga;
+	spec->dbg_csr = debugfs_create_regset32(SPEC_DBG_CSR_NAME, 0200,
+						spec->dbg_dir_fpga,
+						&spec->dbg_csr_reg);
+	if (IS_ERR_OR_NULL(spec->dbg_csr)) {
+		err = PTR_ERR(spec->dbg_csr);
+		dev_warn(&spec->dev,
+			"Cannot create debugfs file \"%s\" (%d)\n",
+			SPEC_DBG_CSR_NAME, err);
+		goto err_dbg_csr;
+	}
+
 	return 0;
 
+err_dbg_csr:
+	debugfs_remove_recursive(spec->dbg_dir_fpga);
+err_dbg_dir:
+	spec_fpga_app_exit(spec);
 err_app:
 	spec_fmc_exit(spec);
 err_fmc:
@@ -611,6 +666,7 @@ err_name:
 
 int spec_fpga_exit(struct spec_dev *spec)
 {
+	debugfs_remove_recursive(spec->dbg_dir_fpga);
 	spec_fpga_app_exit(spec);
 	spec_fmc_exit(spec);
 	spec_fpga_devices_exit(spec);

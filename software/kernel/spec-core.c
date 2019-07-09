@@ -288,14 +288,14 @@ static int spec_probe(struct pci_dev *pdev,
 	if (err)
 		goto err_sysfs;
 
+	spec_dbg_init(spec);
+
 	mutex_lock(&spec->mtx);
 	err = spec_fpga_init(spec);
 	if (err)
 		dev_warn(&pdev->dev,
 			 "FPGA incorrectly programmed or empty (%d)\n", err);
 	mutex_unlock(&spec->mtx);
-
-	spec_dbg_init(spec);
 
 	return 0;
 

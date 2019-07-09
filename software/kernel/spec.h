@@ -133,6 +133,11 @@ struct spec_dev {
 #define SPEC_DBG_META_NAME "fpga_device_metadata"
 	struct dentry *dbg_meta;
 
+	struct dentry *dbg_dir_fpga;
+#define SPEC_DBG_CSR_NAME "csr_regs"
+	struct dentry *dbg_csr;
+	struct debugfs_regset32 dbg_csr_reg;
+
 	struct gpiod_lookup_table *gpiod_table;
 	struct gpio_desc *gpiod[GN4124_GPIO_MAX];
 };
