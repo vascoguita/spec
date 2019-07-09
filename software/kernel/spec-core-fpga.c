@@ -290,10 +290,16 @@ static ssize_t temperature_show(struct device *dev,
 				char *buf)
 {
 	struct spec_dev *spec = to_spec_dev(dev);
-	uint32_t temp = ioread32(spec->fpga + SPEC_FPGA_THERM_TEMP);
 
-	return snprintf(buf, PAGE_SIZE, "%d.%d C\n",
+	if (spec->meta->cap & SPEC_META_CAP_THERM) {
+		uint32_t temp = ioread32(spec->fpga + SPEC_FPGA_THERM_TEMP);
+
+		return snprintf(buf, PAGE_SIZE, "%d.%d C\n",
 			temp / 16, (temp & 0xF) * 1000 / 16);
+	} else {
+		return snprintf(buf, PAGE_SIZE, "-.- C\n");
+	}
+
 }
 static DEVICE_ATTR_RO(temperature);
 
@@ -303,9 +309,15 @@ static ssize_t serial_number_show(struct device *dev,
 {
 	struct spec_dev *spec = to_spec_dev(dev);
 
-	return snprintf(buf, PAGE_SIZE, "0x%08x%08x\n",
-			ioread32(spec->fpga + SPEC_FPGA_THERM_SERID_MSB),
-			ioread32(spec->fpga + SPEC_FPGA_THERM_SERID_LSB));
+	if (spec->meta->cap & SPEC_META_CAP_THERM) {
+		uint32_t msb = ioread32(spec->fpga + SPEC_FPGA_THERM_SERID_MSB);
+		uint32_t lsb = ioread32(spec->fpga + SPEC_FPGA_THERM_SERID_LSB);
+
+		return snprintf(buf, PAGE_SIZE, "0x%08x%08x\n", msb, lsb);
+	} else {
+		return snprintf(buf, PAGE_SIZE, "0x----------------\n");
+	}
+
 }
 static DEVICE_ATTR_RO(serial_number);
 
@@ -569,10 +581,16 @@ static int spec_uevent(struct device *dev, struct kobj_uevent_env *env)
 	return 0;
 }
 
+static const struct attribute_group *spec_groups[] = {
+	&spec_fpga_therm_group,
+	NULL
+};
+
 static const struct device_type spec_dev_type = {
 	.name = "spec",
 	.release = spec_release,
 	.uevent = spec_uevent,
+	.groups = spec_groups,
 };
 
 /**
@@ -603,9 +621,6 @@ int spec_fpga_init(struct spec_dev *spec)
 		goto err_dev;
 	}
 
-	err = spec_fpga_therm_init(spec);
-	if (err)
-		goto err_therm;
 	err = spec_fpga_vic_init(spec);
 	if (err)
 		goto err_vic;
@@ -656,8 +671,6 @@ err_fmc:
 err_devs:
 	spec_fpga_vic_exit(spec);
 err_vic:
-	spec_fpga_therm_exit(spec);
-err_therm:
 	device_unregister(&spec->dev);
 err_dev:
 err_name:
@@ -671,7 +684,6 @@ int spec_fpga_exit(struct spec_dev *spec)
 	spec_fmc_exit(spec);
 	spec_fpga_devices_exit(spec);
 	spec_fpga_vic_exit(spec);
-	spec_fpga_therm_exit(spec);
 	device_unregister(&spec->dev);
 
 	return 0;
