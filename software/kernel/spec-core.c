@@ -90,12 +90,12 @@ static const struct mfd_cell spec_mfd_devs[] = {
  *
  * Return: FPGA firmware name
  */
-static const char *spec_fw_name_init_get(struct spec_dev *spec)
+static const char *spec_fw_name_init_get(struct spec_gn412x *spec_gn412x)
 {
 	if (strlen(spec_fw_name) > 0)
 		return spec_fw_name;
 
-	switch (spec->pdev->device) {
+	switch (spec_gn412x->pdev->device) {
 	case PCI_DEVICE_ID_SPEC_45T:
 		return spec_fw_name_45t;
 	case PCI_DEVICE_ID_SPEC_100T:
@@ -114,35 +114,36 @@ static const char *spec_fw_name_init_get(struct spec_dev *spec)
  *
  * Return: 0 on success, otherwise a negative error number
  */
-int spec_fw_load(struct spec_dev *spec, const char *name)
+int spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name)
 {
 	enum spec_fpga_select sel;
 	int err;
 
-	err = spec_fpga_exit(spec);
+	err = spec_fpga_exit(spec_gn412x);
 	if (err) {
-		dev_err(&spec->pdev->dev,
+		dev_err(&spec_gn412x->pdev->dev,
 			"Cannot remove FPGA device instances. Try to remove them manually and to reload this device instance\n");
 		return err;
 	}
 
 
-	mutex_lock(&spec->mtx);
-	sel = spec_gpio_fpga_select_get(spec);
+	mutex_lock(&spec_gn412x->mtx);
+	sel = spec_gpio_fpga_select_get(spec_gn412x);
 
-	spec_gpio_fpga_select_set(spec, SPEC_FPGA_SELECT_GN4124_FPGA);
+	spec_gpio_fpga_select_set(spec_gn412x, SPEC_FPGA_SELECT_GN4124_FPGA);
 
-	err = compat_spec_fw_load(spec, name);
+	err = compat_spec_fw_load(spec_gn412x, name);
 	if (err)
 		goto out;
 
-	err = spec_fpga_init(spec);
+	err = spec_fpga_init(spec_gn412x);
 	if (err)
-		dev_warn(&spec->pdev->dev, "FPGA incorrectly programmed\n");
+		dev_warn(&spec_gn412x->pdev->dev,
+			 "FPGA incorrectly programmed\n");
 
 out:
-	spec_gpio_fpga_select_set(spec, sel);
-	mutex_unlock(&spec->mtx);
+	spec_gpio_fpga_select_set(spec_gn412x, sel);
+	mutex_unlock(&spec_gn412x->mtx);
 
 	return err;
 }
@@ -152,7 +153,7 @@ static ssize_t bootselect_store(struct device *dev,
 				const char *buf, size_t count)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
-	struct spec_dev *spec = pci_get_drvdata(pdev);
+	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pdev);
 	enum spec_fpga_select sel;
 
 	if (strncmp("fpga-flash", buf, 8) == 0) {
@@ -167,9 +168,9 @@ static ssize_t bootselect_store(struct device *dev,
 		return -EINVAL;
 	}
 
-	mutex_lock(&spec->mtx);
-	spec_gpio_fpga_select_set(spec, sel);
-	mutex_unlock(&spec->mtx);
+	mutex_lock(&spec_gn412x->mtx);
+	spec_gpio_fpga_select_set(spec_gn412x, sel);
+	mutex_unlock(&spec_gn412x->mtx);
 
 	return count;
 
@@ -179,10 +180,10 @@ static ssize_t bootselect_show(struct device *dev,
 			       char *buf)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
-	struct spec_dev *spec = pci_get_drvdata(pdev);
+	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pdev);
 	enum spec_fpga_select sel;
 
-	sel = spec_gpio_fpga_select_get(spec);
+	sel = spec_gpio_fpga_select_get(spec_gn412x);
 	switch (sel) {
 	case SPEC_FPGA_SELECT_FPGA_FLASH:
 		return snprintf(buf, PAGE_SIZE, "fpga-flash\n");
@@ -206,10 +207,10 @@ static ssize_t load_golden_fpga_store(struct device *dev,
 				      const char *buf, size_t count)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
-	struct spec_dev *spec = pci_get_drvdata(pdev);
+	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pdev);
 	int err;
 
-	err = spec_fw_load(spec, spec_fw_name_init_get(spec));
+	err = spec_fw_load(spec_gn412x, spec_fw_name_init_get(spec_gn412x));
 
 	return err < 0 ? err : count;
 }
@@ -229,16 +230,16 @@ static const struct attribute_group gn412x_fpga_group = {
 static int spec_probe(struct pci_dev *pdev,
 		      const struct pci_device_id *id)
 {
-	struct spec_dev *spec;
+	struct spec_gn412x *spec_gn412x;
 	int err;
 
-	spec = kzalloc(sizeof(*spec), GFP_KERNEL);
-	if (!spec)
+	spec_gn412x = kzalloc(sizeof(*spec_gn412x), GFP_KERNEL);
+	if (!spec_gn412x)
 		return -ENOMEM;
 
-	mutex_init(&spec->mtx);
-	pci_set_drvdata(pdev, spec);
-	spec->pdev = pdev;
+	mutex_init(&spec_gn412x->mtx);
+	pci_set_drvdata(pdev, spec_gn412x);
+	spec_gn412x->pdev = pdev;
 
 	err = pci_enable_device(pdev);
 	if (err) {
@@ -253,12 +254,13 @@ static int spec_probe(struct pci_dev *pdev,
 			      ARRAY_SIZE(spec_mfd_devs),
 			      &pdev->resource[4], pdev->irq, NULL);
 	if (err) {
-		dev_err(&spec->pdev->dev, "Failed to add MFD devices (%d)\n",
+		dev_err(&spec_gn412x->pdev->dev,
+			"Failed to add MFD devices (%d)\n",
 			err);
 		goto err_mfd;
 	}
 
-	err = spec_gpio_init(spec);
+	err = spec_gpio_init(spec_gn412x);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to get GPIOs (%d)\n", err);
 		goto err_sgpio;
@@ -268,41 +270,41 @@ static int spec_probe(struct pci_dev *pdev,
 	if (err)
 		goto err_sysfs;
 
-	spec_dbg_init(spec);
+	spec_dbg_init(spec_gn412x);
 
-	mutex_lock(&spec->mtx);
-	err = spec_fpga_init(spec);
+	mutex_lock(&spec_gn412x->mtx);
+	err = spec_fpga_init(spec_gn412x);
 	if (err)
 		dev_warn(&pdev->dev,
 			 "FPGA incorrectly programmed or empty (%d)\n", err);
-	mutex_unlock(&spec->mtx);
+	mutex_unlock(&spec_gn412x->mtx);
 
 	return 0;
 
 err_sysfs:
-	spec_gpio_exit(spec);
+	spec_gpio_exit(spec_gn412x);
 err_sgpio:
 	mfd_remove_devices(&pdev->dev);
 err_mfd:
 	pci_disable_device(pdev);
 err_enable:
-	kfree(spec);
+	kfree(spec_gn412x);
 	return err;
 }
 
 
 static void spec_remove(struct pci_dev *pdev)
 {
-	struct spec_dev *spec = pci_get_drvdata(pdev);
+	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pdev);
 
-	spec_dbg_exit(spec);
-	spec_fpga_exit(spec);
+	spec_dbg_exit(spec_gn412x);
+	spec_fpga_exit(spec_gn412x);
 	sysfs_remove_group(&pdev->dev.kobj, &gn412x_fpga_group);
-	spec_gpio_exit(spec);
+	spec_gpio_exit(spec_gn412x);
 
 	mfd_remove_devices(&pdev->dev);
 	pci_disable_device(pdev);
-	kfree(spec);
+	kfree(spec_gn412x);
 }
 
 

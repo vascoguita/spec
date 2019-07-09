@@ -124,13 +124,13 @@ static struct platform_device *mfd_find_device(struct device *parent,
 	return to_platform_device(dev);
 }
 
-int compat_spec_fw_load(struct spec_dev *spec, const char *name)
+int compat_spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name)
 {
 	struct fpga_manager *mgr;
 	struct platform_device *fpga_pdev;
 	int err;
 
-	fpga_pdev = mfd_find_device(spec->dev.parent, "gn412x-fcl", -1);
+	fpga_pdev = mfd_find_device(&spec_gn412x->pdev->dev, "gn412x-fcl", -1);
 	if (!fpga_pdev)
 		return -ENODEV;
 	mgr = fpga_mgr_get(&fpga_pdev->dev);

@@ -99,30 +99,42 @@ struct spec_meta_id {
 };
 
 /**
- * struct spec_dev - SPEC instance
- * It describes a SPEC device instance.
- * @dev Linux device instance descriptor
- * @mtx: protect bootselect usage, fpga device load
- * @flags collection of bit flags
- * @slot_info: information about FMC slot
- * @i2c_pdev: platform device for I2C master
- * @i2c_adapter: the I2C master device to be used
+ * struct spec_fpga - it contains data to handle the FPGA
+ *
+ * @pdev: pointer to the PCI device
+ * @fpga:
+ * @meta:
+ * @vic_pdev:
+ * @app_pdev:
+ * @slot_info:
+ * @dbg_dir_fpga:
+ * @dbg_csr:
+ * @dbg_csr_reg:
  */
-struct spec_dev {
-	struct pci_dev *pdev;
+struct spec_fpga {
 	struct device dev;
-
-	DECLARE_BITMAP(flags, SPEC_FLAG_BITS);
 	void __iomem *fpga;
-	struct spec_meta_id __iomem *meta;
-
-	struct mutex mtx;
-
 	struct platform_device *vic_pdev;
 	struct platform_device *app_pdev;
-
 	struct fmc_slot_info slot_info;
+	struct dentry *dbg_dir_fpga;
+#define SPEC_DBG_CSR_NAME "csr_regs"
+	struct dentry *dbg_csr;
+	struct debugfs_regset32 dbg_csr_reg;
+};
 
+/**
+ * struct spec_gn412x - it contains data to handle the PCB
+ *
+ * @pdev: pointer to the PCI device
+ * @mtx: it protects FPGA device/configuration loading
+ */
+struct spec_gn412x {
+	struct pci_dev *pdev;
+	struct mutex mtx;
+	struct spec_meta_id __iomem *meta;
+	struct gpiod_lookup_table *gpiod_table;
+	struct gpio_desc *gpiod[GN4124_GPIO_MAX];
 	struct dentry *dbg_dir;
 #define SPEC_DBG_INFO_NAME "info"
 	struct dentry *dbg_info;
@@ -130,35 +142,27 @@ struct spec_dev {
 	struct dentry *dbg_fw;
 #define SPEC_DBG_META_NAME "fpga_device_metadata"
 	struct dentry *dbg_meta;
-
-	struct dentry *dbg_dir_fpga;
-#define SPEC_DBG_CSR_NAME "csr_regs"
-	struct dentry *dbg_csr;
-	struct debugfs_regset32 dbg_csr_reg;
-
-	struct gpiod_lookup_table *gpiod_table;
-	struct gpio_desc *gpiod[GN4124_GPIO_MAX];
+	struct spec_fpga *spec_fpga;
 };
 
-
-static inline struct spec_dev *to_spec_dev(struct device *_dev)
+static inline struct spec_fpga *to_spec_fpga(struct device *_dev)
 {
-	return container_of(_dev, struct spec_dev, dev);
+	return container_of(_dev, struct spec_fpga, dev);
 }
 
-extern int spec_fw_load(struct spec_dev *spec, const char *name);
+extern int spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name);
 
-extern int spec_dbg_init(struct spec_dev *spec);
-extern void spec_dbg_exit(struct spec_dev *spec);
+extern int spec_dbg_init(struct spec_gn412x *spec_gn412x);
+extern void spec_dbg_exit(struct spec_gn412x *spec_gn412x);
 
-extern void spec_gpio_fpga_select_set(struct spec_dev *spec,
+extern void spec_gpio_fpga_select_set(struct spec_gn412x *spec_gn412x,
 				      enum spec_fpga_select sel);
-extern enum spec_fpga_select spec_gpio_fpga_select_get(struct spec_dev *spec);
+extern enum spec_fpga_select spec_gpio_fpga_select_get(struct spec_gn412x *spec_gn412x);
 
-extern int spec_gpio_init(struct spec_dev *spec);
-extern void spec_gpio_exit(struct spec_dev *spec);
+extern int spec_gpio_init(struct spec_gn412x *spec_gn412x);
+extern void spec_gpio_exit(struct spec_gn412x *spec_gn412x);
 
-extern int spec_fpga_init(struct spec_dev *spec);
-extern int spec_fpga_exit(struct spec_dev *spec);
+extern int spec_fpga_init(struct spec_gn412x *spec_gn412x);
+extern int spec_fpga_exit(struct spec_gn412x *spec_gn412x);
 
 #endif /* __SPEC_H__ */

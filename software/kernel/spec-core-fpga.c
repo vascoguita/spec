@@ -91,14 +91,14 @@ static const struct debugfs_reg32 spec_fpga_debugfs_reg32[] = {
 	},
 };
 
-static inline uint32_t spec_fpga_csr_app_offset(struct spec_dev *spec)
+static inline uint32_t spec_fpga_csr_app_offset(struct spec_fpga *spec_fpga)
 {
-	return ioread32(spec->fpga + SPEC_FPGA_CSR_APP_OFF);
+	return ioread32(spec_fpga->fpga + SPEC_FPGA_CSR_APP_OFF);
 }
 
-static inline uint32_t spec_fpga_csr_pcb_rev(struct spec_dev *spec)
+static inline uint32_t spec_fpga_csr_pcb_rev(struct spec_fpga *spec_fpga)
 {
-	return ioread32(spec->fpga + SPEC_FPGA_CSR_PCB_REV);
+	return ioread32(spec_fpga->fpga + SPEC_FPGA_CSR_PCB_REV);
 }
 
 
@@ -117,38 +117,39 @@ static struct resource spec_fpga_vic_res[] = {
 };
 
 /* Vector Interrupt Controller */
-static int spec_fpga_vic_init(struct spec_dev *spec)
+static int spec_fpga_vic_init(struct spec_fpga *spec_fpga)
 {
-	struct pci_dev *pcidev = to_pci_dev(spec->dev.parent);
+	struct pci_dev *pcidev = to_pci_dev(spec_fpga->dev.parent);
+	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pcidev);
 	unsigned long pci_start = pci_resource_start(pcidev, 0);
 	const unsigned int res_n = ARRAY_SIZE(spec_fpga_vic_res);
 	struct resource res[ARRAY_SIZE(spec_fpga_vic_res)];
 	struct platform_device *pdev;
 
-	if (!(spec->meta->cap & SPEC_META_CAP_VIC))
+	if (!(spec_gn412x->meta->cap & SPEC_META_CAP_VIC))
 		return 0;
 
 	memcpy(&res, spec_fpga_vic_res, sizeof(spec_fpga_vic_res));
 	res[0].start += pci_start;
 	res[0].end += pci_start;
-	res[1].start = gpiod_to_irq(spec->gpiod[GN4124_GPIO_IRQ1]);
+	res[1].start = gpiod_to_irq(spec_gn412x->gpiod[GN4124_GPIO_IRQ1]);
 	res[1].end = res[1].start;
-	pdev = platform_device_register_resndata(&spec->dev,
+	pdev = platform_device_register_resndata(&spec_fpga->dev,
 						 "htvic-spec", vic_id++,
 						 res, res_n,
 						 NULL, 0);
 	if (IS_ERR(pdev))
 		return PTR_ERR(pdev);
-	spec->vic_pdev = pdev;
+	spec_fpga->vic_pdev = pdev;
 
 	return 0;
 }
 
-static void spec_fpga_vic_exit(struct spec_dev *spec)
+static void spec_fpga_vic_exit(struct spec_fpga *spec_fpga)
 {
-	if (spec->vic_pdev) {
-		platform_device_unregister(spec->vic_pdev);
-		spec->vic_pdev = NULL;
+	if (spec_fpga->vic_pdev) {
+		platform_device_unregister(spec_fpga->vic_pdev);
+		spec_fpga->vic_pdev = NULL;
 	}
 }
 
@@ -242,15 +243,16 @@ static inline size_t __fpga_mfd_devs_size(void)
 	return (sizeof(struct mfd_cell) * SPEC_FPGA_MFD_DEVS_MAX);
 }
 
-static int spec_fpga_devices_init(struct spec_dev *spec)
+static int spec_fpga_devices_init(struct spec_fpga *spec_fpga)
 {
-	struct pci_dev *pcidev = to_pci_dev(spec->dev.parent);
+	struct pci_dev *pcidev = to_pci_dev(spec_fpga->dev.parent);
+	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pcidev);
 	struct mfd_cell *fpga_mfd_devs;
 	struct irq_domain *vic_domain;
 	unsigned int n_mfd = 0;
 	int err;
 
-	fpga_mfd_devs = devm_kzalloc(&spec->dev,
+	fpga_mfd_devs = devm_kzalloc(&spec_fpga->dev,
 				     __fpga_mfd_devs_size(),
 				     GFP_KERNEL);
 	if (!fpga_mfd_devs)
@@ -261,20 +263,20 @@ static int spec_fpga_devices_init(struct spec_dev *spec)
 	       sizeof(fpga_mfd_devs[n_mfd]));
 	n_mfd++;
 
-	if (spec->meta->cap & SPEC_META_CAP_SPI) {
+	if (spec_gn412x->meta->cap & SPEC_META_CAP_SPI) {
 		memcpy(&fpga_mfd_devs[n_mfd],
 		       &spec_fpga_mfd_devs[SPEC_FPGA_MFD_SPI],
 		       sizeof(fpga_mfd_devs[n_mfd]));
 		n_mfd++;
 	}
 
-	vic_domain = irq_find_host((void *)&spec->vic_pdev->dev);
+	vic_domain = irq_find_host((void *)&spec_fpga->vic_pdev->dev);
 	if (!vic_domain) {
 		/* Remove IRQ resource from all devices */
 		fpga_mfd_devs[0].num_resources = 1;  /* FMC I2C */
 		fpga_mfd_devs[1].num_resources = 1;  /* SPI */
 	}
-	err = mfd_add_devices(&spec->dev, mfd_id++,
+	err = mfd_add_devices(&spec_fpga->dev, mfd_id++,
 			      fpga_mfd_devs, n_mfd,
 			      &pcidev->resource[0],
 			      0, vic_domain);
@@ -284,14 +286,14 @@ static int spec_fpga_devices_init(struct spec_dev *spec)
 	return 0;
 
 err_mfd:
-	devm_kfree(&spec->dev, fpga_mfd_devs);
+	devm_kfree(&spec_fpga->dev, fpga_mfd_devs);
 
 	return err;
 }
 
-static void spec_fpga_devices_exit(struct spec_dev *spec)
+static void spec_fpga_devices_exit(struct spec_fpga *spec_fpga)
 {
-	mfd_remove_devices(&spec->dev);
+	mfd_remove_devices(&spec_fpga->dev);
 }
 
 /* Thermometer */
@@ -299,10 +301,12 @@ static ssize_t temperature_show(struct device *dev,
 				struct device_attribute *attr,
 				char *buf)
 {
-	struct spec_dev *spec = to_spec_dev(dev);
+	struct spec_fpga *spec_fpga = to_spec_fpga(dev);
+	struct pci_dev *pcidev = to_pci_dev(dev->parent);
+	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pcidev);
 
-	if (spec->meta->cap & SPEC_META_CAP_THERM) {
-		uint32_t temp = ioread32(spec->fpga + SPEC_FPGA_THERM_TEMP);
+	if (spec_gn412x->meta->cap & SPEC_META_CAP_THERM) {
+		uint32_t temp = ioread32(spec_fpga->fpga + SPEC_FPGA_THERM_TEMP);
 
 		return snprintf(buf, PAGE_SIZE, "%d.%d C\n",
 			temp / 16, (temp & 0xF) * 1000 / 16);
@@ -317,11 +321,13 @@ static ssize_t serial_number_show(struct device *dev,
 				  struct device_attribute *attr,
 				  char *buf)
 {
-	struct spec_dev *spec = to_spec_dev(dev);
+	struct spec_fpga *spec_fpga = to_spec_fpga(dev);
+	struct pci_dev *pcidev = to_pci_dev(dev->parent);
+	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pcidev);
 
-	if (spec->meta->cap & SPEC_META_CAP_THERM) {
-		uint32_t msb = ioread32(spec->fpga + SPEC_FPGA_THERM_SERID_MSB);
-		uint32_t lsb = ioread32(spec->fpga + SPEC_FPGA_THERM_SERID_LSB);
+	if (spec_gn412x->meta->cap & SPEC_META_CAP_THERM) {
+		uint32_t msb = ioread32(spec_fpga->fpga + SPEC_FPGA_THERM_SERID_MSB);
+		uint32_t lsb = ioread32(spec_fpga->fpga + SPEC_FPGA_THERM_SERID_LSB);
 
 		return snprintf(buf, PAGE_SIZE, "0x%08x%08x\n", msb, lsb);
 	} else {
@@ -347,10 +353,10 @@ static ssize_t pcb_rev_show(struct device *dev,
 			    struct device_attribute *attr,
 			    char *buf)
 {
-	struct spec_dev *spec = to_spec_dev(dev);
+	struct spec_fpga *spec_fpga = to_spec_fpga(dev);
 
 	return snprintf(buf, PAGE_SIZE, "0x%x\n",
-			spec_fpga_csr_pcb_rev(spec));
+			spec_fpga_csr_pcb_rev(spec_fpga));
 }
 static DEVICE_ATTR_RO(pcb_rev);
 
@@ -358,10 +364,10 @@ static ssize_t application_offset_show(struct device *dev,
 			    struct device_attribute *attr,
 			    char *buf)
 {
-	struct spec_dev *spec = to_spec_dev(dev);
+	struct spec_fpga *spec_fpga = to_spec_fpga(dev);
 
 	return snprintf(buf, PAGE_SIZE, "0x%x\n",
-			spec_fpga_csr_app_offset(spec));
+			spec_fpga_csr_app_offset(spec_fpga));
 }
 static DEVICE_ATTR_RO(application_offset);
 
@@ -378,17 +384,17 @@ static const struct attribute_group spec_fpga_csr_group = {
 /* FMC */
 #define SPEC_FMC_SLOTS 1
 
-static inline u8 spec_fmc_presence(struct spec_dev *spec)
+static inline u8 spec_fmc_presence(struct spec_fpga *spec_fpga)
 {
-	return (ioread32(spec->fpga + SPEC_FPGA_CSR_FMC_PRESENT) & 0x1);
+	return (ioread32(spec_fpga->fpga + SPEC_FPGA_CSR_FMC_PRESENT) & 0x1);
 }
 
 static int spec_fmc_is_present(struct fmc_carrier *carrier,
 			       struct fmc_slot *slot)
 {
-	struct spec_dev *spec = carrier->priv;
+	struct spec_fpga *spec_fpga = carrier->priv;
 
-	return spec_fmc_presence(spec);
+	return spec_fmc_presence(spec_fpga);
 }
 
 static const struct fmc_carrier_operations spec_fmc_ops = {
@@ -398,7 +404,7 @@ static const struct fmc_carrier_operations spec_fmc_ops = {
 
 static int spec_i2c_find_adapter(struct device *dev, void *data)
 {
-	struct spec_dev *spec = data;
+	struct spec_fpga *spec_fpga = data;
 	struct i2c_adapter *adap, *adap_parent;
 
 	if (dev->type != &i2c_adapter_type)
@@ -410,7 +416,7 @@ static int spec_i2c_find_adapter(struct device *dev, void *data)
 		return 0;
 
 	/* We have a muxed I2C master */
-	if (&spec->dev != adap_parent->dev.parent->parent)
+	if (&spec_fpga->dev != adap_parent->dev.parent->parent)
 		return 0;
 
 	/* Found! Return the bus ID */
@@ -424,29 +430,29 @@ static int spec_i2c_find_adapter(struct device *dev, void *data)
  *
  * Return: the I2C bus to be used
  */
-static int spec_i2c_get_bus(struct spec_dev *spec)
+static int spec_i2c_get_bus(struct spec_fpga *spec_fpga)
 {
-	return i2c_for_each_dev(spec, spec_i2c_find_adapter);
+	return i2c_for_each_dev(spec_fpga, spec_i2c_find_adapter);
 }
 
 /**
  * Create an FMC interface
  */
-static int spec_fmc_init(struct spec_dev *spec)
+static int spec_fmc_init(struct spec_fpga *spec_fpga)
 {
 	int err;
 
-	spec->slot_info.i2c_bus_nr = spec_i2c_get_bus(spec);
-	if (spec->slot_info.i2c_bus_nr <= 0)
+	spec_fpga->slot_info.i2c_bus_nr = spec_i2c_get_bus(spec_fpga);
+	if (spec_fpga->slot_info.i2c_bus_nr <= 0)
 		return -ENODEV;
-	spec->slot_info.ga = 0;
-	spec->slot_info.lun = 1;
+	spec_fpga->slot_info.ga = 0;
+	spec_fpga->slot_info.lun = 1;
 
-	err = fmc_carrier_register(&spec->dev, &spec_fmc_ops,
-				   SPEC_FMC_SLOTS, &spec->slot_info,
-				   spec);
+	err = fmc_carrier_register(&spec_fpga->dev, &spec_fmc_ops,
+				   SPEC_FMC_SLOTS, &spec_fpga->slot_info,
+				   spec_fpga);
 	if (err) {
-		dev_err(spec->dev.parent,
+		dev_err(spec_fpga->dev.parent,
 			"Failed to register as FMC carrier\n");
 		goto err_fmc;
 	}
@@ -458,39 +464,39 @@ err_fmc:
 	return err;
 }
 
-static int spec_fmc_exit(struct spec_dev *spec)
+static int spec_fmc_exit(struct spec_fpga *spec_fpga)
 {
-	return fmc_carrier_unregister(&spec->dev);
+	return fmc_carrier_unregister(&spec_fpga->dev);
 }
 
 /* FPGA Application */
-static void spec_fpga_app_id_build(struct spec_dev *spec,
-					unsigned long app_off,
-					char *id, unsigned int size)
+static void spec_fpga_app_id_build(struct spec_fpga *spec_fpga,
+				   unsigned long app_off,
+				   char *id, unsigned int size)
 {
-	uint32_t vendor = ioread32(spec->fpga + app_off);
-	uint32_t device = ioread32(spec->fpga + app_off);
+	uint32_t vendor = ioread32(spec_fpga->fpga + app_off);
+	uint32_t device = ioread32(spec_fpga->fpga + app_off);
 
 	memset(id, 0, size);
 	if (vendor == 0xFF000000) {
 		uint32_t vendor_uuid[4];
 
-		vendor_uuid[0] = ioread32(spec->fpga + app_off + 0x30);
-		vendor_uuid[1] = ioread32(spec->fpga + app_off + 0x34);
-		vendor_uuid[2] = ioread32(spec->fpga + app_off + 0x38);
-		vendor_uuid[3] = ioread32(spec->fpga + app_off + 0x3C);
+		vendor_uuid[0] = ioread32(spec_fpga->fpga + app_off + 0x30);
+		vendor_uuid[1] = ioread32(spec_fpga->fpga + app_off + 0x34);
+		vendor_uuid[2] = ioread32(spec_fpga->fpga + app_off + 0x38);
+		vendor_uuid[3] = ioread32(spec_fpga->fpga + app_off + 0x3C);
 		snprintf(id, size, "cern:%16phN:%4phN", &vendor_uuid, &device);
 	} else {
 		snprintf(id, size, "cern:%4phN:%4phN", &vendor, &device);
 	}
 }
 
-static int spec_fpga_app_init(struct spec_dev *spec)
+static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 {
 #define SPEC_FPGA_APP_NAME_MAX 47
 #define SPEC_FPGA_APP_IRQ_BASE 5
 #define SPEC_FPGA_APP_RES_N 28
-	struct pci_dev *pcidev = to_pci_dev(spec->dev.parent);
+	struct pci_dev *pcidev = to_pci_dev(spec_fpga->dev.parent);
 	unsigned int res_n = SPEC_FPGA_APP_RES_N;
 	struct resource res[SPEC_FPGA_APP_RES_N] = {
 		[0] = {
@@ -503,17 +509,17 @@ static int spec_fpga_app_init(struct spec_dev *spec)
 	char app_name[SPEC_FPGA_APP_NAME_MAX];
 	unsigned long app_offset;
 
-	app_offset = spec_fpga_csr_app_offset(spec);
+	app_offset = spec_fpga_csr_app_offset(spec_fpga);
 	if (!app_offset) {
-		dev_warn(spec->dev.parent, "Application not found\n");
+		dev_warn(&spec_fpga->dev, "Application not found\n");
 		return 0;
 	}
 
 	res[0].start = pci_resource_start(pcidev, 0) + app_offset;
 	res[0].end = pci_resource_end(pcidev, 0);
 
-	if (spec->vic_pdev)
-		vic_domain = irq_find_host((void *)&spec->vic_pdev->dev);
+	if (spec_fpga->vic_pdev)
+		vic_domain = irq_find_host((void *)&spec_fpga->vic_pdev->dev);
 	else
 		vic_domain = NULL;
 
@@ -532,56 +538,56 @@ static int spec_fpga_app_init(struct spec_dev *spec)
 		res_n = 1;
 	}
 
-	spec_fpga_app_id_build(spec, SPEC_FPGA_CSR_APP_OFF,
+	spec_fpga_app_id_build(spec_fpga, SPEC_FPGA_CSR_APP_OFF,
 			       app_name, SPEC_FPGA_APP_NAME_MAX);
-	pdev = platform_device_register_resndata(&spec->dev,
+	pdev = platform_device_register_resndata(&spec_fpga->dev,
 						 app_name, app_id++,
 						 res, res_n,
 						 NULL, 0);
 	if (IS_ERR(pdev))
 		return PTR_ERR(pdev);
 
-	spec->app_pdev = pdev;
+	spec_fpga->app_pdev = pdev;
 
 	return 0;
 }
 
-static void spec_fpga_app_exit(struct spec_dev *spec)
+static void spec_fpga_app_exit(struct spec_fpga *spec_fpga)
 {
-	if (spec->app_pdev) {
-		platform_device_unregister(spec->app_pdev);
-		spec->app_pdev = NULL;
+	if (spec_fpga->app_pdev) {
+		platform_device_unregister(spec_fpga->app_pdev);
+		spec_fpga->app_pdev = NULL;
 	}
 }
 
 
-static bool spec_fpga_is_valid(struct spec_dev *spec)
+static bool spec_fpga_is_valid(struct spec_gn412x *spec_gn412x)
 {
-	if ((spec->meta->bom & SPEC_META_BOM_END_MASK) != SPEC_META_BOM_LE) {
-		dev_err(&spec->pdev->dev,
+	if ((spec_gn412x->meta->bom & SPEC_META_BOM_END_MASK) != SPEC_META_BOM_LE) {
+		dev_err(&spec_gn412x->pdev->dev,
 			"Expected Little Endian devices BOM: 0x%x\n",
-		       spec->meta->bom);
+			spec_gn412x->meta->bom);
 		return false;
 	}
 
-	if ((spec->meta->bom & SPEC_META_BOM_VER_MASK) != 0) {
-		dev_err(&spec->pdev->dev,
+	if ((spec_gn412x->meta->bom & SPEC_META_BOM_VER_MASK) != 0) {
+		dev_err(&spec_gn412x->pdev->dev,
 			"Unknow Metadata specification version BOM: 0x%x\n",
-			spec->meta->bom);
+			spec_gn412x->meta->bom);
 		return false;
 	}
 
-	if (spec->meta->vendor != SPEC_META_VENDOR_ID ||
-	    spec->meta->device != SPEC_META_DEVICE_ID) {
-		dev_err(&spec->pdev->dev,
+	if (spec_gn412x->meta->vendor != SPEC_META_VENDOR_ID ||
+	    spec_gn412x->meta->device != SPEC_META_DEVICE_ID) {
+		dev_err(&spec_gn412x->pdev->dev,
 			"Unknow vendor/device ID: %08x:%08x\n",
-			spec->meta->vendor, spec->meta->device);
+			spec_gn412x->meta->vendor, spec_gn412x->meta->device);
 		return false;
 	}
 
-	if (spec->meta->version != SPEC_META_VERSION_1_4) {
-		dev_err(&spec->pdev->dev,
-			"Unknow version: %08x\n", spec->meta->version);
+	if (spec_gn412x->meta->version != SPEC_META_VERSION_1_4) {
+		dev_err(&spec_gn412x->pdev->dev,
+			"Unknow version: %08x\n", spec_gn412x->meta->version);
 		return false;
 	}
 
@@ -605,7 +611,7 @@ static const struct attribute_group *spec_groups[] = {
 	NULL
 };
 
-static const struct device_type spec_dev_type = {
+static const struct device_type spec_fpga_type = {
 	.name = "spec",
 	.release = spec_release,
 	.uevent = spec_uevent,
@@ -615,67 +621,76 @@ static const struct device_type spec_dev_type = {
 /**
  * Initialize carrier devices on FPGA
  */
-int spec_fpga_init(struct spec_dev *spec)
+int spec_fpga_init(struct spec_gn412x *spec_gn412x)
 {
-	struct resource *r0 = &spec->pdev->resource[0];
+	struct spec_fpga *spec_fpga;
+	struct resource *r0 = &spec_gn412x->pdev->resource[0];
 	int err;
 
-	spec->fpga = ioremap(r0->start, resource_size(r0));
-	if (!spec->fpga)
+	spec_fpga = kzalloc(sizeof(*spec_fpga), GFP_KERNEL);
+	if (!spec_fpga)
 		return -ENOMEM;
-	spec->meta = spec->fpga + SPEC_META_BASE;
-	if (!spec_fpga_is_valid(spec)) {
+
+	spec_gn412x->spec_fpga = spec_fpga;
+	spec_fpga->fpga = ioremap(r0->start, resource_size(r0));
+	if (!spec_fpga->fpga) {
+		err = -ENOMEM;
+		goto err_map;
+	}
+	spec_gn412x->meta = spec_fpga->fpga + SPEC_META_BASE;
+	if (!spec_fpga_is_valid(spec_gn412x)) {
 		err =  -EINVAL;
 		goto err_valid;
 	}
 
-	memset(&spec->dev, 0, sizeof(spec->dev));
-	spec->dev.parent = &spec->pdev->dev;
-	spec->dev.driver = spec->pdev->dev.driver;
-	spec->dev.type = &spec_dev_type;
-	err = dev_set_name(&spec->dev, "spec-%s", dev_name(&spec->pdev->dev));
+	memset(&spec_fpga->dev, 0, sizeof(spec_fpga->dev));
+	spec_fpga->dev.parent = &spec_gn412x->pdev->dev;
+	spec_fpga->dev.driver = spec_gn412x->pdev->dev.driver;
+	spec_fpga->dev.type = &spec_fpga_type;
+	err = dev_set_name(&spec_fpga->dev, "spec-%s",
+			   dev_name(&spec_gn412x->pdev->dev));
 	if (err)
 		goto err_name;
 
-	err = device_register(&spec->dev);
+	err = device_register(&spec_fpga->dev);
 	if (err) {
-		dev_err(&spec->pdev->dev, "Failed to register '%s'\n",
-			dev_name(&spec->dev));
+		dev_err(&spec_gn412x->pdev->dev, "Failed to register '%s'\n",
+			dev_name(&spec_gn412x->pdev->dev));
 		goto err_dev;
 	}
 
-	err = spec_fpga_vic_init(spec);
+	err = spec_fpga_vic_init(spec_fpga);
 	if (err)
 		goto err_vic;
-	err = spec_fpga_devices_init(spec);
+	err = spec_fpga_devices_init(spec_fpga);
 	if (err)
 		goto err_devs;
-	err = spec_fmc_init(spec);
+	err = spec_fmc_init(spec_fpga);
 	if (err)
 		goto err_fmc;
-	err = spec_fpga_app_init(spec);
+	err = spec_fpga_app_init(spec_fpga);
 	if (err)
 		goto err_app;
 
-	spec->dbg_dir_fpga = debugfs_create_dir(dev_name(&spec->dev),
-						spec->dbg_dir);
-	if (IS_ERR_OR_NULL(spec->dbg_dir_fpga)) {
-		err = PTR_ERR(spec->dbg_dir_fpga);
-		dev_err(&spec->dev,
+	spec_fpga->dbg_dir_fpga = debugfs_create_dir(dev_name(&spec_fpga->dev),
+						     spec_gn412x->dbg_dir);
+	if (IS_ERR_OR_NULL(spec_fpga->dbg_dir_fpga)) {
+		err = PTR_ERR(spec_fpga->dbg_dir_fpga);
+		dev_err(&spec_fpga->dev,
 			"Cannot create debugfs directory \"%s\" (%d)\n",
-			dev_name(&spec->dev), err);
+			dev_name(&spec_fpga->dev), err);
 		goto err_dbg_dir;
 	}
 
-	spec->dbg_csr_reg.regs = spec_fpga_debugfs_reg32;
-	spec->dbg_csr_reg.nregs = ARRAY_SIZE(spec_fpga_debugfs_reg32);
-	spec->dbg_csr_reg.base = spec->fpga;
-	spec->dbg_csr = debugfs_create_regset32(SPEC_DBG_CSR_NAME, 0200,
-						spec->dbg_dir_fpga,
-						&spec->dbg_csr_reg);
-	if (IS_ERR_OR_NULL(spec->dbg_csr)) {
-		err = PTR_ERR(spec->dbg_csr);
-		dev_warn(&spec->dev,
+	spec_fpga->dbg_csr_reg.regs = spec_fpga_debugfs_reg32;
+	spec_fpga->dbg_csr_reg.nregs = ARRAY_SIZE(spec_fpga_debugfs_reg32);
+	spec_fpga->dbg_csr_reg.base = spec_fpga->fpga;
+	spec_fpga->dbg_csr = debugfs_create_regset32(SPEC_DBG_CSR_NAME, 0200,
+						spec_fpga->dbg_dir_fpga,
+						&spec_fpga->dbg_csr_reg);
+	if (IS_ERR_OR_NULL(spec_fpga->dbg_csr)) {
+		err = PTR_ERR(spec_fpga->dbg_csr);
+		dev_warn(&spec_fpga->dev,
 			"Cannot create debugfs file \"%s\" (%d)\n",
 			SPEC_DBG_CSR_NAME, err);
 		goto err_dbg_csr;
@@ -684,33 +699,39 @@ int spec_fpga_init(struct spec_dev *spec)
 	return 0;
 
 err_dbg_csr:
-	debugfs_remove_recursive(spec->dbg_dir_fpga);
+	debugfs_remove_recursive(spec_fpga->dbg_dir_fpga);
 err_dbg_dir:
-	spec_fpga_app_exit(spec);
+	spec_fpga_app_exit(spec_fpga);
 err_app:
-	spec_fmc_exit(spec);
+	spec_fmc_exit(spec_fpga);
 err_fmc:
-	spec_fpga_devices_exit(spec);
+	spec_fpga_devices_exit(spec_fpga);
 err_devs:
-	spec_fpga_vic_exit(spec);
+	spec_fpga_vic_exit(spec_fpga);
 err_vic:
-	device_unregister(&spec->dev);
+	device_unregister(&spec_fpga->dev);
 err_dev:
 err_name:
 err_valid:
-	iounmap(spec->fpga);
+	iounmap(spec_fpga->fpga);
+err_map:
+	kfree(spec_fpga);
 	return err;
 }
 
-int spec_fpga_exit(struct spec_dev *spec)
+int spec_fpga_exit(struct spec_gn412x *spec_gn412x)
 {
-	debugfs_remove_recursive(spec->dbg_dir_fpga);
-	spec_fpga_app_exit(spec);
-	spec_fmc_exit(spec);
-	spec_fpga_devices_exit(spec);
-	spec_fpga_vic_exit(spec);
-	device_unregister(&spec->dev);
-	iounmap(spec->fpga);
+	struct spec_fpga *spec_fpga = spec_gn412x->spec_fpga;
+
+	debugfs_remove_recursive(spec_fpga->dbg_dir_fpga);
+	spec_fpga_app_exit(spec_fpga);
+	spec_fmc_exit(spec_fpga);
+	spec_fpga_devices_exit(spec_fpga);
+	spec_fpga_vic_exit(spec_fpga);
+	device_unregister(&spec_fpga->dev);
+	iounmap(spec_fpga->fpga);
+	kfree(spec_fpga);
+	spec_gn412x->spec_fpga = NULL;
 
 	return 0;
 }
