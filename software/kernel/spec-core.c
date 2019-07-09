@@ -230,7 +230,7 @@ static int spec_probe(struct pci_dev *pdev,
 		      const struct pci_device_id *id)
 {
 	struct spec_dev *spec;
-	int err, i;
+	int err;
 
 	spec = kzalloc(sizeof(*spec), GFP_KERNEL);
 	if (!spec)
@@ -248,26 +248,6 @@ static int spec_probe(struct pci_dev *pdev,
 	}
 
 	pci_set_master(pdev);
-
-	/* Remap our 3 bars */
-	for (i = err = 0; i < 3; i++) {
-		struct resource *r = pdev->resource + (2 * i);
-
-		if (!r->start)
-			continue;
-		if (r->flags & IORESOURCE_MEM) {
-			spec->remap[i] = ioremap(r->start,
-						r->end + 1 - r->start);
-			if (!spec->remap[i])
-				err = -ENOMEM;
-		}
-	}
-	if (err) {
-		dev_err(&pdev->dev, "Failed to remap memory (%d)\n",
-		        err);
-		goto err_remap;
-	}
-
 	err = mfd_add_devices(&pdev->dev, mfd_id++,
 			      spec_mfd_devs,
 			      ARRAY_SIZE(spec_mfd_devs),
@@ -304,11 +284,6 @@ err_sysfs:
 err_sgpio:
 	mfd_remove_devices(&pdev->dev);
 err_mfd:
-	for (i = 0; i < 3; i++) {
-		if (spec->remap[i])
-			iounmap(spec->remap[i]);
-	}
-err_remap:
 	pci_disable_device(pdev);
 err_enable:
 	kfree(spec);
@@ -319,7 +294,6 @@ err_enable:
 static void spec_remove(struct pci_dev *pdev)
 {
 	struct spec_dev *spec = pci_get_drvdata(pdev);
-	int i;
 
 	spec_dbg_exit(spec);
 	spec_fpga_exit(spec);
@@ -327,9 +301,6 @@ static void spec_remove(struct pci_dev *pdev)
 	spec_gpio_exit(spec);
 
 	mfd_remove_devices(&pdev->dev);
-	for (i = 0; i < 3; i++)
-		if (spec->remap[i])
-			iounmap(spec->remap[i]);
 	pci_disable_device(pdev);
 	kfree(spec);
 }

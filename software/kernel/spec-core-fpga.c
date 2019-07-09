@@ -617,13 +617,17 @@ static const struct device_type spec_dev_type = {
  */
 int spec_fpga_init(struct spec_dev *spec)
 {
+	struct resource *r0 = &spec->pdev->resource[0];
 	int err;
 
-	spec->fpga = spec->remap[0];
+	spec->fpga = ioremap(r0->start, resource_size(r0));
+	if (!spec->fpga)
+		return -ENOMEM;
 	spec->meta = spec->fpga + SPEC_META_BASE;
-
-	if (!spec_fpga_is_valid(spec))
-		return -EINVAL;
+	if (!spec_fpga_is_valid(spec)) {
+		err =  -EINVAL;
+		goto err_valid;
+	}
 
 	memset(&spec->dev, 0, sizeof(spec->dev));
 	spec->dev.parent = &spec->pdev->dev;
@@ -693,6 +697,8 @@ err_vic:
 	device_unregister(&spec->dev);
 err_dev:
 err_name:
+err_valid:
+	iounmap(spec->fpga);
 	return err;
 }
 
@@ -704,6 +710,7 @@ int spec_fpga_exit(struct spec_dev *spec)
 	spec_fpga_devices_exit(spec);
 	spec_fpga_vic_exit(spec);
 	device_unregister(&spec->dev);
+	iounmap(spec->fpga);
 
 	return 0;
 }

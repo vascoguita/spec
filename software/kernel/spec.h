@@ -104,7 +104,6 @@ struct spec_meta_id {
  * @dev Linux device instance descriptor
  * @mtx: protect bootselect usage, fpga device load
  * @flags collection of bit flags
- * @remap ioremap of PCI bar 0, 2, 4
  * @slot_info: information about FMC slot
  * @i2c_pdev: platform device for I2C master
  * @i2c_adapter: the I2C master device to be used
@@ -114,7 +113,6 @@ struct spec_dev {
 	struct device dev;
 
 	DECLARE_BITMAP(flags, SPEC_FLAG_BITS);
-	void __iomem *remap[3];	/* ioremap of bar 0, 2, 4 */
 	void __iomem *fpga;
 	struct spec_meta_id __iomem *meta;
 
