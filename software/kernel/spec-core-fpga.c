@@ -91,6 +91,16 @@ static const struct debugfs_reg32 spec_fpga_debugfs_reg32[] = {
 	},
 };
 
+static inline uint32_t spec_fpga_csr_app_offset(struct spec_dev *spec)
+{
+	return ioread32(spec->fpga + SPEC_FPGA_CSR_APP_OFF);
+}
+
+static inline uint32_t spec_fpga_csr_pcb_rev(struct spec_dev *spec)
+{
+	return ioread32(spec->fpga + SPEC_FPGA_CSR_PCB_REV);
+}
+
 
 static struct resource spec_fpga_vic_res[] = {
 	{
@@ -332,30 +342,38 @@ static const struct attribute_group spec_fpga_therm_group = {
 	.attrs = spec_fpga_therm_attrs,
 };
 
-static int spec_fpga_therm_init(struct spec_dev *spec)
+/* CSR attributes */
+static ssize_t pcb_rev_show(struct device *dev,
+			    struct device_attribute *attr,
+			    char *buf)
 {
-	int err;
+	struct spec_dev *spec = to_spec_dev(dev);
 
-	clear_bit(SPEC_FLAG_THERM_BIT, spec->flags);
-	if (!(spec->meta->cap & SPEC_META_CAP_THERM))
-		return 0;
-
-	err = sysfs_create_group(&spec->dev.kobj,
-				 &spec_fpga_therm_group);
-	if (err)
-		return err;
-
-	set_bit(SPEC_FLAG_THERM_BIT, spec->flags);
-	return 0;
+	return snprintf(buf, PAGE_SIZE, "0x%x\n",
+			spec_fpga_csr_pcb_rev(spec));
 }
+static DEVICE_ATTR_RO(pcb_rev);
 
-static void spec_fpga_therm_exit(struct spec_dev *spec)
+static ssize_t application_offset_show(struct device *dev,
+			    struct device_attribute *attr,
+			    char *buf)
 {
-	if (!(test_bit(SPEC_FLAG_THERM_BIT, spec->flags)))
-		return;
-	sysfs_remove_group(&spec->dev.kobj, &spec_fpga_therm_group);
-	clear_bit(SPEC_FLAG_THERM_BIT, spec->flags);
+	struct spec_dev *spec = to_spec_dev(dev);
+
+	return snprintf(buf, PAGE_SIZE, "0x%x\n",
+			spec_fpga_csr_app_offset(spec));
 }
+static DEVICE_ATTR_RO(application_offset);
+
+static struct attribute *spec_fpga_csr_attrs[] = {
+	&dev_attr_pcb_rev.attr,
+	&dev_attr_application_offset.attr,
+	NULL,
+};
+
+static const struct attribute_group spec_fpga_csr_group = {
+	.attrs = spec_fpga_csr_attrs,
+};
 
 /* FMC */
 #define SPEC_FMC_SLOTS 1
@@ -485,7 +503,7 @@ static int spec_fpga_app_init(struct spec_dev *spec)
 	char app_name[SPEC_FPGA_APP_NAME_MAX];
 	unsigned long app_offset;
 
-	app_offset = ioread32(spec->fpga + SPEC_FPGA_CSR_APP_OFF);
+	app_offset = spec_fpga_csr_app_offset(spec);
 	if (!app_offset) {
 		dev_warn(spec->dev.parent, "Application not found\n");
 		return 0;
@@ -583,6 +601,7 @@ static int spec_uevent(struct device *dev, struct kobj_uevent_env *env)
 
 static const struct attribute_group *spec_groups[] = {
 	&spec_fpga_therm_group,
+	&spec_fpga_csr_group,
 	NULL
 };
 
