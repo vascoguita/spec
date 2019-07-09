@@ -148,51 +148,7 @@ static inline struct spec_dev *to_spec_dev(struct device *_dev)
 	return container_of(_dev, struct spec_dev, dev);
 }
 
-/**
- * It reads a 32bit register from the gennum chip
- * @spec spec device instance
- * @reg gennum register offset
- * Return: a 32bit value
- */
-static inline uint32_t gennum_readl(struct spec_dev *spec, int reg)
-{
-	return readl(spec->remap[2] + reg);
-}
-
-
-/**
- * It writes a 32bit register to the gennum chip
- * @spec spec device instance
- * @val a 32bit valure
- * @reg gennum register offset
- */
-static inline void gennum_writel(struct spec_dev *spec, uint32_t val, int reg)
-{
-	writel(val, spec->remap[2] + reg);
-}
-
-
-/**
- * It writes a 32bit register to the gennum chip according to the given mask
- * @spec spec device instance
- * @mask bit mask of the bits to actually write
- * @val a 32bit valure
- * @reg gennum register offset
- */
-static inline void gennum_mask_val(struct spec_dev *spec,
-				   uint32_t mask, uint32_t val, int reg)
-{
-	uint32_t v = gennum_readl(spec, reg);
-
-	v &= ~mask;
-	v |= val;
-	gennum_writel(spec, v, reg);
-}
-
 extern int spec_fw_load(struct spec_dev *spec, const char *name);
-
-extern int spec_irq_init(struct spec_dev *spec);
-extern void spec_irq_exit(struct spec_dev *spec);
 
 extern int spec_dbg_init(struct spec_dev *spec);
 extern void spec_dbg_exit(struct spec_dev *spec);
