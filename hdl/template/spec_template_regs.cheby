@@ -8,23 +8,16 @@ memory-map:
        description: a ROM containing the carrier metadata
        size: 0x40
        interface: sram
-    - reg:
-       address: 0x40
-       name: app_offset
-       description: offset to the application metadata
-       access: ro
-       width: 32
-    - submap:
-        name: therm_id
-        description: Thermometer and unique id
-        size: 0x10
-        interface: wb-32-be
-        x-hdl:
-          busgroup: True
     - block:
        name: csr
        description: carrier and fmc status and control
+       address: 0x40
        children:
+       - reg:
+          name: app_offset
+          description: offset to the application metadata
+          access: ro
+          width: 32
        - reg:
           name: resets
           description: global and application resets
@@ -42,6 +35,38 @@ memory-map:
           description: presence lines for the fmcs
           access: ro
           width: 32
+       - reg:
+          name: gn4124_status
+          description: status of gennum
+          access: ro
+          width: 32
+       - reg:
+          name: ddr_status
+          description: status of the ddr3 controller
+          access: ro
+          width: 32
+          children:
+           - field:
+               description: Set when calibration is done.
+               name: calib_done
+               range: 0
+       - reg:
+          name: pcb_rev
+          description: pcb revision
+          access: ro
+          width: 32
+          children:
+           - field:
+              name: rev
+              range: 3-0
+    - submap:
+        name: therm_id
+        description: Thermometer and unique id
+        address: 0x70
+        size: 0x10
+        interface: wb-32-be
+        x-hdl:
+          busgroup: True
     - submap:
         name: fmc_i2c
         description: i2c controllers to the fmcs

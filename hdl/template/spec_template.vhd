@@ -106,6 +106,7 @@
 
     signal genum_wb_out : t_wishbone_master_out;
     signal genum_wb_in  : t_wishbone_master_in;
+    signal gennum_status : std_logic_vector(31 downto 0);
     
     signal metadata_addr : std_logic_vector(5 downto 2);
     signal metadata_data : std_logic_vector(31 downto 0);
@@ -210,7 +211,7 @@
         ---------------------------------------------------------
         -- Control and status
         rst_n_a_i => gn_RST_N,
-        status_o  => open,
+        status_o  => gennum_status,
 
         ---------------------------------------------------------
         -- P2L Direction
@@ -265,6 +266,7 @@
         ---------------------------------------------------------
         -- CSR wishbone interface (master pipelined)
         csr_clk_i   => clk_sys,
+        csr_rst_n_i => '1',
         csr_adr_o   => genum_wb_out.adr,
         csr_dat_o   => genum_wb_out.dat,
         csr_sel_o   => genum_wb_out.sel,
@@ -276,7 +278,6 @@
         csr_stall_i => genum_wb_in.stall,
         csr_err_i   => genum_wb_in.err,
         csr_rty_i   => genum_wb_in.rty,
-        csr_int_i   => '0', --  Not used
 
         ---------------------------------------------------------
         -- L2P DMA Interface (Pipelined Wishbone master)
@@ -285,8 +286,7 @@
         dma_ack_i => '1',
         dma_stall_i => '0',
         dma_err_i => '0',
-        dma_rty_i => '0',
-        dma_int_i => '0');
+        dma_rty_i => '0');
 
     i_devs: entity work.spec_template_regs
       port map (
@@ -310,13 +310,17 @@
         metadata_data_o => open,
     
         -- offset to the application metadata
-        app_offset_i        => x"0000_0000",
+        csr_app_offset_i    => x"0000_0000",
         csr_resets_global_o => csr_rst_gbl,
         csr_resets_appl_o   => csr_rst_app,
     
         -- presence lines for the fmcs
         csr_fmc_presence_i  => fmc_presence,
     
+        csr_gn4124_status_i => gennum_status,
+        csr_ddr_status_calib_done_i => '0',
+        csr_pcb_rev_rev_i => x"0",
+        
         -- Thermometer and unique id
         therm_id_i          => therm_id_in,
         therm_id_o          => therm_id_out,

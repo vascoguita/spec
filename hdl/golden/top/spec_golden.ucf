@@ -193,7 +193,6 @@ NET "fmc0_sda_b"         IOSTANDARD = "LVCMOS25";
 #---------------------------------------------------------------------------------------------
 # GN4124
 NET "gn_rst_n" TIG;
-NET "inst_template/cmp_gn4124_core/rst_*" TIG;
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2011/01/20
 NET "inst_template/cmp_gn4124_core/cmp_clk_in/P_clk" TNM_NET = inst_template/cmp_gn4124_core/cmp_clk_in/P_clk;
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2011/02/04
