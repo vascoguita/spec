@@ -54,7 +54,6 @@ entity spec_template_wr is
     g_WITH_ONEWIRE  : boolean := True;
     g_WITH_SPI      : boolean := True;
     g_WITH_WR       : boolean := True;
-    g_CALIB_SOFT_IP : string  := "TRUE";
     g_DPRAM_INITF   : string := "../../../../wr-cores/bin/wrpc/wrc_phy8.bram";
     -- Simulation-mode enable parameter. Set by default (synthesis) to 0, and
     -- changed to non-zero in the instantiation of the top level DUT in the testbench.
@@ -200,13 +199,13 @@ entity spec_template_wr is
     ddr_udqs_p_b  : inout std_logic;
     ddr_we_n_o    : out   std_logic;
 
+    --  User part
+
     --  Direct access to the DDR-3
     ddr_dma_clk_i   : in  std_logic;
     ddr_dma_rst_n_i : in std_logic;
     ddr_dma_wb_i    : in  t_wishbone_slave_data64_in;
     ddr_dma_wb_o    : out t_wishbone_slave_data64_out;
-
-    --  User part
 
     --  Clocks and reset.
     clk_sys_62m5_o    : out std_logic;
@@ -220,7 +219,6 @@ entity spec_template_wr is
     --  The wishbone bus to the carrier part.
     carrier_wb_o      : out t_wishbone_slave_out;
     carrier_wb_i      : in  t_wishbone_slave_in
-  
   );
 end entity spec_template_wr;
 
@@ -230,9 +228,9 @@ architecture top of spec_template_wr is
     0      => (enabled => TRUE, bufg_en => TRUE, divide => 3),
     others => c_AUXPLL_CFG_DEFAULT);
   
-  signal clk_sys          : std_logic;  -- 62.5Mhz
+  signal clk_sys_62m5    : std_logic;  -- 62.5Mhz
 
-  signal clk_pll_aux        : std_logic_vector(3 downto 0);
+  signal clk_pll_aux     : std_logic_vector(3 downto 0);
   signal rst_pll_aux_n   : std_logic_vector(3 downto 0) := (others => '0');
 
   --  DDR
@@ -324,7 +322,7 @@ begin  -- architecture top
   ------------------------------------------------------------------------------
   -- GN4124 interface
   ------------------------------------------------------------------------------
-  cmp_gn4124_core : gn4124_core
+  cmp_gn4124_core : xwb_gn4124_core
     generic map (
       g_WBM_TO_WB_FIFO_SIZE         => 16,
       g_WBM_TO_WB_FIFO_FULL_THRES   => 12,
@@ -383,57 +381,30 @@ begin  -- architecture top
 
       ---------------------------------------------------------
       -- DMA registers wishbone interface (slave classic)
-      dma_reg_clk_i => clk_sys,
-      dma_reg_rst_n_i => rst_gbl_n,
-      dma_reg_adr_i => dma_out.adr,
-      dma_reg_dat_i => dma_out.dat,
-      dma_reg_sel_i => dma_out.sel,
-      dma_reg_stb_i => dma_out.stb,
-      dma_reg_we_i  => dma_out.we,
-      dma_reg_cyc_i => dma_out.cyc,
-      dma_reg_ack_o => dma_in.ack,
-      dma_reg_dat_o => dma_in.dat,
+      wb_dma_cfg_clk_i => clk_sys_62m5,
+      wb_dma_cfg_rst_n_i => rst_sys_62m5_n,
+      wb_dma_cfg_i => dma_out,
+      wb_dma_cfg_o => dma_in,
 
       ---------------------------------------------------------
       -- CSR wishbone interface (master pipelined)
-      csr_clk_i   => clk_sys,
-      csr_rst_n_i => rst_gbl_n,
-      csr_adr_o   => gn_wb_o.adr,
-      csr_dat_o   => gn_wb_o.dat,
-      csr_sel_o   => gn_wb_o.sel,
-      csr_stb_o   => gn_wb_o.stb,
-      csr_we_o    => gn_wb_o.we,
-      csr_cyc_o   => gn_wb_o.cyc,
-      csr_dat_i   => gn_wb_i.dat,
-      csr_ack_i   => gn_wb_i.ack,
-      csr_stall_i => gn_wb_i.stall,
-      csr_err_i   => gn_wb_i.err,
-      csr_rty_i   => gn_wb_i.rty,
+      wb_master_clk_i   => clk_sys_62m5,
+      wb_master_rst_n_i => rst_sys_62m5_n,
+      wb_master_o   => gn_wb_o,
+      wb_master_i   => gn_wb_i,
 
       ---------------------------------------------------------
       -- L2P DMA Interface (Pipelined Wishbone master)
-      dma_clk_i => clk_sys,
-      dma_rst_n_i => rst_gbl_n,
-      dma_adr_o => gn_wb_ddr_out.adr,
-      dma_dat_o => gn_wb_ddr_out.dat,
-      dma_sel_o => gn_wb_ddr_out.sel,
-      dma_stb_o => gn_wb_ddr_out.stb,
-      dma_we_o  => gn_wb_ddr_out.we,
-      dma_cyc_o => gn_wb_ddr_out.cyc,
-      dma_dat_i => gn_wb_ddr_in.dat,
-      dma_ack_i => gn_wb_ddr_in.ack,
-      dma_stall_i => gn_wb_ddr_in.stall,
-      dma_err_i => gn_wb_ddr_in.err,
-      dma_rty_i => gn_wb_ddr_in.rty);
-
-    dma_in.err <= '0';
-    dma_in.rty <= '0';
-    dma_in.stall <= '0';
+      wb_dma_dat_clk_i => clk_sys_62m5,
+      wb_dma_dat_rst_n_i => rst_gbl_n,
+      wb_dma_dat_o => gn_wb_ddr_out,
+      wb_dma_dat_i => gn_wb_ddr_in
+    );
 
     i_devs: entity work.spec_template_regs
       port map (
-        rst_n_i    => gn_rst_n_i,
-        clk_i      => clk_sys,
+        rst_n_i    => rst_sys_62m5_n,
+        clk_i      => clk_sys_62m5,
         wb_cyc_i   => carrier_wb_i.cyc,
         wb_stb_i   => carrier_wb_i.stb,
         wb_adr_i   => carrier_wb_i.adr (10 downto 0),  -- Word address from gennum
@@ -489,9 +460,9 @@ begin  -- architecture top
       );
     
     --  Metadata
-    process (clk_sys) is
+    process (clk_sys_62m5) is
     begin
-      if rising_edge(clk_sys) then
+      if rising_edge(clk_sys_62m5) then
         case metadata_addr is
           when x"0" =>
             --  Vendor ID
@@ -536,7 +507,7 @@ begin  -- architecture top
     ddr_rst <= not rst_ddr_333m_n or csr_rst_gbl;
 
     rst_sys_62m5_n_o <= rst_app_n;
-    clk_sys_62m5_o <= clk_sys;
+    clk_sys_62m5_o <= clk_sys_62m5;
 
     i_i2c: entity work.xwb_i2c_master
       generic map (
@@ -544,7 +515,7 @@ begin  -- architecture top
         g_address_granularity => BYTE,
         g_num_interfaces      => 1)
       port map (
-        clk_sys_i => clk_sys,
+        clk_sys_i => clk_sys_62m5,
         rst_n_i   => rst_gbl_n,
     
         slave_i => fmc_i2c_out,
@@ -571,7 +542,7 @@ begin  -- architecture top
           g_num_interrupts => num_interrupts
         )
         port map (
-          clk_sys_i => clk_sys,
+          clk_sys_i => clk_sys_62m5,
           rst_n_i => rst_gbl_n,
           slave_i => vic_out,
           slave_o => vic_in,
@@ -615,7 +586,7 @@ begin  -- architecture top
       clk_125m_gtp_p_i    => clk_125m_gtp_p_i,
       clk_10m_ext_i       => clk_ext_10m,
 
-      clk_sys_62m5_o      => clk_sys,
+      clk_sys_62m5_o      => clk_sys_62m5,
       clk_ref_125m_o      => clk_ref_125m,
       clk_pll_aux_o       => clk_pll_aux,
       rst_sys_62m5_n_o    => rst_sys_62m5_n,
@@ -703,7 +674,7 @@ begin  -- architecture top
     g_BANK_PORT_SELECT   => "SPEC_BANK3_64B_32B",
     g_MEMCLK_PERIOD      => 3000,
     g_SIMULATION         => boolean'image(g_SIMULATION /= 0),
-    g_CALIB_SOFT_IP      => g_CALIB_SOFT_IP,
+    g_CALIB_SOFT_IP      => "TRUE",
     g_P0_MASK_SIZE       => 8,
     g_P0_DATA_PORT_SIZE  => 64,
     g_P0_BYTE_ADDR_WIDTH => 30,
@@ -761,7 +732,7 @@ begin  -- architecture top
     p0_wr_error_o    => open,
 
     wb1_rst_n_i => rst_gbl_n,
-    wb1_clk_i   => clk_sys,
+    wb1_clk_i   => clk_sys_62m5,
     wb1_sel_i   => gn_wb_ddr_out.sel,
     wb1_cyc_i   => gn_wb_ddr_out.cyc,
     wb1_stb_i   => gn_wb_ddr_out.stb,

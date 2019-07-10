@@ -40,10 +40,6 @@ use work.wishbone_pkg.all;
 
 entity spec_golden_wr is
   generic (
-    --  If true, instantiate a VIC
-    g_with_vic : boolean := True;
-    g_with_onewire : boolean := True;
-    g_with_spi : boolean := True;
     g_DPRAM_INITF : string := "../../../../wr-cores/bin/wrpc/wrc_phy8.bram";
     -- Simulation-mode enable parameter. Set by default (synthesis) to 0, and
     -- changed to non-zero in the instantiation of the top level DUT in the testbench.
@@ -197,9 +193,9 @@ architecture top of spec_golden_wr is
 begin
   inst_template: entity work.spec_template_wr
     generic map (
-      g_with_vic => g_with_vic,
-      g_with_onewire => g_with_onewire,
-      g_with_spi => g_with_spi,
+      g_with_vic => True,
+      g_with_onewire => False,
+      g_with_spi => False,
       g_dpram_initf => g_dpram_initf,
       g_simulation => g_simulation
     )
