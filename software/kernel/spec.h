@@ -73,11 +73,6 @@ enum {
 #define SPEC_META_BOM_VER_MASK 0x0000FFFF
 #define SPEC_META_VERSION_MASK 0xFFFF0000
 #define SPEC_META_VERSION_1_4 0x01040000
-#define SPEC_META_CAP_VIC BIT(0)
-#define SPEC_META_CAP_THERM BIT(0)
-#define SPEC_META_CAP_SPI BIT(0)
-#define SPEC_META_CAP_DMA BIT(0)
-#define SPEC_META_CAP_WR BIT(0)
 
 /**
  * struct spec_meta_id Metadata
