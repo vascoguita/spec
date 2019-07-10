@@ -15,7 +15,7 @@ board = "spec"
 ctrls = ["bank3_64b_32b" ]
 
 modules = { 
-  "local" : "../top",
+  "local" : "../../top/golden_wr",
   "git" : [ "https://ohwr.org/project/wr-cores.git::proposed_master",
             "https://ohwr.org/project/general-cores.git::proposed_master",
             "https://ohwr.org/project/etherbone-core.git::proposed_master",
