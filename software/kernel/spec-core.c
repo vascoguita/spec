@@ -98,16 +98,14 @@ static int spec_dbg_meta(struct seq_file *s, void *offset)
 	struct spec_gn412x *spec_gn412x = s->private;
 	struct resource *r0 = &spec_gn412x->pdev->resource[0];
 	struct spec_meta_id __iomem *meta;
-	void __iomem *mem;
 
-	mem =  ioremap(r0->start, resource_size(r0));
-	if (!mem) {
+	meta =  ioremap(r0->start + SPEC_META_BASE, sizeof(*meta));
+	if (!meta) {
 		dev_warn(&spec_gn412x->pdev->dev, "%s: Mapping failed\n",
 			 __func__);
 		return -ENOMEM;
 	}
 
-	meta = mem + SPEC_META_BASE;
 	seq_printf(s, "'%s':\n", dev_name(&spec_gn412x->pdev->dev));
 	seq_puts(s, "Metadata:\n");
 	seq_printf(s, "  - Vendor: 0x%08x\n", meta->vendor);
@@ -126,7 +124,7 @@ static int spec_dbg_meta(struct seq_file *s, void *offset)
 		   meta->uuid[2],
 		   meta->uuid[3]);
 
-	iounmap(mem);
+	iounmap(meta);
 
 	return 0;
 }
