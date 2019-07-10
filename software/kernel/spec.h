@@ -114,6 +114,7 @@ struct spec_meta_id {
 struct spec_fpga {
 	struct device dev;
 	void __iomem *fpga;
+	struct spec_meta_id __iomem *meta;
 	struct platform_device *vic_pdev;
 	struct platform_device *app_pdev;
 	struct fmc_slot_info slot_info;
@@ -132,7 +133,6 @@ struct spec_fpga {
 struct spec_gn412x {
 	struct pci_dev *pdev;
 	struct mutex mtx;
-	struct spec_meta_id __iomem *meta;
 	struct gpiod_lookup_table *gpiod_table;
 	struct gpio_desc *gpiod[GN4124_GPIO_MAX];
 	struct dentry *dbg_dir;

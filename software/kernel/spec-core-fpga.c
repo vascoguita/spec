@@ -126,7 +126,7 @@ static int spec_fpga_vic_init(struct spec_fpga *spec_fpga)
 	struct resource res[ARRAY_SIZE(spec_fpga_vic_res)];
 	struct platform_device *pdev;
 
-	if (!(spec_gn412x->meta->cap & SPEC_META_CAP_VIC))
+	if (!(spec_fpga->meta->cap & SPEC_META_CAP_VIC))
 		return 0;
 
 	memcpy(&res, spec_fpga_vic_res, sizeof(spec_fpga_vic_res));
@@ -246,7 +246,6 @@ static inline size_t __fpga_mfd_devs_size(void)
 static int spec_fpga_devices_init(struct spec_fpga *spec_fpga)
 {
 	struct pci_dev *pcidev = to_pci_dev(spec_fpga->dev.parent);
-	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pcidev);
 	struct mfd_cell *fpga_mfd_devs;
 	struct irq_domain *vic_domain;
 	unsigned int n_mfd = 0;
@@ -263,7 +262,7 @@ static int spec_fpga_devices_init(struct spec_fpga *spec_fpga)
 	       sizeof(fpga_mfd_devs[n_mfd]));
 	n_mfd++;
 
-	if (spec_gn412x->meta->cap & SPEC_META_CAP_SPI) {
+	if (spec_fpga->meta->cap & SPEC_META_CAP_SPI) {
 		memcpy(&fpga_mfd_devs[n_mfd],
 		       &spec_fpga_mfd_devs[SPEC_FPGA_MFD_SPI],
 		       sizeof(fpga_mfd_devs[n_mfd]));
@@ -302,10 +301,8 @@ static ssize_t temperature_show(struct device *dev,
 				char *buf)
 {
 	struct spec_fpga *spec_fpga = to_spec_fpga(dev);
-	struct pci_dev *pcidev = to_pci_dev(dev->parent);
-	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pcidev);
 
-	if (spec_gn412x->meta->cap & SPEC_META_CAP_THERM) {
+	if (spec_fpga->meta->cap & SPEC_META_CAP_THERM) {
 		uint32_t temp = ioread32(spec_fpga->fpga + SPEC_FPGA_THERM_TEMP);
 
 		return snprintf(buf, PAGE_SIZE, "%d.%d C\n",
@@ -322,10 +319,8 @@ static ssize_t serial_number_show(struct device *dev,
 				  char *buf)
 {
 	struct spec_fpga *spec_fpga = to_spec_fpga(dev);
-	struct pci_dev *pcidev = to_pci_dev(dev->parent);
-	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pcidev);
 
-	if (spec_gn412x->meta->cap & SPEC_META_CAP_THERM) {
+	if (spec_fpga->meta->cap & SPEC_META_CAP_THERM) {
 		uint32_t msb = ioread32(spec_fpga->fpga + SPEC_FPGA_THERM_SERID_MSB);
 		uint32_t lsb = ioread32(spec_fpga->fpga + SPEC_FPGA_THERM_SERID_LSB);
 
@@ -561,33 +556,34 @@ static void spec_fpga_app_exit(struct spec_fpga *spec_fpga)
 }
 
 
-static bool spec_fpga_is_valid(struct spec_gn412x *spec_gn412x)
+static bool spec_fpga_is_valid(struct spec_gn412x *spec_gn412x,
+			       struct spec_meta_id *meta)
 {
-	if ((spec_gn412x->meta->bom & SPEC_META_BOM_END_MASK) != SPEC_META_BOM_LE) {
+	if ((meta->bom & SPEC_META_BOM_END_MASK) != SPEC_META_BOM_LE) {
 		dev_err(&spec_gn412x->pdev->dev,
 			"Expected Little Endian devices BOM: 0x%x\n",
-			spec_gn412x->meta->bom);
+			meta->bom);
 		return false;
 	}
 
-	if ((spec_gn412x->meta->bom & SPEC_META_BOM_VER_MASK) != 0) {
+	if ((meta->bom & SPEC_META_BOM_VER_MASK) != 0) {
 		dev_err(&spec_gn412x->pdev->dev,
 			"Unknow Metadata specification version BOM: 0x%x\n",
-			spec_gn412x->meta->bom);
+			meta->bom);
 		return false;
 	}
 
-	if (spec_gn412x->meta->vendor != SPEC_META_VENDOR_ID ||
-	    spec_gn412x->meta->device != SPEC_META_DEVICE_ID) {
+	if (meta->vendor != SPEC_META_VENDOR_ID ||
+	    meta->device != SPEC_META_DEVICE_ID) {
 		dev_err(&spec_gn412x->pdev->dev,
 			"Unknow vendor/device ID: %08x:%08x\n",
-			spec_gn412x->meta->vendor, spec_gn412x->meta->device);
+			meta->vendor, meta->device);
 		return false;
 	}
 
-	if (spec_gn412x->meta->version != SPEC_META_VERSION_1_4) {
+	if (meta->version != SPEC_META_VERSION_1_4) {
 		dev_err(&spec_gn412x->pdev->dev,
-			"Unknow version: %08x\n", spec_gn412x->meta->version);
+			"Unknow version: %08x\n", meta->version);
 		return false;
 	}
 
@@ -637,8 +633,8 @@ int spec_fpga_init(struct spec_gn412x *spec_gn412x)
 		err = -ENOMEM;
 		goto err_map;
 	}
-	spec_gn412x->meta = spec_fpga->fpga + SPEC_META_BASE;
-	if (!spec_fpga_is_valid(spec_gn412x)) {
+	spec_fpga->meta = spec_fpga->fpga + SPEC_META_BASE;
+	if (!spec_fpga_is_valid(spec_gn412x, spec_fpga->meta)) {
 		err =  -EINVAL;
 		goto err_valid;
 	}

@@ -96,24 +96,37 @@ static const struct file_operations spec_dbg_fw_ops = {
 static int spec_dbg_meta(struct seq_file *s, void *offset)
 {
 	struct spec_gn412x *spec_gn412x = s->private;
+	struct resource *r0 = &spec_gn412x->pdev->resource[0];
+	struct spec_meta_id __iomem *meta;
+	void __iomem *mem;
 
+	mem =  ioremap(r0->start, resource_size(r0));
+	if (!mem) {
+		dev_warn(&spec_gn412x->pdev->dev, "%s: Mapping failed\n",
+			 __func__);
+		return -ENOMEM;
+	}
+
+	meta = mem + SPEC_META_BASE;
 	seq_printf(s, "'%s':\n", dev_name(&spec_gn412x->pdev->dev));
 	seq_puts(s, "Metadata:\n");
-	seq_printf(s, "  - Vendor: 0x%08x\n", spec_gn412x->meta->vendor);
-	seq_printf(s, "  - Device: 0x%08x\n", spec_gn412x->meta->device);
-	seq_printf(s, "  - Version: 0x%08x\n", spec_gn412x->meta->version);
-	seq_printf(s, "  - BOM: 0x%08x\n", spec_gn412x->meta->bom);
+	seq_printf(s, "  - Vendor: 0x%08x\n", meta->vendor);
+	seq_printf(s, "  - Device: 0x%08x\n", meta->device);
+	seq_printf(s, "  - Version: 0x%08x\n", meta->version);
+	seq_printf(s, "  - BOM: 0x%08x\n", meta->bom);
 	seq_printf(s, "  - SourceID: 0x%08x%08x%08x%08x\n",
-		   spec_gn412x->meta->src[0],
-		   spec_gn412x->meta->src[1],
-		   spec_gn412x->meta->src[2],
-		   spec_gn412x->meta->src[3]);
-	seq_printf(s, "  - CapabilityMask: 0x%08x\n", spec_gn412x->meta->cap);
+		   meta->src[0],
+		   meta->src[1],
+		   meta->src[2],
+		   meta->src[3]);
+	seq_printf(s, "  - CapabilityMask: 0x%08x\n", meta->cap);
 	seq_printf(s, "  - VendorUUID: 0x%08x%08x%08x%08x\n",
-		   spec_gn412x->meta->uuid[0],
-		   spec_gn412x->meta->uuid[1],
-		   spec_gn412x->meta->uuid[2],
-		   spec_gn412x->meta->uuid[3]);
+		   meta->uuid[0],
+		   meta->uuid[1],
+		   meta->uuid[2],
+		   meta->uuid[3]);
+
+	iounmap(mem);
 
 	return 0;
 }
