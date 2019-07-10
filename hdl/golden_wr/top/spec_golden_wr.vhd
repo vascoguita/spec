@@ -49,6 +49,7 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+use work.wishbone_pkg.all;
 
 entity spec_golden_wr is
   generic (
@@ -203,6 +204,9 @@ end entity spec_golden_wr;
 architecture top of spec_golden_wr is
   signal clk_sys_62m5  : std_logic;
   signal rst_sys_62m5_n  : std_logic;
+
+  signal gn_wb_out         : t_wishbone_master_out;
+  signal gn_wb_in          : t_wishbone_master_in;
 begin
   inst_template: entity work.spec_template_wr
     generic map (
@@ -299,6 +303,12 @@ begin
       ddr_dma_wb_o    => open,
 
       clk_sys_62m5_o    => clk_sys_62m5,
-      rst_sys_62m5_n_o  => rst_sys_62m5_n
-      );
+      rst_sys_62m5_n_o  => rst_sys_62m5_n,
+
+      --  Everything is handled by the carrier.
+      gn_wb_out         => gn_wb_out,
+      gn_wb_in          => gn_wb_in,
+      carrier_wb_out    => gn_wb_in,
+      carrier_wb_in     => gn_wb_out
+    );
 end architecture top;

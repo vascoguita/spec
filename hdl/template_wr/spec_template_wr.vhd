@@ -220,8 +220,21 @@ entity spec_template_wr is
     ddr_dma_wb_i    : in  t_wishbone_slave_data64_in;
     ddr_dma_wb_o    : out t_wishbone_slave_data64_out;
 
+    --  User part
+
+    --  Clocks and reset.
     clk_sys_62m5_o    : out std_logic;
-    rst_sys_62m5_n_o  : out std_logic
+    rst_sys_62m5_n_o  : out std_logic;
+
+    --  The wishbone bus from the gennum/host.
+    --  Addresses 0-0x1fff must be routed to the carrier part.
+    gn_wb_out         : out t_wishbone_master_out;
+    gn_wb_in          : in  t_wishbone_master_in;
+
+    --  The wishbone bus to the carrier part.
+    carrier_wb_out    : out t_wishbone_slave_out;
+    carrier_wb_in     : in  t_wishbone_slave_in
+  
   );
 end entity spec_template_wr;
 
@@ -247,8 +260,6 @@ architecture top of spec_template_wr is
   signal gn_wb_ddr_in  : t_wishbone_master_in;
   signal gn_wb_ddr_out : t_wishbone_master_out;
  
-  signal genum_wb_out : t_wishbone_master_out;
-  signal genum_wb_in  : t_wishbone_master_in;
   signal gennum_status : std_logic_vector(31 downto 0);
   
   signal metadata_addr : std_logic_vector(5 downto 2);
@@ -401,17 +412,17 @@ begin  -- architecture top
       -- CSR wishbone interface (master pipelined)
       csr_clk_i   => clk_sys,
       csr_rst_n_i => rst_gbl_n,
-      csr_adr_o   => genum_wb_out.adr,
-      csr_dat_o   => genum_wb_out.dat,
-      csr_sel_o   => genum_wb_out.sel,
-      csr_stb_o   => genum_wb_out.stb,
-      csr_we_o    => genum_wb_out.we,
-      csr_cyc_o   => genum_wb_out.cyc,
-      csr_dat_i   => genum_wb_in.dat,
-      csr_ack_i   => genum_wb_in.ack,
-      csr_stall_i => genum_wb_in.stall,
-      csr_err_i   => genum_wb_in.err,
-      csr_rty_i   => genum_wb_in.rty,
+      csr_adr_o   => gn_wb_out.adr,
+      csr_dat_o   => gn_wb_out.dat,
+      csr_sel_o   => gn_wb_out.sel,
+      csr_stb_o   => gn_wb_out.stb,
+      csr_we_o    => gn_wb_out.we,
+      csr_cyc_o   => gn_wb_out.cyc,
+      csr_dat_i   => gn_wb_in.dat,
+      csr_ack_i   => gn_wb_in.ack,
+      csr_stall_i => gn_wb_in.stall,
+      csr_err_i   => gn_wb_in.err,
+      csr_rty_i   => gn_wb_in.rty,
 
       ---------------------------------------------------------
       -- L2P DMA Interface (Pipelined Wishbone master)
@@ -437,17 +448,17 @@ begin  -- architecture top
       port map (
         rst_n_i  => gn_RST_N,
         clk_i    => clk_sys,
-        wb_cyc_i => genum_wb_out.cyc,
-        wb_stb_i => genum_wb_out.stb,
-        wb_adr_i => genum_wb_out.adr (10 downto 0),  -- Word address from gennum
-        wb_sel_i => genum_wb_out.sel,
-        wb_we_i  => genum_wb_out.we,
-        wb_dat_i => genum_wb_out.dat,
-        wb_ack_o => genum_wb_in.ack,
-        wb_err_o => genum_wb_in.err,
-        wb_rty_o => genum_wb_in.rty,
-        wb_stall_o => genum_wb_in.stall,
-        wb_dat_o   => genum_wb_in.dat,
+        wb_cyc_i   => carrier_wb_in.cyc,
+        wb_stb_i   => carrier_wb_in.stb,
+        wb_adr_i   => carrier_wb_in.adr (10 downto 0),  -- Word address from gennum
+        wb_sel_i   => carrier_wb_in.sel,
+        wb_we_i    => carrier_wb_in.we,
+        wb_dat_i   => carrier_wb_in.dat,
+        wb_ack_o   => carrier_wb_out.ack,
+        wb_err_o   => carrier_wb_out.err,
+        wb_rty_o   => carrier_wb_out.rty,
+        wb_stall_o => carrier_wb_out.stall,
+        wb_dat_o   => carrier_wb_out.dat,
     
         -- a ROM containing the carrier metadata
         metadata_addr_o => metadata_addr,
