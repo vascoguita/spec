@@ -1,25 +1,11 @@
 -------------------------------------------------------------------------------
--- Title      : WRPC reference design for SPEC
--- Project    : WR PTP Core
--- URL        : http://www.ohwr.org/projects/wr-cores/wiki/Wrpc_core
+-- Title      : SPEC template
+-- Project    : SPEC
+-- URL        : http://www.ohwr.org/projects/spec
 -------------------------------------------------------------------------------
--- File       : spec_wr_ref_top.vhd
--- Author(s)  : Grzegorz Daniluk <grzegorz.daniluk@cern.ch>
 -- Company    : CERN (BE-CO-HT)
--- Created    : 2017-02-20
--- Last update: 2019-04-26
--- Standard   : VHDL'93
 -------------------------------------------------------------------------------
--- Description: Top-level file for the WRPC reference design on the SPEC.
---
--- This is a reference top HDL that instanciates the WR PTP Core together with
--- its peripherals to be run on a SPEC card.
---
--- There are two main usecases for this HDL file:
--- * let new users easily synthesize a WR PTP Core bitstream that can be run on
---   reference hardware
--- * provide a reference top HDL file showing how the WRPC can be instantiated
---   in HDL projects.
+-- Description: Top-level file for the SPEC carrier template.
 --
 -- SPEC:  http://www.ohwr.org/projects/spec/
 --
@@ -63,13 +49,13 @@ use unisim.vcomponents.all;
 
 entity spec_template_wr is
   generic (
-    --  If true, instantiate a VIC
-    g_with_vic : boolean := True;
-    g_with_onewire : boolean := True;
-    g_with_spi : boolean := True;
-    g_with_wr : boolean := True;
+    --  If true, instantiate a VIC/ONEWIRE/SPI/WR.
+    g_WITH_VIC      : boolean := True;
+    g_WITH_ONEWIRE  : boolean := True;
+    g_WITH_SPI      : boolean := True;
+    g_WITH_WR       : boolean := True;
     g_CALIB_SOFT_IP : string  := "TRUE";
-    g_DPRAM_INITF : string := "../../../../wr-cores/bin/wrpc/wrc_phy8.bram";
+    g_DPRAM_INITF   : string := "../../../../wr-cores/bin/wrpc/wrc_phy8.bram";
     -- Simulation-mode enable parameter. Set by default (synthesis) to 0, and
     -- changed to non-zero in the instantiation of the top level DUT in the testbench.
     -- Its purpose is to reduce some internal counters/timeouts to speed up simulations.
@@ -87,33 +73,33 @@ entity spec_template_wr is
     -- GN4124 PCIe bridge signals
     ---------------------------------------------------------------------------
     -- From GN4124 Local bus
-    gn_rst_n : in std_logic; -- Reset from GN4124 (RSTOUT18_N)
+    gn_rst_n_i      : in std_logic; -- Reset from GN4124 (RSTOUT18_N)
     -- PCIe to Local [Inbound Data] - RX
-    gn_p2l_clk_n  : in  std_logic;       -- Receiver Source Synchronous Clock-
-    gn_p2l_clk_p  : in  std_logic;       -- Receiver Source Synchronous Clock+
-    gn_p2l_rdy    : out std_logic;       -- Rx Buffer Full Flag
-    gn_p2l_dframe : in  std_logic;       -- Receive Frame
-    gn_p2l_valid  : in  std_logic;       -- Receive Data Valid
-    gn_p2l_data   : in  std_logic_vector(15 downto 0);  -- Parallel receive data
+    gn_p2l_clk_n_i  : in  std_logic;       -- Receiver Source Synchronous Clock-
+    gn_p2l_clk_p_i  : in  std_logic;       -- Receiver Source Synchronous Clock+
+    gn_p2l_rdy_o    : out std_logic;       -- Rx Buffer Full Flag
+    gn_p2l_dframe_i : in  std_logic;       -- Receive Frame
+    gn_p2l_valid_i  : in  std_logic;       -- Receive Data Valid
+    gn_p2l_data_i   : in  std_logic_vector(15 downto 0);  -- Parallel receive data
     -- Inbound Buffer Request/Status
-    gn_p_wr_req   : in  std_logic_vector(1 downto 0);  -- PCIe Write Request
-    gn_p_wr_rdy   : out std_logic_vector(1 downto 0);  -- PCIe Write Ready
-    gn_rx_error   : out std_logic;                     -- Receive Error
+    gn_p_wr_req_i   : in  std_logic_vector(1 downto 0);  -- PCIe Write Request
+    gn_p_wr_rdy_o   : out std_logic_vector(1 downto 0);  -- PCIe Write Ready
+    gn_rx_error_o   : out std_logic;                     -- Receive Error
     -- Local to Parallel [Outbound Data] - TX
-    gn_l2p_clk_n  : out std_logic;       -- Transmitter Source Synchronous Clock-
-    gn_l2p_clk_p  : out std_logic;       -- Transmitter Source Synchronous Clock+
-    gn_l2p_dframe : out std_logic;       -- Transmit Data Frame
-    gn_l2p_valid  : out std_logic;       -- Transmit Data Valid
-    gn_l2p_edb    : out std_logic;       -- Packet termination and discard
-    gn_l2p_data   : out std_logic_vector(15 downto 0);  -- Parallel transmit data
+    gn_l2p_clk_n_o  : out std_logic;       -- Transmitter Source Synchronous Clock-
+    gn_l2p_clk_p_o  : out std_logic;       -- Transmitter Source Synchronous Clock+
+    gn_l2p_dframe_o : out std_logic;       -- Transmit Data Frame
+    gn_l2p_valid_o  : out std_logic;       -- Transmit Data Valid
+    gn_l2p_edb_o    : out std_logic;       -- Packet termination and discard
+    gn_l2p_data_o   : out std_logic_vector(15 downto 0);  -- Parallel transmit data
     -- Outbound Buffer Status
-    gn_l2p_rdy    : in std_logic;                     -- Tx Buffer Full Flag
-    gn_l_wr_rdy   : in std_logic_vector(1 downto 0);  -- Local-to-PCIe Write
-    gn_p_rd_d_rdy : in std_logic_vector(1 downto 0);  -- PCIe-to-Local Read Response Data Ready
-    gn_tx_error   : in std_logic;                     -- Transmit Error
-    gn_vc_rdy     : in std_logic_vector(1 downto 0);  -- Channel ready
+    gn_l2p_rdy_i    : in std_logic;                     -- Tx Buffer Full Flag
+    gn_l_wr_rdy_i   : in std_logic_vector(1 downto 0);  -- Local-to-PCIe Write
+    gn_p_rd_d_rdy_i : in std_logic_vector(1 downto 0);  -- PCIe-to-Local Read Response Data Ready
+    gn_tx_error_i   : in std_logic;                     -- Transmit Error
+    gn_vc_rdy_i     : in std_logic_vector(1 downto 0);  -- Channel ready
     -- General Purpose Interface
-    gn_gpio : inout std_logic_vector(1 downto 0);  -- gn_gpio[0] -> GN4124 GPIO8
+    gn_gpio_b     : inout std_logic_vector(1 downto 0);  -- gn_gpio[0] -> GN4124 GPIO8
                                                    -- gn_gpio[1] -> GN4124 GPIO9
 
     -- I2C interface for accessing FMC EEPROM.
@@ -150,7 +136,7 @@ entity spec_template_wr is
     -- transferred.
     led_act_o   : out std_logic;
     -- Green LED next to the SFP: indicates if the link is up.
-    led_link_o : out std_logic;
+    led_link_o  : out std_logic;
 
     button1_i   : in  std_logic;
 
@@ -173,8 +159,8 @@ entity spec_template_wr is
 
     plldac_sclk_o     : out std_logic;
     plldac_din_o      : out std_logic;
-    pll25dac_cs_n_o : out std_logic; --cs1
-    pll20dac_cs_n_o : out std_logic; --cs2
+    pll25dac_cs_n_o   : out std_logic; --cs1
+    pll20dac_cs_n_o   : out std_logic; --cs2
 
     ---------------------------------------------------------------------------
     -- SFP I/O for transceiver
@@ -228,12 +214,12 @@ entity spec_template_wr is
 
     --  The wishbone bus from the gennum/host.
     --  Addresses 0-0x1fff must be routed to the carrier part.
-    gn_wb_out         : out t_wishbone_master_out;
-    gn_wb_in          : in  t_wishbone_master_in;
+    gn_wb_o           : out t_wishbone_master_out;
+    gn_wb_i           : in  t_wishbone_master_in;
 
     --  The wishbone bus to the carrier part.
-    carrier_wb_out    : out t_wishbone_slave_out;
-    carrier_wb_in     : in  t_wishbone_slave_in
+    carrier_wb_o      : out t_wishbone_slave_out;
+    carrier_wb_i      : in  t_wishbone_slave_in
   
   );
 end entity spec_template_wr;
@@ -354,46 +340,46 @@ begin  -- architecture top
     port map (
       ---------------------------------------------------------
       -- Control and status
-      rst_n_a_i => gn_RST_N,
+      rst_n_a_i => gn_rst_n_i,
       status_o  => gennum_status,
 
       ---------------------------------------------------------
       -- P2L Direction
       --
       -- Source Sync DDR related signals
-      p2l_clk_p_i  => gn_P2L_CLK_p,
-      p2l_clk_n_i  => gn_P2L_CLK_n,
-      p2l_data_i   => gn_P2L_DATA,
-      p2l_dframe_i => gn_P2L_DFRAME,
-      p2l_valid_i  => gn_P2L_VALID,
+      p2l_clk_p_i  => gn_p2l_clk_p_i,
+      p2l_clk_n_i  => gn_p2l_clk_n_i,
+      p2l_data_i   => gn_p2l_data_i,
+      p2l_dframe_i => gn_p2l_dframe_i,
+      p2l_valid_i  => gn_p2l_valid_i,
       -- P2L Control
-      p2l_rdy_o    => gn_P2L_RDY,
-      p_wr_req_i   => gn_P_WR_REQ,
-      p_wr_rdy_o   => gn_P_WR_RDY,
-      rx_error_o   => gn_RX_ERROR,
-      vc_rdy_i     => gn_VC_RDY,
+      p2l_rdy_o    => gn_p2l_rdy_o,
+      p_wr_req_i   => gn_p_wr_req_i,
+      p_wr_rdy_o   => gn_p_wr_rdy_o,
+      rx_error_o   => gn_rx_error_o,
+      vc_rdy_i     => gn_vc_rdy_i,
 
       ---------------------------------------------------------
       -- L2P Direction
       --
       -- Source Sync DDR related signals
-      l2p_clk_p_o  => gn_L2P_CLK_p,
-      l2p_clk_n_o  => gn_L2P_CLK_n,
-      l2p_data_o   => gn_L2P_DATA,
-      l2p_dframe_o => gn_L2P_DFRAME,
-      l2p_valid_o  => gn_L2P_VALID,
+      l2p_clk_p_o  => gn_l2p_clk_p_o,
+      l2p_clk_n_o  => gn_l2p_clk_n_o,
+      l2p_data_o   => gn_l2p_data_o,
+      l2p_dframe_o => gn_l2p_dframe_o,
+      l2p_valid_o  => gn_l2p_valid_o,
       -- L2P Control
-      l2p_edb_o    => gn_L2P_EDB,
-      l2p_rdy_i    => gn_L2P_RDY,
-      l_wr_rdy_i   => gn_L_WR_RDY,
-      p_rd_d_rdy_i => gn_P_RD_D_RDY,
-      tx_error_i   => gn_TX_ERROR,
+      l2p_edb_o    => gn_l2p_edb_o,
+      l2p_rdy_i    => gn_l2p_rdy_i,
+      l_wr_rdy_i   => gn_l_wr_rdy_i,
+      p_rd_d_rdy_i => gn_p_rd_d_rdy_i,
+      tx_error_i   => gn_tx_error_i,
 
       ---------------------------------------------------------
       -- Interrupt interface
       dma_irq_o => irqs(1 downto 0),
       irq_p_i   => irq_master,
-      irq_p_o   => gn_GPIO(0),
+      irq_p_o   => gn_gpio_b(0),
 
       ---------------------------------------------------------
       -- DMA registers wishbone interface (slave classic)
@@ -412,17 +398,17 @@ begin  -- architecture top
       -- CSR wishbone interface (master pipelined)
       csr_clk_i   => clk_sys,
       csr_rst_n_i => rst_gbl_n,
-      csr_adr_o   => gn_wb_out.adr,
-      csr_dat_o   => gn_wb_out.dat,
-      csr_sel_o   => gn_wb_out.sel,
-      csr_stb_o   => gn_wb_out.stb,
-      csr_we_o    => gn_wb_out.we,
-      csr_cyc_o   => gn_wb_out.cyc,
-      csr_dat_i   => gn_wb_in.dat,
-      csr_ack_i   => gn_wb_in.ack,
-      csr_stall_i => gn_wb_in.stall,
-      csr_err_i   => gn_wb_in.err,
-      csr_rty_i   => gn_wb_in.rty,
+      csr_adr_o   => gn_wb_o.adr,
+      csr_dat_o   => gn_wb_o.dat,
+      csr_sel_o   => gn_wb_o.sel,
+      csr_stb_o   => gn_wb_o.stb,
+      csr_we_o    => gn_wb_o.we,
+      csr_cyc_o   => gn_wb_o.cyc,
+      csr_dat_i   => gn_wb_i.dat,
+      csr_ack_i   => gn_wb_i.ack,
+      csr_stall_i => gn_wb_i.stall,
+      csr_err_i   => gn_wb_i.err,
+      csr_rty_i   => gn_wb_i.rty,
 
       ---------------------------------------------------------
       -- L2P DMA Interface (Pipelined Wishbone master)
@@ -446,19 +432,19 @@ begin  -- architecture top
 
     i_devs: entity work.spec_template_regs
       port map (
-        rst_n_i  => gn_RST_N,
-        clk_i    => clk_sys,
-        wb_cyc_i   => carrier_wb_in.cyc,
-        wb_stb_i   => carrier_wb_in.stb,
-        wb_adr_i   => carrier_wb_in.adr (10 downto 0),  -- Word address from gennum
-        wb_sel_i   => carrier_wb_in.sel,
-        wb_we_i    => carrier_wb_in.we,
-        wb_dat_i   => carrier_wb_in.dat,
-        wb_ack_o   => carrier_wb_out.ack,
-        wb_err_o   => carrier_wb_out.err,
-        wb_rty_o   => carrier_wb_out.rty,
-        wb_stall_o => carrier_wb_out.stall,
-        wb_dat_o   => carrier_wb_out.dat,
+        rst_n_i    => gn_rst_n_i,
+        clk_i      => clk_sys,
+        wb_cyc_i   => carrier_wb_i.cyc,
+        wb_stb_i   => carrier_wb_i.stb,
+        wb_adr_i   => carrier_wb_i.adr (10 downto 0),  -- Word address from gennum
+        wb_sel_i   => carrier_wb_i.sel,
+        wb_we_i    => carrier_wb_i.we,
+        wb_dat_i   => carrier_wb_i.dat,
+        wb_ack_o   => carrier_wb_o.ack,
+        wb_err_o   => carrier_wb_o.err,
+        wb_rty_o   => carrier_wb_o.rty,
+        wb_stall_o => carrier_wb_o.stall,
+        wb_dat_o   => carrier_wb_o.dat,
     
         -- a ROM containing the carrier metadata
         metadata_addr_o => metadata_addr,
@@ -567,11 +553,11 @@ begin  -- architecture top
     
         int_o   => irqs(2),
     
-        scl_pad_i (0) => fmc0_scl_b,
-        scl_pad_o (0) => fmc0_scl_out,
+        scl_pad_i (0)    => fmc0_scl_b,
+        scl_pad_o (0)    => fmc0_scl_out,
         scl_padoen_o (0) => fmc0_scl_oen,
-        sda_pad_i (0) => fmc0_sda_b,
-        sda_pad_o (0) => fmc0_sda_out,
+        sda_pad_i (0)    => fmc0_sda_b,
+        sda_pad_o (0)    => fmc0_sda_out,
         sda_padoen_o (0) => fmc0_sda_oen
         );
     
@@ -614,14 +600,14 @@ begin  -- architecture top
 
   cmp_xwrc_board_spec : xwrc_board_spec
     generic map (
-      g_simulation                => g_simulation,
+      g_simulation                => g_SIMULATION,
       g_with_external_clock_input => TRUE,
-      g_dpram_initf               => g_dpram_initf,
+      g_dpram_initf               => g_DPRAM_INITF,
       g_AUX_PLL_CFG               => c_WRPC_PLL_CONFIG,
       g_fabric_iface              => ETHERBONE)
     port map (
       areset_n_i          => button1_i,
-      areset_edge_n_i     => gn_rst_n,
+      areset_edge_n_i     => gn_rst_n_i,
       clk_20m_vcxo_i      => clk_20m_vcxo_i,
       clk_125m_pllref_p_i => clk_125m_pllref_p_i,
       clk_125m_pllref_n_i => clk_125m_pllref_n_i,

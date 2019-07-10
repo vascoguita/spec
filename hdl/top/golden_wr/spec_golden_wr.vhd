@@ -1,27 +1,14 @@
 -------------------------------------------------------------------------------
--- Title      : WRPC reference design for SPEC
--- Project    : WR PTP Core
--- URL        : http://www.ohwr.org/projects/wr-cores/wiki/Wrpc_core
+-- Title      : SPEC golden
+-- Project    : SPEC
+-- URL        : http://www.ohwr.org/projects/spec
 -------------------------------------------------------------------------------
--- File       : spec_wr_ref_top.vhd
--- Author(s)  : Grzegorz Daniluk <grzegorz.daniluk@cern.ch>
 -- Company    : CERN (BE-CO-HT)
 -- Created    : 2017-02-20
 -- Last update: 2019-04-26
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
--- Description: Top-level file for the WRPC reference design on the SPEC.
---
--- This is a reference top HDL that instanciates the WR PTP Core together with
--- its peripherals to be run on a SPEC card.
---
--- There are two main usecases for this HDL file:
--- * let new users easily synthesize a WR PTP Core bitstream that can be run on
---   reference hardware
--- * provide a reference top HDL file showing how the WRPC can be instantiated
---   in HDL projects.
---
--- SPEC:  http://www.ohwr.org/projects/spec/
+-- Description: SPEC golden.
 --
 -------------------------------------------------------------------------------
 -- Copyright (c) 2017-2018 CERN
@@ -219,28 +206,28 @@ begin
     port map (
       clk_125m_pllref_p_i => clk_125m_pllref_p_i,
       clk_125m_pllref_n_i => clk_125m_pllref_n_i,
-      gn_rst_n => gn_rst_n,
-      gn_p2l_clk_n => gn_p2l_clk_n,
-      gn_p2l_clk_p => gn_p2l_clk_p,
-      gn_p2l_rdy => gn_p2l_rdy,
-      gn_p2l_dframe => gn_p2l_dframe,
-      gn_p2l_valid => gn_p2l_valid,
-      gn_p2l_data => gn_p2l_data,
-      gn_p_wr_req => gn_p_wr_req,
-      gn_p_wr_rdy => gn_p_wr_rdy,
-      gn_rx_error => gn_rx_error,
-      gn_l2p_clk_n => gn_l2p_clk_n,
-      gn_l2p_clk_p => gn_l2p_clk_p,
-      gn_l2p_dframe => gn_l2p_dframe,
-      gn_l2p_valid => gn_l2p_valid,
-      gn_l2p_edb => gn_l2p_edb,
-      gn_l2p_data => gn_l2p_data,
-      gn_l2p_rdy => gn_l2p_rdy,
-      gn_l_wr_rdy => gn_l_wr_rdy,
-      gn_p_rd_d_rdy => gn_p_rd_d_rdy,
-      gn_tx_error => gn_tx_error,
-      gn_vc_rdy => gn_vc_rdy,
-      gn_gpio => gn_gpio,
+      gn_rst_n_i => gn_rst_n,
+      gn_p2l_clk_n_i => gn_p2l_clk_n,
+      gn_p2l_clk_p_i => gn_p2l_clk_p,
+      gn_p2l_rdy_o => gn_p2l_rdy,
+      gn_p2l_dframe_i => gn_p2l_dframe,
+      gn_p2l_valid_i => gn_p2l_valid,
+      gn_p2l_data_i => gn_p2l_data,
+      gn_p_wr_req_i => gn_p_wr_req,
+      gn_p_wr_rdy_o => gn_p_wr_rdy,
+      gn_rx_error_o => gn_rx_error,
+      gn_l2p_clk_n_o => gn_l2p_clk_n,
+      gn_l2p_clk_p_o => gn_l2p_clk_p,
+      gn_l2p_dframe_o => gn_l2p_dframe,
+      gn_l2p_valid_o => gn_l2p_valid,
+      gn_l2p_edb_o => gn_l2p_edb,
+      gn_l2p_data_o => gn_l2p_data,
+      gn_l2p_rdy_i => gn_l2p_rdy,
+      gn_l_wr_rdy_i => gn_l_wr_rdy,
+      gn_p_rd_d_rdy_i => gn_p_rd_d_rdy,
+      gn_tx_error_i => gn_tx_error,
+      gn_vc_rdy_i => gn_vc_rdy,
+      gn_gpio_b => gn_gpio,
       fmc0_scl_b => fmc0_scl_b,
       fmc0_sda_b => fmc0_sda_b,
       fmc0_prsnt_m2c_n_i => fmc0_prsnt_m2c_n_i,
@@ -306,9 +293,9 @@ begin
       rst_sys_62m5_n_o  => rst_sys_62m5_n,
 
       --  Everything is handled by the carrier.
-      gn_wb_out         => gn_wb_out,
-      gn_wb_in          => gn_wb_in,
-      carrier_wb_out    => gn_wb_in,
-      carrier_wb_in     => gn_wb_out
+      gn_wb_o         => gn_wb_out,
+      gn_wb_i         => gn_wb_in,
+      carrier_wb_o    => gn_wb_in,
+      carrier_wb_i    => gn_wb_out
     );
 end architecture top;
