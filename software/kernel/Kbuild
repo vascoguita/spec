@@ -34,6 +34,4 @@ obj-m += spi-ocores.o
 
 spec-fmc-carrier-objs := spec-core.o
 spec-fmc-carrier-objs += spec-core-fpga.o
-spec-fmc-carrier-objs += spec-dbg.o
 spec-fmc-carrier-objs += spec-compat.o
-spec-fmc-carrier-objs += spec-gpio.o

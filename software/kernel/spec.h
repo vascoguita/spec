@@ -150,18 +150,6 @@ static inline struct spec_fpga *to_spec_fpga(struct device *_dev)
 	return container_of(_dev, struct spec_fpga, dev);
 }
 
-extern int spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name);
-
-extern int spec_dbg_init(struct spec_gn412x *spec_gn412x);
-extern void spec_dbg_exit(struct spec_gn412x *spec_gn412x);
-
-extern void spec_gpio_fpga_select_set(struct spec_gn412x *spec_gn412x,
-				      enum spec_fpga_select sel);
-extern enum spec_fpga_select spec_gpio_fpga_select_get(struct spec_gn412x *spec_gn412x);
-
-extern int spec_gpio_init(struct spec_gn412x *spec_gn412x);
-extern void spec_gpio_exit(struct spec_gn412x *spec_gn412x);
-
 extern int spec_fpga_init(struct spec_gn412x *spec_gn412x);
 extern int spec_fpga_exit(struct spec_gn412x *spec_gn412x);
 

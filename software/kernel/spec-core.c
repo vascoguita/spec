@@ -14,6 +14,7 @@
 #include <linux/firmware.h>
 #include <linux/moduleparam.h>
 #include <linux/mfd/core.h>
+#include <linux/gpio/consumer.h>
 
 #include "platform_data/gn412x-gpio.h"
 #include "spec.h"
@@ -28,7 +29,347 @@ static char *spec_fw_name_150t = "spec-golden-150T.bin";
 char *spec_fw_name = "";
 module_param_named(fw_name, spec_fw_name, charp, 0444);
 
+static int spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name);
 
+/* Debugging */
+static int spec_irq_dbg_info(struct seq_file *s, void *offset)
+{
+	struct spec_gn412x *spec_gn412x = s->private;
+
+	seq_printf(s, "'%s':\n", dev_name(&spec_gn412x->pdev->dev));
+
+	seq_printf(s, "  redirect: %d\n",
+		   to_pci_dev(&spec_gn412x->pdev->dev)->irq);
+	seq_puts(s, "  irq-mapping:\n");
+	seq_puts(s, "    - hardware: 8\n");
+	seq_printf(s, "      linux: %d\n",
+		   gpiod_to_irq(spec_gn412x->gpiod[GN4124_GPIO_IRQ0]));
+	seq_puts(s, "    - hardware: 9\n");
+	seq_printf(s, "      linux: %d\n",
+		   gpiod_to_irq(spec_gn412x->gpiod[GN4124_GPIO_IRQ1]));
+
+	return 0;
+}
+
+static int spec_irq_dbg_info_open(struct inode *inode, struct file *file)
+{
+	struct spec_gn412x *spec = inode->i_private;
+
+	return single_open(file, spec_irq_dbg_info, spec);
+}
+
+static const struct file_operations spec_irq_dbg_info_ops = {
+	.owner = THIS_MODULE,
+	.open  = spec_irq_dbg_info_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+static ssize_t spec_dbg_fw_write(struct file *file,
+				 const char __user *buf,
+				 size_t count, loff_t *ppos)
+{
+	struct spec_gn412x *spec_gn412x = file->private_data;
+	int err;
+
+	err = spec_fw_load(spec_gn412x, buf);
+	if (err)
+		return err;
+	return count;
+}
+
+static int spec_dbg_fw_open(struct inode *inode, struct file *file)
+{
+	file->private_data = inode->i_private;
+
+	return 0;
+}
+
+static const struct file_operations spec_dbg_fw_ops = {
+	.owner = THIS_MODULE,
+	.open  = spec_dbg_fw_open,
+	.write = spec_dbg_fw_write,
+};
+
+
+static int spec_dbg_meta(struct seq_file *s, void *offset)
+{
+	struct spec_gn412x *spec_gn412x = s->private;
+
+	seq_printf(s, "'%s':\n", dev_name(&spec_gn412x->pdev->dev));
+	seq_puts(s, "Metadata:\n");
+	seq_printf(s, "  - Vendor: 0x%08x\n", spec_gn412x->meta->vendor);
+	seq_printf(s, "  - Device: 0x%08x\n", spec_gn412x->meta->device);
+	seq_printf(s, "  - Version: 0x%08x\n", spec_gn412x->meta->version);
+	seq_printf(s, "  - BOM: 0x%08x\n", spec_gn412x->meta->bom);
+	seq_printf(s, "  - SourceID: 0x%08x%08x%08x%08x\n",
+		   spec_gn412x->meta->src[0],
+		   spec_gn412x->meta->src[1],
+		   spec_gn412x->meta->src[2],
+		   spec_gn412x->meta->src[3]);
+	seq_printf(s, "  - CapabilityMask: 0x%08x\n", spec_gn412x->meta->cap);
+	seq_printf(s, "  - VendorUUID: 0x%08x%08x%08x%08x\n",
+		   spec_gn412x->meta->uuid[0],
+		   spec_gn412x->meta->uuid[1],
+		   spec_gn412x->meta->uuid[2],
+		   spec_gn412x->meta->uuid[3]);
+
+	return 0;
+}
+
+static int spec_dbg_meta_open(struct inode *inode, struct file *file)
+{
+	struct spec_gn412x *spec = inode->i_private;
+
+	return single_open(file, spec_dbg_meta, spec);
+}
+
+static const struct file_operations spec_dbg_meta_ops = {
+	.owner = THIS_MODULE,
+	.open  = spec_dbg_meta_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+/**
+ * It initializes the debugfs interface
+ * @spec: SPEC device instance
+ *
+ * Return: 0 on success, otherwise a negative error number
+ */
+static int spec_dbg_init(struct spec_gn412x *spec_gn412x)
+{
+	struct device *dev = &spec_gn412x->pdev->dev;
+
+	spec_gn412x->dbg_dir = debugfs_create_dir(dev_name(dev),
+						  NULL);
+	if (IS_ERR_OR_NULL(spec_gn412x->dbg_dir)) {
+		dev_err(dev, "Cannot create debugfs directory (%ld)\n",
+			PTR_ERR(spec_gn412x->dbg_dir));
+		return PTR_ERR(spec_gn412x->dbg_dir);
+	}
+
+	spec_gn412x->dbg_info = debugfs_create_file(SPEC_DBG_INFO_NAME, 0444,
+						    spec_gn412x->dbg_dir,
+						    spec_gn412x,
+						    &spec_irq_dbg_info_ops);
+	if (IS_ERR_OR_NULL(spec_gn412x->dbg_info)) {
+		dev_err(dev, "Cannot create debugfs file \"%s\" (%ld)\n",
+			SPEC_DBG_INFO_NAME, PTR_ERR(spec_gn412x->dbg_info));
+		return PTR_ERR(spec_gn412x->dbg_info);
+	}
+
+	spec_gn412x->dbg_fw = debugfs_create_file(SPEC_DBG_FW_NAME, 0200,
+						  spec_gn412x->dbg_dir,
+						  spec_gn412x,
+						  &spec_dbg_fw_ops);
+	if (IS_ERR_OR_NULL(spec_gn412x->dbg_fw)) {
+		dev_err(dev, "Cannot create debugfs file \"%s\" (%ld)\n",
+			SPEC_DBG_FW_NAME, PTR_ERR(spec_gn412x->dbg_fw));
+		return PTR_ERR(spec_gn412x->dbg_fw);
+	}
+
+	spec_gn412x->dbg_meta = debugfs_create_file(SPEC_DBG_META_NAME, 0200,
+						    spec_gn412x->dbg_dir,
+						    spec_gn412x,
+						    &spec_dbg_meta_ops);
+	if (IS_ERR_OR_NULL(spec_gn412x->dbg_meta)) {
+		dev_err(dev, "Cannot create debugfs file \"%s\" (%ld)\n",
+			SPEC_DBG_META_NAME, PTR_ERR(spec_gn412x->dbg_meta));
+		return PTR_ERR(spec_gn412x->dbg_meta);
+	}
+
+	return 0;
+}
+
+/**
+ * It removes the debugfs interface
+ * @spec: SPEC device instance
+ */
+static void spec_dbg_exit(struct spec_gn412x *spec_gn412x)
+{
+	debugfs_remove_recursive(spec_gn412x->dbg_dir);
+}
+
+
+/* SPEC GPIO configuration */
+
+static void spec_gpio_fpga_select_set(struct spec_gn412x *spec_gn412x,
+				      enum spec_fpga_select sel)
+{
+	switch (sel) {
+	case SPEC_FPGA_SELECT_FPGA_FLASH:
+	case SPEC_FPGA_SELECT_GN4124_FPGA:
+	case SPEC_FPGA_SELECT_GN4124_FLASH:
+		gpiod_set_value(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0],
+				!!(sel & 0x1));
+		gpiod_set_value(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL1],
+				!!(sel & 0x2));
+		break;
+	default:
+		break;
+	}
+}
+
+static enum spec_fpga_select spec_gpio_fpga_select_get(struct spec_gn412x *spec_gn412x)
+{
+	enum spec_fpga_select sel = 0;
+
+	sel |= !!gpiod_get_value(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL1]) << 1;
+	sel |= !!gpiod_get_value(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0]) << 0;
+
+	return sel;
+}
+
+
+static const struct gpiod_lookup_table spec_gpiod_table = {
+	.table = {
+		GPIO_LOOKUP_IDX("gn412x-gpio", GN4124_GPIO_BOOTSEL0,
+				"bootsel", 0,
+				GPIO_ACTIVE_HIGH | GPIO_PERSISTENT),
+		GPIO_LOOKUP_IDX("gn412x-gpio", GN4124_GPIO_BOOTSEL1,
+				"bootsel", 1,
+				GPIO_ACTIVE_HIGH | GPIO_PERSISTENT),
+		GPIO_LOOKUP_IDX("gn412x-gpio", GN4124_GPIO_SPRI_DIN,
+				"spi", 0,
+				GPIO_ACTIVE_HIGH | GPIO_PERSISTENT),
+		GPIO_LOOKUP_IDX("gn412x-gpio", GN4124_GPIO_SPRI_FLASH_CS,
+				"spi", 1,
+				GPIO_ACTIVE_HIGH | GPIO_PERSISTENT),
+		GPIO_LOOKUP_IDX("gn412x-gpio", GN4124_GPIO_IRQ0,
+				"irq", 0,
+				GPIO_ACTIVE_HIGH | GPIO_PERSISTENT),
+		GPIO_LOOKUP_IDX("gn412x-gpio", GN4124_GPIO_IRQ1,
+				"irq", 1,
+				GPIO_ACTIVE_HIGH | GPIO_PERSISTENT),
+		GPIO_LOOKUP_IDX("gn412x-gpio", GN4124_GPIO_SCL,
+				"i2c", 0,
+				GPIO_ACTIVE_HIGH | GPIO_PERSISTENT),
+		GPIO_LOOKUP_IDX("gn412x-gpio", GN4124_GPIO_SDA,
+				"i2c", 1,
+				GPIO_ACTIVE_HIGH | GPIO_PERSISTENT),
+		{},
+	}
+};
+
+static inline size_t spec_gpiod_table_size(void)
+{
+	return sizeof(struct gpiod_lookup_table) +
+	       (sizeof(struct gpiod_lookup) * 9);
+}
+
+static int spec_gpio_init(struct spec_gn412x *spec_gn412x)
+{
+	struct gpio_desc *gpiod;
+	struct gpiod_lookup_table *lookup;
+	int err = 0;
+
+	lookup = devm_kzalloc(&spec_gn412x->pdev->dev,
+			      spec_gpiod_table_size(),
+			      GFP_KERNEL);
+	if (!lookup) {
+		err = -ENOMEM;
+		goto err_alloc;
+	}
+
+	memcpy(lookup, &spec_gpiod_table, spec_gpiod_table_size());
+
+	lookup->dev_id = kstrdup(dev_name(&spec_gn412x->pdev->dev), GFP_KERNEL);
+	if (!lookup->dev_id)
+		goto err_dup;
+
+	spec_gn412x->gpiod_table = lookup;
+	err = compat_gpiod_add_lookup_table(spec_gn412x->gpiod_table);
+	if (err)
+		goto err_lookup;
+
+	gpiod = gpiod_get_index(&spec_gn412x->pdev->dev, "bootsel", 0,
+				GPIOD_OUT_HIGH);
+	if (IS_ERR(gpiod)) {
+		err = PTR_ERR(gpiod);
+		goto err_sel0;
+	}
+	spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0] = gpiod;
+
+	gpiod = gpiod_get_index(&spec_gn412x->pdev->dev, "bootsel", 1,
+				GPIOD_OUT_HIGH);
+	if (IS_ERR(gpiod)) {
+		err = PTR_ERR(gpiod);
+		goto err_sel1;
+	}
+	spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL1] = gpiod;
+
+	/* Because of a BUG in RedHat kernel 3.10 we re-set direction */
+	err = gpiod_direction_output(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0],
+				     1);
+	if (err)
+		goto err_out0;
+	err = gpiod_direction_output(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL1],
+				     1);
+	if (err)
+		goto err_out1;
+
+
+	gpiod = gpiod_get_index(&spec_gn412x->pdev->dev, "irq", 0, GPIOD_IN);
+	if (IS_ERR(gpiod)) {
+		err = PTR_ERR(gpiod);
+		goto err_irq0;
+	}
+	spec_gn412x->gpiod[GN4124_GPIO_IRQ0] = gpiod;
+
+	gpiod = gpiod_get_index(&spec_gn412x->pdev->dev, "irq", 1, GPIOD_IN);
+	if (IS_ERR(gpiod)) {
+		err = PTR_ERR(gpiod);
+		goto err_irq1;
+	}
+	spec_gn412x->gpiod[GN4124_GPIO_IRQ1] = gpiod;
+
+	/* Because of a BUG in RedHat kernel 3.10 we re-set direction */
+	err = gpiod_direction_input(spec_gn412x->gpiod[GN4124_GPIO_IRQ0]);
+	if (err)
+		goto err_in0;
+	err = gpiod_direction_input(spec_gn412x->gpiod[GN4124_GPIO_IRQ1]);
+	if (err)
+		goto err_in1;
+
+	return 0;
+
+err_in1:
+err_in0:
+	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_IRQ1]);
+err_irq1:
+	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_IRQ0]);
+err_irq0:
+err_out1:
+err_out0:
+	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL1]);
+err_sel1:
+	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0]);
+err_sel0:
+	gpiod_remove_lookup_table(spec_gn412x->gpiod_table);
+err_lookup:
+	kfree(lookup->dev_id);
+err_dup:
+	devm_kfree(&spec_gn412x->pdev->dev, lookup);
+	spec_gn412x->gpiod_table = NULL;
+err_alloc:
+
+	return err;
+}
+
+static void spec_gpio_exit(struct spec_gn412x *spec_gn412x)
+{
+	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_IRQ1]);
+	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_IRQ0]);
+	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL1]);
+	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0]);
+	gpiod_remove_lookup_table(spec_gn412x->gpiod_table);
+	kfree(spec_gn412x->gpiod_table->dev_id);
+}
+
+/* SPEC sub-devices */
 static struct gn412x_platform_data gn412x_gpio_pdata = {
 	.int_cfg = 0,
 };
@@ -114,7 +455,7 @@ static const char *spec_fw_name_init_get(struct spec_gn412x *spec_gn412x)
  *
  * Return: 0 on success, otherwise a negative error number
  */
-int spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name)
+static int spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name)
 {
 	enum spec_fpga_select sel;
 	int err;
