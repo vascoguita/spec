@@ -58,7 +58,8 @@ static int compat_gn412x_fcl_write_complete(struct fpga_manager *mgr,
 #endif
 
 #if KERNEL_VERSION(4, 18, 0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
-struct fpga_manager *compat_fpga_mgr_create(struct device *dev, const char *name,
+struct fpga_manager *compat_fpga_mgr_create(struct device *dev,
+					    const char *name,
 					    const struct fpga_manager_ops *mops,
 					    void *priv)
 {
@@ -122,12 +123,14 @@ struct gn412x_fcl_dev {
 	struct fpga_manager *mgr;
 };
 
-static uint32_t gn412x_ioread32(struct gn412x_fcl_dev *gn412x, int reg)
+static uint32_t gn412x_ioread32(struct gn412x_fcl_dev *gn412x,
+				int reg)
 {
 	return ioread32(gn412x->mem + reg);
 }
 
-static void gn412x_iowrite32(struct gn412x_fcl_dev *gn412x, uint32_t val, int reg)
+static void gn412x_iowrite32(struct gn412x_fcl_dev *gn412x,
+			     uint32_t val, int reg)
 {
 	return iowrite32(val, gn412x->mem + reg);
 }
@@ -172,8 +175,10 @@ static void gn4124_fpga_reset(struct gn412x_fcl_dev *gn412x)
 	 * This _fucking_ register must be written with extreme care,
 	 * becase some fields are "protected" and some are not. *hate*
 	 */
-	gn412x_iowrite32(gn412x, (reg & ~0xffff) | 0x3fff, GNPCI_SYS_CFG_SYSTEM);
-	gn412x_iowrite32(gn412x, (reg & ~0xffff) | 0x7fff, GNPCI_SYS_CFG_SYSTEM);
+	gn412x_iowrite32(gn412x, (reg & ~0xffff) | 0x3fff,
+			 GNPCI_SYS_CFG_SYSTEM);
+	gn412x_iowrite32(gn412x, (reg & ~0xffff) | 0x7fff,
+			 GNPCI_SYS_CFG_SYSTEM);
 }
 
 
@@ -184,7 +189,8 @@ static void gn4124_fpga_reset(struct gn412x_fcl_dev *gn412x)
  *
  * Return: 0 on success, otherwise a negative error code
  */
-static int gn4124_fpga_fcl_init(struct gn412x_fcl_dev *gn412x, int last_word_size)
+static int gn4124_fpga_fcl_init(struct gn412x_fcl_dev *gn412x,
+				int last_word_size)
 {
 	uint32_t ctrl;
 	int i;
@@ -215,18 +221,18 @@ static int gn4124_fpga_fcl_init(struct gn412x_fcl_dev *gn412x, int last_word_siz
 	default: return -EINVAL;
 	}
 	gn412x_iowrite32(gn412x, ctrl, FCL_CTRL);
-	gn412x_iowrite32(gn412x, 0x00, FCL_CLK_DIV); /* again? maybe 1 or 2? */
-	gn412x_iowrite32(gn412x, 0x00, FCL_TIMER_CTRL); /* "disable FCL timr fun" */
-	gn412x_iowrite32(gn412x, 0x10, FCL_TIMER_0); /* "pulse width" */
+	gn412x_iowrite32(gn412x, 0x00, FCL_CLK_DIV);
+	gn412x_iowrite32(gn412x, 0x00, FCL_TIMER_CTRL);
+	gn412x_iowrite32(gn412x, 0x10, FCL_TIMER_0);
 	gn412x_iowrite32(gn412x, 0x00, FCL_TIMER_1);
 
 	/*
 	 * Set delay before data and clock is applied by FCL
 	 * after SPRI_STATUS is	detected being assert.
 	 */
-	gn412x_iowrite32(gn412x, 0x08, FCL_TIMER2_0); /* "delay before data/clk" */
+	gn412x_iowrite32(gn412x, 0x08, FCL_TIMER2_0);
 	gn412x_iowrite32(gn412x, 0x00, FCL_TIMER2_1);
-	gn412x_iowrite32(gn412x, 0x17, FCL_EN); /* "output enable" */
+	gn412x_iowrite32(gn412x, 0x17, FCL_EN);
 
 	ctrl |= 0x01; /* "start FSM configuration" */
 	gn412x_iowrite32(gn412x, ctrl, FCL_CTRL);
@@ -274,7 +280,8 @@ static int gn4124_fpga_fcl_waitdone(struct gn412x_fcl_dev *gn412x)
  *
  * Return: 0 on success, otherwise a negative error code
  */
-static int gn4124_fpga_load(struct gn412x_fcl_dev *gn412x, const void *data, int len)
+static int gn4124_fpga_load(struct gn412x_fcl_dev *gn412x,
+			    const void *data, int len)
 {
 	int size32 = (len + 3) >> 2;
 	int done = 0, wrote = 0;

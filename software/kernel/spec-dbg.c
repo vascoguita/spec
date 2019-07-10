@@ -17,7 +17,8 @@ static int spec_irq_dbg_info(struct seq_file *s, void *offset)
 
 	seq_printf(s, "'%s':\n", dev_name(&spec_gn412x->pdev->dev));
 
-	seq_printf(s, "  redirect: %d\n", to_pci_dev(&spec_gn412x->pdev->dev)->irq);
+	seq_printf(s, "  redirect: %d\n",
+		   to_pci_dev(&spec_gn412x->pdev->dev)->irq);
 	seq_puts(s, "  irq-mapping:\n");
 	seq_puts(s, "    - hardware: 8\n");
 	seq_printf(s, "      linux: %d\n",
@@ -119,11 +120,12 @@ static const struct file_operations spec_dbg_meta_ops = {
  */
 int spec_dbg_init(struct spec_gn412x *spec_gn412x)
 {
-	spec_gn412x->dbg_dir = debugfs_create_dir(dev_name(&spec_gn412x->pdev->dev),
+	struct device *dev = &spec_gn412x->pdev->dev;
+
+	spec_gn412x->dbg_dir = debugfs_create_dir(dev_name(dev),
 						  NULL);
 	if (IS_ERR_OR_NULL(spec_gn412x->dbg_dir)) {
-		dev_err(&spec_gn412x->pdev->dev,
-			"Cannot create debugfs directory (%ld)\n",
+		dev_err(dev, "Cannot create debugfs directory (%ld)\n",
 			PTR_ERR(spec_gn412x->dbg_dir));
 		return PTR_ERR(spec_gn412x->dbg_dir);
 	}
@@ -133,8 +135,7 @@ int spec_dbg_init(struct spec_gn412x *spec_gn412x)
 						    spec_gn412x,
 						    &spec_irq_dbg_info_ops);
 	if (IS_ERR_OR_NULL(spec_gn412x->dbg_info)) {
-		dev_err(&spec_gn412x->pdev->dev,
-			"Cannot create debugfs file \"%s\" (%ld)\n",
+		dev_err(dev, "Cannot create debugfs file \"%s\" (%ld)\n",
 			SPEC_DBG_INFO_NAME, PTR_ERR(spec_gn412x->dbg_info));
 		return PTR_ERR(spec_gn412x->dbg_info);
 	}
@@ -144,8 +145,7 @@ int spec_dbg_init(struct spec_gn412x *spec_gn412x)
 						  spec_gn412x,
 						  &spec_dbg_fw_ops);
 	if (IS_ERR_OR_NULL(spec_gn412x->dbg_fw)) {
-		dev_err(&spec_gn412x->pdev->dev,
-			"Cannot create debugfs file \"%s\" (%ld)\n",
+		dev_err(dev, "Cannot create debugfs file \"%s\" (%ld)\n",
 			SPEC_DBG_FW_NAME, PTR_ERR(spec_gn412x->dbg_fw));
 		return PTR_ERR(spec_gn412x->dbg_fw);
 	}
@@ -155,8 +155,7 @@ int spec_dbg_init(struct spec_gn412x *spec_gn412x)
 						    spec_gn412x,
 						    &spec_dbg_meta_ops);
 	if (IS_ERR_OR_NULL(spec_gn412x->dbg_meta)) {
-		dev_err(&spec_gn412x->pdev->dev,
-			"Cannot create debugfs file \"%s\" (%ld)\n",
+		dev_err(dev, "Cannot create debugfs file \"%s\" (%ld)\n",
 			SPEC_DBG_META_NAME, PTR_ERR(spec_gn412x->dbg_meta));
 		return PTR_ERR(spec_gn412x->dbg_meta);
 	}

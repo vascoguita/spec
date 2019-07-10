@@ -197,7 +197,7 @@ static ssize_t bootselect_show(struct device *dev,
 		return -EINVAL;
 	}
 }
-static DEVICE_ATTR(bootselect, 0744, bootselect_show, bootselect_store);
+static DEVICE_ATTR(bootselect, 0644, bootselect_show, bootselect_store);
 
 /**
  * Load golden bitstream on FGPA
@@ -244,7 +244,7 @@ static int spec_probe(struct pci_dev *pdev,
 	err = pci_enable_device(pdev);
 	if (err) {
 		dev_err(&pdev->dev, "Failed to enable PCI device (%d)\n",
-		        err);
+			err);
 		goto err_enable;
 	}
 

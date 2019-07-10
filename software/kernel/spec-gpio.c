@@ -97,14 +97,16 @@ int spec_gpio_init(struct spec_gn412x *spec_gn412x)
 	if (err)
 		goto err_lookup;
 
-	gpiod = gpiod_get_index(&spec_gn412x->pdev->dev, "bootsel", 0, GPIOD_OUT_HIGH);
+	gpiod = gpiod_get_index(&spec_gn412x->pdev->dev, "bootsel", 0,
+				GPIOD_OUT_HIGH);
 	if (IS_ERR(gpiod)) {
 		err = PTR_ERR(gpiod);
 		goto err_sel0;
 	}
 	spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0] = gpiod;
 
-	gpiod = gpiod_get_index(&spec_gn412x->pdev->dev, "bootsel", 1, GPIOD_OUT_HIGH);
+	gpiod = gpiod_get_index(&spec_gn412x->pdev->dev, "bootsel", 1,
+				GPIOD_OUT_HIGH);
 	if (IS_ERR(gpiod)) {
 		err = PTR_ERR(gpiod);
 		goto err_sel1;
@@ -112,10 +114,12 @@ int spec_gpio_init(struct spec_gn412x *spec_gn412x)
 	spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL1] = gpiod;
 
 	/* Because of a BUG in RedHat kernel 3.10 we re-set direction */
-	err = gpiod_direction_output(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0], 1);
+	err = gpiod_direction_output(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0],
+				     1);
 	if (err)
 		goto err_out0;
-	err = gpiod_direction_output(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL1], 1);
+	err = gpiod_direction_output(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL1],
+				     1);
 	if (err)
 		goto err_out1;
 

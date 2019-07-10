@@ -40,19 +40,21 @@ enum htvic_mem_resources {
 	GN412X_MEM_BASE = 0,
 };
 
-static uint32_t gn412x_ioread32(struct gn412x_gpio_dev *gn412x, int reg)
+static uint32_t gn412x_ioread32(struct gn412x_gpio_dev *gn412x,
+				int reg)
 {
 	return ioread32(gn412x->mem + reg);
 }
 
-static void gn412x_iowrite32(struct gn412x_gpio_dev *gn412x, uint32_t val, int reg)
+static void gn412x_iowrite32(struct gn412x_gpio_dev *gn412x,
+			     uint32_t val, int reg)
 {
 	return iowrite32(val, gn412x->mem + reg);
 }
 
 
 static int gn412x_gpio_reg_read(struct gpio_chip *chip,
-				int reg, unsigned offset)
+				int reg, unsigned int offset)
 {
 	struct gn412x_gpio_dev *gn412x = to_gn412x_gpio_dev_gpio(chip);
 
@@ -60,7 +62,7 @@ static int gn412x_gpio_reg_read(struct gpio_chip *chip,
 }
 
 static void gn412x_gpio_reg_write(struct gpio_chip *chip,
-				  int reg, unsigned offset, int value)
+				  int reg, unsigned int offset, int value)
 {
 	struct gn412x_gpio_dev *gn412x = to_gn412x_gpio_dev_gpio(chip);
 	uint32_t regval;
@@ -103,7 +105,7 @@ static void gn412x_gpio_int_cfg_disable(struct gn412x_gpio_dev *gn412x)
 	gn412x_iowrite32(gn412x, int_cfg, GNINT_CFG(gn412x->pdata->int_cfg));
 }
 
-static int gn412x_gpio_request(struct gpio_chip *chip, unsigned offset)
+static int gn412x_gpio_request(struct gpio_chip *chip, unsigned int offset)
 {
 	int val;
 
@@ -117,20 +119,20 @@ static int gn412x_gpio_request(struct gpio_chip *chip, unsigned offset)
 	return 0;
 }
 
-static void gn412x_gpio_free(struct gpio_chip *chip, unsigned offset)
+static void gn412x_gpio_free(struct gpio_chip *chip, unsigned int offset)
 {
 	/* set it as input to avoid to drive anything */
 	gn412x_gpio_reg_write(chip, GNGPIO_DIRECTION_MODE, offset, 1);
 }
 
 static int gn412x_gpio_get_direction(struct gpio_chip *chip,
-				     unsigned offset)
+				     unsigned int offset)
 {
 	return !gn412x_gpio_reg_read(chip, GNGPIO_DIRECTION_MODE, offset);
 }
 
 static int gn412x_gpio_direction_input(struct gpio_chip *chip,
-				       unsigned offset)
+				       unsigned int offset)
 {
 	gn412x_gpio_reg_write(chip, GNGPIO_DIRECTION_MODE, offset, 1);
 	gn412x_gpio_reg_write(chip, GNGPIO_OUTPUT_ENABLE, offset, 0);
@@ -139,7 +141,7 @@ static int gn412x_gpio_direction_input(struct gpio_chip *chip,
 }
 
 static int gn412x_gpio_direction_output(struct gpio_chip *chip,
-					unsigned offset, int value)
+					unsigned int offset, int value)
 {
 	gn412x_gpio_reg_write(chip, GNGPIO_DIRECTION_MODE, offset, 0);
 	gn412x_gpio_reg_write(chip, GNGPIO_OUTPUT_ENABLE, offset, 1);
@@ -149,13 +151,13 @@ static int gn412x_gpio_direction_output(struct gpio_chip *chip,
 }
 
 static int gn412x_gpio_get(struct gpio_chip *chip,
-			   unsigned offset)
+			   unsigned int offset)
 {
 	return gn412x_gpio_reg_read(chip, GNGPIO_INPUT_VALUE, offset);
 }
 
 static void gn412x_gpio_set(struct gpio_chip *chip,
-			    unsigned offset, int value)
+			    unsigned int offset, int value)
 {
 	gn412x_gpio_reg_write(chip, GNGPIO_OUTPUT_VALUE, offset, value);
 }
@@ -213,7 +215,7 @@ static int gn412x_gpio_irq_set_type(struct irq_data *d, unsigned int flow_type)
 	}
 
 
-	/* Configure: level-low or falling-edge, level-high or raising-edge (default)? */
+	/* Configure: level-low or falling-edge, level-high or raising-edge */
 	if (flow_type & (IRQ_TYPE_LEVEL_LOW | IRQ_TYPE_EDGE_FALLING))
 		gn412x_gpio_reg_write(gc, GNGPIO_INT_VALUE, d->hwirq, 0);
 	else
@@ -263,7 +265,7 @@ static void gn412x_gpio_irq_ack(struct irq_data *d)
 	 * based on HW design,there is no need to ack HW
 	 * before handle current irq. But this routine is
 	 * necessary for handle_edge_irq
-	*/
+	 */
 }
 
 static struct irq_chip gn412x_gpio_irq_chip = {
@@ -314,8 +316,8 @@ static irqreturn_t gn412x_gpio_irq_handler_t(int irq, void *arg)
 		cascade_irq = irq_find_mapping(gc->irqdomain, i);
 		/*
 		 * Ok, now we execute the handler for the given IRQ. Please
-		 * note that this is not the action requested by the device driver
-		 * but it is the handler defined during the IRQ mapping
+		 * note that this is not the action requested by the device
+		 * driver but it is the handler defined during the IRQ mapping
 		 */
 		handle_nested_irq(cascade_irq);
 	}
@@ -362,7 +364,7 @@ static void gn412x_gpio_irq_set_nested_thread(struct gn412x_gpio_dev *gn412x,
 {
 	int irq;
 
-	irq= irq_find_mapping(gn412x->gpiochip.irqdomain, gpio);
+	irq = irq_find_mapping(gn412x->gpiochip.irqdomain, gpio);
 	irq_set_nested_thread(irq, nest);
 }
 

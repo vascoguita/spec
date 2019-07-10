@@ -155,7 +155,7 @@ static void spi_ocores_hw_xfer_cs(struct spi_ocores *sp,
 static void spi_ocores_tx_set(struct spi_ocores *sp,
 			      unsigned int idx, uint32_t val)
 {
-	if (WARN(idx > 3, "Invalid TX register index %d (min:0, max: 3). Possible data corruption\n",
+	if (WARN(idx > 3, "Invalid TX register index %d (min:0, max: 3)\n",
 		 idx))
 		return;
 
@@ -167,7 +167,7 @@ static void spi_ocores_tx_set(struct spi_ocores *sp,
  */
 static uint32_t spi_ocores_rx_get(struct spi_ocores *sp, unsigned int idx)
 {
-	if (WARN(idx > 3, "Invalid RX register index %d (min:0, max: 3). Possible data corruption\n",
+	if (WARN(idx > 3, "Invalid RX register index %d (min:0, max: 3)\n",
 		 idx))
 		return 0;
 
@@ -185,7 +185,7 @@ static uint8_t spi_ocores_hw_xfer_bits_per_word(struct spi_ocores *sp)
 	uint8_t nbits;
 
 	nbits = (sp->cur_xfer && sp->cur_xfer->bits_per_word) ?
-		sp->cur_xfer->bits_per_word:
+		sp->cur_xfer->bits_per_word :
 		sp->master->cur_msg->spi->bits_per_word;
 
 	return nbits;
@@ -316,17 +316,16 @@ static void spi_ocores_hw_xfer_tx_push(struct spi_ocores *sp)
 	uint8_t nbits;
 
 	nbits = spi_ocores_hw_xfer_bits_per_word(sp);
-	if (nbits >= 8) {
+	if (nbits >= 8)
 		spi_ocores_hw_xfer_tx_push8(sp);
-	} else if (nbits >= 16) {
+	else if (nbits >= 16)
 		spi_ocores_hw_xfer_tx_push16(sp);
-	} else if (nbits >= 32) {
+	else if (nbits >= 32)
 		spi_ocores_hw_xfer_tx_push32(sp);
-	} else if (nbits >= 64) {
+	else if (nbits >= 64)
 		spi_ocores_hw_xfer_tx_push64(sp);
-	} else if (nbits >= 128) {
+	else if (nbits >= 128)
 		spi_ocores_hw_xfer_tx_push128(sp);
-	}
 }
 
 /**
@@ -338,17 +337,16 @@ static void spi_ocores_hw_xfer_rx_pop(struct spi_ocores *sp)
 	uint8_t nbits;
 
 	nbits = spi_ocores_hw_xfer_bits_per_word(sp);
-	if (nbits >= 8) {
+	if (nbits >= 8)
 		spi_ocores_hw_xfer_rx_push8(sp);
-	} else if (nbits >= 16) {
+	else if (nbits >= 16)
 		spi_ocores_hw_xfer_rx_push16(sp);
-	} else if (nbits >= 32) {
+	else if (nbits >= 32)
 		spi_ocores_hw_xfer_rx_push32(sp);
-	} else if (nbits >= 64) {
+	else if (nbits >= 64)
 		spi_ocores_hw_xfer_rx_push64(sp);
-	} else if (nbits >= 128) {
+	else if (nbits >= 128)
 		spi_ocores_hw_xfer_rx_push128(sp);
-	}
 }
 
 static void spi_ocores_hw_xfer_start(struct spi_ocores *sp)
@@ -583,7 +581,7 @@ static int spi_ocores_transfer_one_message(struct spi_master *master,
 	err = spi_ocores_sw_xfer_next_start(sp);
 	if (sp->flags & SPI_OCORES_FLAG_POLL) {
 		do {
-			err =spi_ocores_process_poll(sp, 100);
+			err = spi_ocores_process_poll(sp, 100);
 		} while (!err);
 	}
 
