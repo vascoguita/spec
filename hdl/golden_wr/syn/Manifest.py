@@ -12,11 +12,13 @@ syn_top = "spec_golden_wr"
 syn_properties = [ ["-generics", "dpram=\"3\""]]
 
 board = "spec"
+ctrls = ["bank3_64b_32b" ]
 
 modules = { 
   "local" : "../top",
-  "git" : [ "git://ohwr.org/hdl-core-lib/wr-cores.git::proposed_master",
-            "git://ohwr.org/hdl-core-lib/general-cores.git::proposed_master",
-            "git://ohwr.org/hdl-core-lib/etherbone-core.git::proposed_master",
-            "git://ohwr.org/hdl-core-lib/gn4124-core.git::proposed_master" ]
+  "git" : [ "https://ohwr.org/project/wr-cores.git::proposed_master",
+            "https://ohwr.org/project/general-cores.git::proposed_master",
+            "https://ohwr.org/project/etherbone-core.git::proposed_master",
+            "https://ohwr.org/project/gn4124-core.git::proposed_master",
+            "https://ohwr.org/project/ddr3-sp6-core.git::proposed_master" ]
 }

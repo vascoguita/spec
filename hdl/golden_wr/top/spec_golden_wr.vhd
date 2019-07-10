@@ -128,6 +128,10 @@ entity spec_golden_wr is
     ---------------------------------------------------------------------------
     -- Miscellanous SPEC pins
     ---------------------------------------------------------------------------
+
+    -- PCB version
+    pcbrev_i : in std_logic_vector(3 downto 0);
+
     -- Red LED next to the SFP: blinking indicates that packets are being
     -- transferred.
     led_act_o   : out std_logic;
@@ -172,11 +176,33 @@ entity spec_golden_wr is
     sfp_rate_select_o : out   std_logic;
     sfp_tx_fault_i    : in    std_logic;
     sfp_tx_disable_o  : out   std_logic;
-    sfp_los_i         : in    std_logic
+    sfp_los_i         : in    std_logic;
+
+    --  DDR3
+    ddr_a_o       : out   std_logic_vector(13 downto 0);
+    ddr_ba_o      : out   std_logic_vector(2 downto 0);
+    ddr_cas_n_o   : out   std_logic;
+    ddr_ck_n_o    : out   std_logic;
+    ddr_ck_p_o    : out   std_logic;
+    ddr_cke_o     : out   std_logic;
+    ddr_dq_b      : inout std_logic_vector(15 downto 0);
+    ddr_ldm_o     : out   std_logic;
+    ddr_ldqs_n_b  : inout std_logic;
+    ddr_ldqs_p_b  : inout std_logic;
+    ddr_odt_o     : out   std_logic;
+    ddr_ras_n_o   : out   std_logic;
+    ddr_reset_n_o : out   std_logic;
+    ddr_rzq_b     : inout std_logic;
+    ddr_udm_o     : out   std_logic;
+    ddr_udqs_n_b  : inout std_logic;
+    ddr_udqs_p_b  : inout std_logic;
+    ddr_we_n_o    : out   std_logic
   );
 end entity spec_golden_wr;
 
 architecture top of spec_golden_wr is
+  signal clk_sys_62m5  : std_logic;
+  signal rst_sys_62m5_n  : std_logic;
 begin
   inst_template: entity work.spec_template_wr
     generic map (
@@ -219,6 +245,7 @@ begin
       spi_ncs_o => spi_ncs_o,
       spi_mosi_o => spi_mosi_o,
       spi_miso_i => spi_miso_i,
+      pcbrev_i => pcbrev_i,
       led_act_o => led_act_o,
       led_link_o => led_link_o,
       button1_i => button1_i,
@@ -241,6 +268,37 @@ begin
       sfp_rate_select_o => sfp_rate_select_o,
       sfp_tx_fault_i => sfp_tx_fault_i,
       sfp_tx_disable_o => sfp_tx_disable_o,
-      sfp_los_i => sfp_los_i
-    );
+      sfp_los_i => sfp_los_i,
+      ddr_a_o      => ddr_a_o,
+      ddr_ba_o     => ddr_ba_o,
+      ddr_cas_n_o  => ddr_cas_n_o,
+      ddr_ck_n_o   => ddr_ck_n_o,
+      ddr_ck_p_o   => ddr_ck_p_o,
+      ddr_cke_o    => ddr_cke_o,
+      ddr_dq_b     => ddr_dq_b,
+      ddr_ldm_o    => ddr_ldm_o,
+      ddr_ldqs_n_b => ddr_ldqs_n_b,
+      ddr_ldqs_p_b => ddr_ldqs_p_b,
+      ddr_odt_o    => ddr_odt_o,
+      ddr_ras_n_o  => ddr_ras_n_o,
+      ddr_reset_n_o => ddr_reset_n_o,
+      ddr_rzq_b    => ddr_rzq_b,
+      ddr_udm_o    => ddr_udm_o,
+      ddr_udqs_n_b => ddr_udqs_n_b,
+      ddr_udqs_p_b => ddr_udqs_p_b,
+      ddr_we_n_o   => ddr_we_n_o,
+  
+      ddr_dma_clk_i  => clk_sys_62m5,
+      ddr_dma_rst_n_i => rst_sys_62m5_n,
+      ddr_dma_wb_i.cyc => '0',
+      ddr_dma_wb_i.stb => '0',
+      ddr_dma_wb_i.adr => x"0000_0000",
+      ddr_dma_wb_i.sel => x"00",
+      ddr_dma_wb_i.we => '0',
+      ddr_dma_wb_i.dat => x"0000_0000_0000_0000",
+      ddr_dma_wb_o    => open,
+
+      clk_sys_62m5_o    => clk_sys_62m5,
+      rst_sys_62m5_n_o  => rst_sys_62m5_n
+      );
 end architecture top;

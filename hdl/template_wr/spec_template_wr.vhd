@@ -52,7 +52,9 @@ use ieee.numeric_std.all;
 
 use work.gencores_pkg.all;
 use work.wishbone_pkg.all;
+use work.ddr3_ctrl_pkg.all;
 use work.gn4124_core_pkg.all;
+use work.wr_xilinx_pkg.all;
 use work.wr_board_pkg.all;
 use work.wr_spec_pkg.all;
 
@@ -65,6 +67,8 @@ entity spec_template_wr is
     g_with_vic : boolean := True;
     g_with_onewire : boolean := True;
     g_with_spi : boolean := True;
+    g_with_wr : boolean := True;
+    g_CALIB_SOFT_IP : string  := "TRUE";
     g_DPRAM_INITF : string := "../../../../wr-cores/bin/wrpc/wrc_phy8.bram";
     -- Simulation-mode enable parameter. Set by default (synthesis) to 0, and
     -- changed to non-zero in the instantiation of the top level DUT in the testbench.
@@ -134,9 +138,14 @@ entity spec_template_wr is
     spi_mosi_o : out std_logic;
     spi_miso_i : in  std_logic;
 
+    
     ---------------------------------------------------------------------------
     -- Miscellanous SPEC pins
     ---------------------------------------------------------------------------
+
+    -- PCB version
+    pcbrev_i : in std_logic_vector(3 downto 0);
+
     -- Red LED next to the SFP: blinking indicates that packets are being
     -- transferred.
     led_act_o   : out std_logic;
@@ -181,15 +190,66 @@ entity spec_template_wr is
     sfp_rate_select_o : out   std_logic;
     sfp_tx_fault_i    : in    std_logic;
     sfp_tx_disable_o  : out   std_logic;
-    sfp_los_i         : in    std_logic
+    sfp_los_i         : in    std_logic;
+
+    ------------------------------------------
+    -- DDR (bank 3)
+    ------------------------------------------
+    ddr_a_o       : out   std_logic_vector(13 downto 0);
+    ddr_ba_o      : out   std_logic_vector(2 downto 0);
+    ddr_cas_n_o   : out   std_logic;
+    ddr_ck_n_o    : out   std_logic;
+    ddr_ck_p_o    : out   std_logic;
+    ddr_cke_o     : out   std_logic;
+    ddr_dq_b      : inout std_logic_vector(15 downto 0);
+    ddr_ldm_o     : out   std_logic;
+    ddr_ldqs_n_b  : inout std_logic;
+    ddr_ldqs_p_b  : inout std_logic;
+    ddr_odt_o     : out   std_logic;
+    ddr_ras_n_o   : out   std_logic;
+    ddr_reset_n_o : out   std_logic;
+    ddr_rzq_b     : inout std_logic;
+    ddr_udm_o     : out   std_logic;
+    ddr_udqs_n_b  : inout std_logic;
+    ddr_udqs_p_b  : inout std_logic;
+    ddr_we_n_o    : out   std_logic;
+
+    --  Direct access to the DDR-3
+    ddr_dma_clk_i   : in  std_logic;
+    ddr_dma_rst_n_i : in std_logic;
+    ddr_dma_wb_i    : in  t_wishbone_slave_data64_in;
+    ddr_dma_wb_o    : out t_wishbone_slave_data64_out;
+
+    clk_sys_62m5_o    : out std_logic;
+    rst_sys_62m5_n_o  : out std_logic
   );
 end entity spec_template_wr;
 
 architecture top of spec_template_wr is
+  -- WRPC Xilinx platform auxiliary clock configuration, used for DDR clock
+  constant c_WRPC_PLL_CONFIG : t_auxpll_cfg_array := (
+    0      => (enabled => TRUE, bufg_en => TRUE, divide => 3),
+    others => c_AUXPLL_CFG_DEFAULT);
+  
   signal clk_sys          : std_logic;  -- 62.5Mhz
 
+  signal clk_pll_aux        : std_logic_vector(3 downto 0);
+  signal rst_pll_aux_n   : std_logic_vector(3 downto 0) := (others => '0');
+
+  --  DDR
+  signal clk_ddr_333m       : std_logic;
+  signal rst_ddr_333m_n  : std_logic := '0';
+  signal ddr_rst         : std_logic := '1';
+  signal ddr_status     : std_logic_vector(31 downto 0);
+  signal ddr_calib_done : std_logic;
+
+  -- GN4124 core DMA port to DDR wishbone bus
+  signal gn_wb_ddr_in  : t_wishbone_master_in;
+  signal gn_wb_ddr_out : t_wishbone_master_out;
+ 
   signal genum_wb_out : t_wishbone_master_out;
   signal genum_wb_in  : t_wishbone_master_in;
+  signal gennum_status : std_logic_vector(31 downto 0);
   
   signal metadata_addr : std_logic_vector(5 downto 2);
   signal metadata_data : std_logic_vector(31 downto 0);
@@ -231,7 +291,7 @@ architecture top of spec_template_wr is
 
   signal irq_master : std_logic;
   
-  constant num_interrupts : natural := 4;
+  constant num_interrupts : natural := 3;
   signal irqs : std_logic_vector(num_interrupts - 1 downto 0);
 
   -- clock and reset
@@ -264,92 +324,114 @@ architecture top of spec_template_wr is
   signal wrc_pps_in  : std_logic;
 begin  -- architecture top
 
-    ------------------------------------------------------------------------------
-    -- GN4124 interface
-    ------------------------------------------------------------------------------
-    cmp_gn4124_core : gn4124_core
-      port map
-      (
-        ---------------------------------------------------------
-        -- Control and status
-        rst_n_a_i => gn_RST_N,
-        status_o  => open,
+  ------------------------------------------------------------------------------
+  -- GN4124 interface
+  ------------------------------------------------------------------------------
+  cmp_gn4124_core : gn4124_core
+    generic map (
+      g_WBM_TO_WB_FIFO_SIZE         => 16,
+      g_WBM_TO_WB_FIFO_FULL_THRES   => 12,
+      g_WBM_FROM_WB_FIFO_SIZE       => 16,
+      g_WBM_FROM_WB_FIFO_FULL_THRES => 12,
+      g_P2L_FIFO_SIZE               => 256,
+      g_P2L_FIFO_FULL_THRES         => 175,
+      g_L2P_ADDR_FIFO_FULL_SIZE     => 256,
+      g_L2P_ADDR_FIFO_FULL_THRES    => 175,
+      g_L2P_DATA_FIFO_FULL_SIZE     => 256,
+      g_L2P_DATA_FIFO_FULL_THRES    => 175)
 
-        ---------------------------------------------------------
-        -- P2L Direction
-        --
-        -- Source Sync DDR related signals
-        p2l_clk_p_i  => gn_P2L_CLK_p,
-        p2l_clk_n_i  => gn_P2L_CLK_n,
-        p2l_data_i   => gn_P2L_DATA,
-        p2l_dframe_i => gn_P2L_DFRAME,
-        p2l_valid_i  => gn_P2L_VALID,
-        -- P2L Control
-        p2l_rdy_o    => gn_P2L_RDY,
-        p_wr_req_i   => gn_P_WR_REQ,
-        p_wr_rdy_o   => gn_P_WR_RDY,
-        rx_error_o   => gn_RX_ERROR,
-        vc_rdy_i     => gn_VC_RDY,
+    port map (
+      ---------------------------------------------------------
+      -- Control and status
+      rst_n_a_i => gn_RST_N,
+      status_o  => gennum_status,
 
-        ---------------------------------------------------------
-        -- L2P Direction
-        --
-        -- Source Sync DDR related signals
-        l2p_clk_p_o  => gn_L2P_CLK_p,
-        l2p_clk_n_o  => gn_L2P_CLK_n,
-        l2p_data_o   => gn_L2P_DATA,
-        l2p_dframe_o => gn_L2P_DFRAME,
-        l2p_valid_o  => gn_L2P_VALID,
-        -- L2P Control
-        l2p_edb_o    => gn_L2P_EDB,
-        l2p_rdy_i    => gn_L2P_RDY,
-        l_wr_rdy_i   => gn_L_WR_RDY,
-        p_rd_d_rdy_i => gn_P_RD_D_RDY,
-        tx_error_i   => gn_TX_ERROR,
+      ---------------------------------------------------------
+      -- P2L Direction
+      --
+      -- Source Sync DDR related signals
+      p2l_clk_p_i  => gn_P2L_CLK_p,
+      p2l_clk_n_i  => gn_P2L_CLK_n,
+      p2l_data_i   => gn_P2L_DATA,
+      p2l_dframe_i => gn_P2L_DFRAME,
+      p2l_valid_i  => gn_P2L_VALID,
+      -- P2L Control
+      p2l_rdy_o    => gn_P2L_RDY,
+      p_wr_req_i   => gn_P_WR_REQ,
+      p_wr_rdy_o   => gn_P_WR_RDY,
+      rx_error_o   => gn_RX_ERROR,
+      vc_rdy_i     => gn_VC_RDY,
 
-        ---------------------------------------------------------
-        -- Interrupt interface
-        dma_irq_o => irqs(1 downto 0),
-        irq_p_i   => irq_master,
-        irq_p_o   => gn_GPIO(0),
+      ---------------------------------------------------------
+      -- L2P Direction
+      --
+      -- Source Sync DDR related signals
+      l2p_clk_p_o  => gn_L2P_CLK_p,
+      l2p_clk_n_o  => gn_L2P_CLK_n,
+      l2p_data_o   => gn_L2P_DATA,
+      l2p_dframe_o => gn_L2P_DFRAME,
+      l2p_valid_o  => gn_L2P_VALID,
+      -- L2P Control
+      l2p_edb_o    => gn_L2P_EDB,
+      l2p_rdy_i    => gn_L2P_RDY,
+      l_wr_rdy_i   => gn_L_WR_RDY,
+      p_rd_d_rdy_i => gn_P_RD_D_RDY,
+      tx_error_i   => gn_TX_ERROR,
 
-        ---------------------------------------------------------
-        -- DMA registers wishbone interface (slave classic)
-        dma_reg_clk_i => clk_sys,
-        dma_reg_adr_i => dma_out.adr,
-        dma_reg_dat_i => dma_out.dat,
-        dma_reg_sel_i => dma_out.sel,
-        dma_reg_stb_i => dma_out.stb,
-        dma_reg_we_i  => dma_out.we,
-        dma_reg_cyc_i => dma_out.cyc,
-        dma_reg_ack_o => dma_in.ack,
-        dma_reg_dat_o => dma_in.dat,
+      ---------------------------------------------------------
+      -- Interrupt interface
+      dma_irq_o => irqs(1 downto 0),
+      irq_p_i   => irq_master,
+      irq_p_o   => gn_GPIO(0),
 
-        ---------------------------------------------------------
-        -- CSR wishbone interface (master pipelined)
-        csr_clk_i   => clk_sys,
-        csr_adr_o   => genum_wb_out.adr,
-        csr_dat_o   => genum_wb_out.dat,
-        csr_sel_o   => genum_wb_out.sel,
-        csr_stb_o   => genum_wb_out.stb,
-        csr_we_o    => genum_wb_out.we,
-        csr_cyc_o   => genum_wb_out.cyc,
-        csr_dat_i   => genum_wb_in.dat,
-        csr_ack_i   => genum_wb_in.ack,
-        csr_stall_i => genum_wb_in.stall,
-        csr_err_i   => genum_wb_in.err,
-        csr_rty_i   => genum_wb_in.rty,
-        csr_int_i   => '0', --  Not used
+      ---------------------------------------------------------
+      -- DMA registers wishbone interface (slave classic)
+      dma_reg_clk_i => clk_sys,
+      dma_reg_rst_n_i => rst_gbl_n,
+      dma_reg_adr_i => dma_out.adr,
+      dma_reg_dat_i => dma_out.dat,
+      dma_reg_sel_i => dma_out.sel,
+      dma_reg_stb_i => dma_out.stb,
+      dma_reg_we_i  => dma_out.we,
+      dma_reg_cyc_i => dma_out.cyc,
+      dma_reg_ack_o => dma_in.ack,
+      dma_reg_dat_o => dma_in.dat,
 
-        ---------------------------------------------------------
-        -- L2P DMA Interface (Pipelined Wishbone master)
-        dma_clk_i => clk_sys,
-        dma_dat_i => (others=>'0'),
-        dma_ack_i => '1',
-        dma_stall_i => '0',
-        dma_err_i => '0',
-        dma_rty_i => '0',
-        dma_int_i => '0');
+      ---------------------------------------------------------
+      -- CSR wishbone interface (master pipelined)
+      csr_clk_i   => clk_sys,
+      csr_rst_n_i => rst_gbl_n,
+      csr_adr_o   => genum_wb_out.adr,
+      csr_dat_o   => genum_wb_out.dat,
+      csr_sel_o   => genum_wb_out.sel,
+      csr_stb_o   => genum_wb_out.stb,
+      csr_we_o    => genum_wb_out.we,
+      csr_cyc_o   => genum_wb_out.cyc,
+      csr_dat_i   => genum_wb_in.dat,
+      csr_ack_i   => genum_wb_in.ack,
+      csr_stall_i => genum_wb_in.stall,
+      csr_err_i   => genum_wb_in.err,
+      csr_rty_i   => genum_wb_in.rty,
+
+      ---------------------------------------------------------
+      -- L2P DMA Interface (Pipelined Wishbone master)
+      dma_clk_i => clk_sys,
+      dma_rst_n_i => rst_gbl_n,
+      dma_adr_o => gn_wb_ddr_out.adr,
+      dma_dat_o => gn_wb_ddr_out.dat,
+      dma_sel_o => gn_wb_ddr_out.sel,
+      dma_stb_o => gn_wb_ddr_out.stb,
+      dma_we_o  => gn_wb_ddr_out.we,
+      dma_cyc_o => gn_wb_ddr_out.cyc,
+      dma_dat_i => gn_wb_ddr_in.dat,
+      dma_ack_i => gn_wb_ddr_in.ack,
+      dma_stall_i => gn_wb_ddr_in.stall,
+      dma_err_i => gn_wb_ddr_in.err,
+      dma_rty_i => gn_wb_ddr_in.rty);
+
+    dma_in.err <= '0';
+    dma_in.rty <= '0';
+    dma_in.stall <= '0';
 
     i_devs: entity work.spec_template_regs
       port map (
@@ -373,13 +455,17 @@ begin  -- architecture top
         metadata_data_o => open,
     
         -- offset to the application metadata
-        app_offset_i        => x"0000_0000",
+        csr_app_offset_i        => x"0000_0000",
         csr_resets_global_o => csr_rst_gbl,
         csr_resets_appl_o   => csr_rst_app,
     
         -- presence lines for the fmcs
         csr_fmc_presence_i  => fmc_presence,
     
+        csr_gn4124_status_i => gennum_status,
+        csr_ddr_status_calib_done_i    => ddr_calib_done,
+        csr_pcb_rev_rev_i   => pcbrev_i,
+
         -- Thermometer and unique id
         therm_id_i          => therm_id_in,
         therm_id_o          => therm_id_out,
@@ -431,7 +517,7 @@ begin  -- architecture top
             if g_with_vic then
               metadata_data(0) <= '1';
             end if;
-            if g_with_onewire then
+            if g_with_onewire and not g_with_wr then
               metadata_data(1) <= '1';
             end if;
             if g_with_spi then
@@ -450,6 +536,10 @@ begin  -- architecture top
     
     rst_gbl_n <= rst_sys_62m5_n and (not csr_rst_gbl);
     rst_app_n <= rst_gbl_n and (not csr_rst_app);
+    ddr_rst <= not rst_ddr_333m_n or csr_rst_gbl;
+
+    rst_sys_62m5_n_o <= rst_app_n;
+    clk_sys_62m5_o <= clk_sys;
 
     i_i2c: entity work.xwb_i2c_master
       generic map (
@@ -498,6 +588,11 @@ begin  -- architecture top
       irq_master <= '0';
     end generate;
 
+  therm_id_in <= (ack => '1', err => '0', rty => '0', stall => '0',
+    dat => (others => '0'));
+  flash_spi_in <= (ack => '1', err => '0', rty => '0', stall => '0',
+    dat => (others => '0'));
+  
   -----------------------------------------------------------------------------
   -- The WR PTP core board package (WB Slave + WB Master #2 (Etherbone))
   -----------------------------------------------------------------------------
@@ -511,6 +606,7 @@ begin  -- architecture top
       g_simulation                => g_simulation,
       g_with_external_clock_input => TRUE,
       g_dpram_initf               => g_dpram_initf,
+      g_AUX_PLL_CFG               => c_WRPC_PLL_CONFIG,
       g_fabric_iface              => ETHERBONE)
     port map (
       areset_n_i          => button1_i,
@@ -521,10 +617,13 @@ begin  -- architecture top
       clk_125m_gtp_n_i    => clk_125m_gtp_n_i,
       clk_125m_gtp_p_i    => clk_125m_gtp_p_i,
       clk_10m_ext_i       => clk_ext_10m,
+
       clk_sys_62m5_o      => clk_sys,
       clk_ref_125m_o      => clk_ref_125m,
+      clk_pll_aux_o       => clk_pll_aux,
       rst_sys_62m5_n_o    => rst_sys_62m5_n,
       rst_ref_125m_n_o    => rst_ref_125m_n,
+      rst_pll_aux_n_o     => rst_pll_aux_n,
 
       plldac_sclk_o       => plldac_sclk_o,
       plldac_din_o        => plldac_din_o,
@@ -576,6 +675,10 @@ begin  -- architecture top
       led_link_o          => led_link_o,
       led_act_o           => led_act_o);
 
+  clk_ddr_333m   <= clk_pll_aux(0);
+  rst_ddr_333m_n <= rst_pll_aux_n(0);
+  clk_ext_10m <= '0';
+
   -- Tristates for SFP EEPROM
   sfp_mod_def1_b <= '0' when sfp_scl_out = '0' else 'Z';
   sfp_mod_def2_b <= '0' when sfp_sda_out = '0' else 'Z';
@@ -587,12 +690,112 @@ begin  -- architecture top
   onewire_data <= onewire_b;
 
   -- EEPROM I2C tri-states
-  g_eeprom: if false generate
+  g_eeprom: if true generate
     fmc0_sda_b <= '0' when (eeprom_sda_out = '0') else 'Z';
-    eeprom_sda_in <= fmc0_sda_b;
     fmc0_scl_b <= '0' when (eeprom_scl_out = '0') else 'Z';
+    eeprom_sda_in <= fmc0_sda_b;
     eeprom_scl_in <= fmc0_scl_b;
   end generate;
-
+  
   wrc_pps_in    <= '0';
+
+  --  DDR3 controller
+  cmp_ddr_ctrl_bank3 : entity work.ddr3_ctrl
+  generic map(
+    g_RST_ACT_LOW        => 0, -- active high reset (simpler internal logic)
+    g_BANK_PORT_SELECT   => "SPEC_BANK3_64B_32B",
+    g_MEMCLK_PERIOD      => 3000,
+    g_SIMULATION         => boolean'image(g_SIMULATION /= 0),
+    g_CALIB_SOFT_IP      => g_CALIB_SOFT_IP,
+    g_P0_MASK_SIZE       => 8,
+    g_P0_DATA_PORT_SIZE  => 64,
+    g_P0_BYTE_ADDR_WIDTH => 30,
+    g_P1_MASK_SIZE       => 4,
+    g_P1_DATA_PORT_SIZE  => 32,
+    g_P1_BYTE_ADDR_WIDTH => 30)
+  port map (
+    clk_i   => clk_ddr_333m,
+    rst_n_i => ddr_rst,
+
+    status_o => ddr_status,
+
+    ddr3_dq_b     => ddr_dq_b,
+    ddr3_a_o      => ddr_a_o,
+    ddr3_ba_o     => ddr_ba_o,
+    ddr3_ras_n_o  => ddr_ras_n_o,
+    ddr3_cas_n_o  => ddr_cas_n_o,
+    ddr3_we_n_o   => ddr_we_n_o,
+    ddr3_odt_o    => ddr_odt_o,
+    ddr3_rst_n_o  => ddr_reset_n_o,
+    ddr3_cke_o    => ddr_cke_o,
+    ddr3_dm_o     => ddr_ldm_o,
+    ddr3_udm_o    => ddr_udm_o,
+    ddr3_dqs_p_b  => ddr_ldqs_p_b,
+    ddr3_dqs_n_b  => ddr_ldqs_n_b,
+    ddr3_udqs_p_b => ddr_udqs_p_b,
+    ddr3_udqs_n_b => ddr_udqs_n_b,
+    ddr3_clk_p_o  => ddr_ck_p_o,
+    ddr3_clk_n_o  => ddr_ck_n_o,
+    ddr3_rzq_b    => ddr_rzq_b,
+
+    wb0_rst_n_i => ddr_dma_rst_n_i,
+    wb0_clk_i   => ddr_dma_clk_i,
+    wb0_sel_i   => ddr_dma_wb_i.sel,
+    wb0_cyc_i   => ddr_dma_wb_i.cyc,
+    wb0_stb_i   => ddr_dma_wb_i.stb,
+    wb0_we_i    => ddr_dma_wb_i.we,
+    wb0_addr_i  => ddr_dma_wb_i.adr,
+    wb0_data_i  => ddr_dma_wb_i.dat,
+    wb0_data_o  => ddr_dma_wb_o.dat,
+    wb0_ack_o   => ddr_dma_wb_o.ack,
+    wb0_stall_o => ddr_dma_wb_o.stall,
+
+    p0_cmd_empty_o   => open,
+    p0_cmd_full_o    => open,
+    p0_rd_full_o     => open,
+    p0_rd_empty_o    => open,
+    p0_rd_count_o    => open,
+    p0_rd_overflow_o => open,
+    p0_rd_error_o    => open,
+    p0_wr_full_o     => open,
+    p0_wr_empty_o    => open,
+    p0_wr_count_o    => open,
+    p0_wr_underrun_o => open,
+    p0_wr_error_o    => open,
+
+    wb1_rst_n_i => rst_gbl_n,
+    wb1_clk_i   => clk_sys,
+    wb1_sel_i   => gn_wb_ddr_out.sel,
+    wb1_cyc_i   => gn_wb_ddr_out.cyc,
+    wb1_stb_i   => gn_wb_ddr_out.stb,
+    wb1_we_i    => gn_wb_ddr_out.we,
+    wb1_addr_i  => gn_wb_ddr_out.adr,
+    wb1_data_i  => gn_wb_ddr_out.dat,
+    wb1_data_o  => gn_wb_ddr_in.dat,
+    wb1_ack_o   => gn_wb_ddr_in.ack,
+    wb1_stall_o => gn_wb_ddr_in.stall,
+
+    p1_cmd_empty_o   => open,
+    p1_cmd_full_o    => open,
+    p1_rd_full_o     => open,
+    p1_rd_empty_o    => open,
+    p1_rd_count_o    => open,
+    p1_rd_overflow_o => open,
+    p1_rd_error_o    => open,
+    p1_wr_full_o     => open,
+    p1_wr_empty_o    => open,
+    p1_wr_count_o    => open,
+    p1_wr_underrun_o => open,
+    p1_wr_error_o    => open
+    );
+
+    ddr_dma_wb_o.err <= '0';
+    ddr_dma_wb_o.rty <= '0';
+
+    ddr_calib_done <= ddr_status(0);
+  
+    -- unused Wishbone signals
+    gn_wb_ddr_in.err <= '0';
+    gn_wb_ddr_in.rty <= '0';
+
 end architecture top;
