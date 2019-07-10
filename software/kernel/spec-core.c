@@ -649,8 +649,8 @@ static void spec_remove(struct pci_dev *pdev)
 {
 	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pdev);
 
-	spec_dbg_exit(spec_gn412x);
 	spec_fpga_exit(spec_gn412x);
+	spec_dbg_exit(spec_gn412x);
 	sysfs_remove_group(&pdev->dev.kobj, &gn412x_fpga_group);
 	spec_gpio_exit(spec_gn412x);
 
