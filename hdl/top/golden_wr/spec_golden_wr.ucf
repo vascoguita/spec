@@ -310,6 +310,8 @@ NET "fmc0_prsnt_m2c_n_i" IOSTANDARD = "LVCMOS25";
 NET "fmc0_scl_b"         IOSTANDARD = "LVCMOS25";
 NET "fmc0_sda_b"         IOSTANDARD = "LVCMOS25";
 
+NET "pcbrev_i*" TIG;
+NET "fmc0_prsnt_m2c_n_i" TIG;
 # GN4124
 NET "gn_p2l_clk_p" TNM_NET = "gn_p2l_clkp_grp";
 NET "gn_p2l_clk_n" TNM_NET = "gn_p2l_clkn_grp";
