@@ -40,6 +40,7 @@ memory-map:
           description: status of gennum
           access: ro
           width: 32
+          # field 0: pll locked.
        - reg:
           name: ddr_status
           description: status of the ddr3 controller

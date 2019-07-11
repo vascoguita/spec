@@ -289,9 +289,8 @@ begin
       rst_sys_62m5_n_o  => rst_sys_62m5_n,
 
       --  Everything is handled by the carrier.
-      gn_wb_o         => gn_wb_out,
-      gn_wb_i         => gn_wb_in,
-      carrier_wb_o    => gn_wb_in,
-      carrier_wb_i    => gn_wb_out
+      app_wb_o         => gn_wb_out,
+      app_wb_i         => gn_wb_in
     );
+    gn_wb_in <= (ack => '1', err | rty | stall => '0', dat => (others => '0'));
 end architecture top;

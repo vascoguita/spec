@@ -54,6 +54,10 @@ entity spec_template_wr is
     g_WITH_ONEWIRE  : boolean := True;
     g_WITH_SPI      : boolean := True;
     g_WITH_WR       : boolean := True;
+    g_WITH_DDR      : boolean := True;
+    --  Address of the application meta-data.  0 if none.
+    g_APP_OFFSET    : std_logic_vector(31 downto 0) := x"0000_0000";
+    --  WR PTP firmware.
     g_DPRAM_INITF   : string := "../../../../wr-cores/bin/wrpc/wrc_phy8.bram";
     -- Simulation-mode enable parameter. Set by default (synthesis) to 0, and
     -- changed to non-zero in the instantiation of the top level DUT in the testbench.
@@ -202,6 +206,7 @@ entity spec_template_wr is
     --  User part
 
     --  Direct access to the DDR-3
+    --  Classic wishbone
     ddr_dma_clk_i   : in  std_logic;
     ddr_dma_rst_n_i : in std_logic;
     ddr_dma_wb_i    : in  t_wishbone_slave_data64_in;
@@ -211,14 +216,11 @@ entity spec_template_wr is
     clk_sys_62m5_o    : out std_logic;
     rst_sys_62m5_n_o  : out std_logic;
 
-    --  The wishbone bus from the gennum/host.
-    --  Addresses 0-0x1fff must be routed to the carrier part.
-    gn_wb_o           : out t_wishbone_master_out;
-    gn_wb_i           : in  t_wishbone_master_in;
-
-    --  The wishbone bus to the carrier part.
-    carrier_wb_o      : out t_wishbone_slave_out;
-    carrier_wb_i      : in  t_wishbone_slave_in
+    --  The wishbone bus from the gennum/host to the application
+    --  Addresses 0-0x1fff are not available (used by the carrier).
+    --  This is a pipelined wishbone with byte granularity.
+    app_wb_o           : out t_wishbone_master_out;
+    app_wb_i           : in  t_wishbone_master_in
   );
 end entity spec_template_wr;
 
@@ -243,7 +245,14 @@ architecture top of spec_template_wr is
   -- GN4124 core DMA port to DDR wishbone bus
   signal gn_wb_ddr_in  : t_wishbone_master_in;
   signal gn_wb_ddr_out : t_wishbone_master_out;
- 
+
+  signal gn_wb_out     : t_wishbone_master_out;
+  signal gn_wb_in      : t_wishbone_master_in;
+
+  --  The wishbone bus to the carrier part.
+  signal carrier_wb_out : t_wishbone_slave_out;
+  signal carrier_wb_in  : t_wishbone_slave_in;
+
   signal gennum_status : std_logic_vector(31 downto 0);
   
   signal metadata_addr : std_logic_vector(5 downto 2);
@@ -322,7 +331,7 @@ begin  -- architecture top
   ------------------------------------------------------------------------------
   -- GN4124 interface
   ------------------------------------------------------------------------------
-  cmp_gn4124_core : xwb_gn4124_core
+  cmp_gn4124_core : entity work.xwb_gn4124_core
     generic map (
       g_WBM_TO_WB_FIFO_SIZE         => 16,
       g_WBM_TO_WB_FIFO_FULL_THRES   => 12,
@@ -375,7 +384,10 @@ begin  -- architecture top
 
       ---------------------------------------------------------
       -- Interrupt interface
+      -- Note: the dma_irq are synchronized with the wb_master_clk clock
+      --  inside the gn4124 core.
       dma_irq_o => irqs(1 downto 0),
+      -- Note: this is a simple assignment.
       irq_p_i   => irq_master,
       irq_p_o   => gn_gpio_b(0),
 
@@ -390,32 +402,93 @@ begin  -- architecture top
       -- CSR wishbone interface (master pipelined)
       wb_master_clk_i   => clk_sys_62m5,
       wb_master_rst_n_i => rst_sys_62m5_n,
-      wb_master_o   => gn_wb_o,
-      wb_master_i   => gn_wb_i,
+      wb_master_o       => gn_wb_out,
+      wb_master_i       => gn_wb_in,
 
       ---------------------------------------------------------
       -- L2P DMA Interface (Pipelined Wishbone master)
-      wb_dma_dat_clk_i => clk_sys_62m5,
+      wb_dma_dat_clk_i   => clk_sys_62m5,
       wb_dma_dat_rst_n_i => rst_gbl_n,
-      wb_dma_dat_o => gn_wb_ddr_out,
-      wb_dma_dat_i => gn_wb_ddr_in
+      wb_dma_dat_o       => gn_wb_ddr_out,
+      wb_dma_dat_i       => gn_wb_ddr_in
     );
+
+    --  Mini-crossbar from gennum to carrier and application bus.
+    carrier_app_xb: process (clk_sys_62m5)
+    is
+      type t_ca_state is (S_IDLE, S_APP, S_CARRIER);
+      variable ca_state : t_ca_state;
+      constant wb_idle_master_out : t_wishbone_master_out :=
+        (cyc => '0', stb => '0', adr => (others => 'X'), sel => x"0",
+                       we => '0', dat => (others => 'X'));
+      constant wb_idle_master_in : t_wishbone_master_in :=
+        (stall => '0', ack => '0', err => '0', dat => (others => 'X'), rty => '0');
+    begin
+      if rising_edge(clk_sys_62m5) then
+        if rst_sys_62m5_n = '0' then
+          ca_state := S_IDLE;
+          gn_wb_in <= wb_idle_master_in;
+          app_wb_o <= wb_idle_master_out;
+          carrier_wb_in <= wb_idle_master_out;
+        else
+          --  Default: idle.
+          gn_wb_in <= wb_idle_master_in;
+          app_wb_o <= wb_idle_master_out;
+          carrier_wb_in <= wb_idle_master_out;
+          case ca_state is
+            when S_IDLE =>
+              if gn_wb_out.cyc = '1'
+                and gn_wb_out.stb = '1'
+              then
+                -- New transaction.
+                -- Stall
+                gn_wb_in.stall <= '1';
+                if gn_wb_out.adr (31 downto 13) = (31 downto 13 => '0') then
+                  ca_state := S_CARRIER;
+                  --  Pass to carrier
+                  carrier_wb_in <= gn_wb_out;
+                else
+                  ca_state := S_APP;
+                  app_wb_o <= gn_wb_out;
+                end if;
+              else
+              end if;
+            when S_CARRIER =>
+              --  Pass from carrier.
+              carrier_wb_in.stb <= '0';
+              gn_wb_in <= carrier_wb_out;
+              gn_wb_in.stall <= '1';
+              if carrier_wb_out.ack = '1' then
+                ca_state := S_IDLE;
+              end if;
+            when S_APP =>
+              --  Pass from application
+              app_wb_o.stb <= '0';
+              gn_wb_in <= app_wb_i;
+              gn_wb_in.stall <= '1';
+              if app_wb_i.ack = '1' or app_wb_i.err = '1' then
+                ca_state := S_IDLE;
+              end if;
+          end case;
+        end if;
+      end if;
+    end process;
 
     i_devs: entity work.spec_template_regs
       port map (
         rst_n_i    => rst_sys_62m5_n,
         clk_i      => clk_sys_62m5,
-        wb_cyc_i   => carrier_wb_i.cyc,
-        wb_stb_i   => carrier_wb_i.stb,
-        wb_adr_i   => carrier_wb_i.adr (10 downto 0),  -- Word address from gennum
-        wb_sel_i   => carrier_wb_i.sel,
-        wb_we_i    => carrier_wb_i.we,
-        wb_dat_i   => carrier_wb_i.dat,
-        wb_ack_o   => carrier_wb_o.ack,
-        wb_err_o   => carrier_wb_o.err,
-        wb_rty_o   => carrier_wb_o.rty,
-        wb_stall_o => carrier_wb_o.stall,
-        wb_dat_o   => carrier_wb_o.dat,
+        wb_cyc_i   => carrier_wb_in.cyc,
+        wb_stb_i   => carrier_wb_in.stb,
+        wb_adr_i   => carrier_wb_in.adr (12 downto 2),  -- Bytes address from gennum
+        wb_sel_i   => carrier_wb_in.sel,
+        wb_we_i    => carrier_wb_in.we,
+        wb_dat_i   => carrier_wb_in.dat,
+        wb_ack_o   => carrier_wb_out.ack,
+        wb_err_o   => carrier_wb_out.err,
+        wb_rty_o   => carrier_wb_out.rty,
+        wb_stall_o => carrier_wb_out.stall,
+        wb_dat_o   => carrier_wb_out.dat,
     
         -- a ROM containing the carrier metadata
         metadata_addr_o => metadata_addr,
@@ -460,7 +533,7 @@ begin  -- architecture top
       );
     
     --  Metadata
-    process (clk_sys_62m5) is
+    p_metadata: process (clk_sys_62m5) is
     begin
       if rising_edge(clk_sys_62m5) then
         case metadata_addr is
@@ -482,17 +555,18 @@ begin  -- architecture top
           when x"8" =>
             -- capability mask
             metadata_data <= x"00000000";
-            if g_with_vic then
+            if g_WITH_VIC then
               metadata_data(0) <= '1';
             end if;
-            if g_with_onewire and not g_with_wr then
+            if g_WITH_ONEWIRE and not g_WITH_WR then
               metadata_data(1) <= '1';
             end if;
-            if g_with_spi then
+            if g_WITH_SPI then
               metadata_data(2) <= '1';
             end if;
-            --  WRC
-            metadata_data(3) <= '1';
+            if g_with_WR then
+              metadata_data(3) <= '1';
+            end if;
           when others =>
             metadata_data <= x"00000000";
         end case;

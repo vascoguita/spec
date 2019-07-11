@@ -318,8 +318,8 @@ NET "gn_p2l_clk_n" TNM_NET = "gn_p2l_clkn_grp";
 TIMESPEC TS_cmp_gn4124_core_cmp_clk_in_P_clk = PERIOD "inst_template/cmp_gn4124_core/cmp_wrapped_gn4124/cmp_clk_in/P_clk" 5 ns HIGH 50%;
 NET "gn_rst_n" TIG;
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2011/01/20
-#TG NET "inst_template/cmp_gn4124_core/cmp_wrapped_gn4124/cmp_clk_in/P_clk" TNM_NET = inst_template/cmp_gn4124_core/cmp_wrapped_gn4124/cmp_clk_in/P_clk;
-NET "inst_template/cmp_gn4124_core/cmp_clk_in/P_clk" TNM_NET = inst_template/cmp_gn4124_core/cmp_clk_in/P_clk;
+NET "inst_template/cmp_gn4124_core/cmp_wrapped_gn4124/cmp_clk_in/P_clk" TNM_NET = inst_template/cmp_gn4124_core/cmp_wrapped_gn4124/cmp_clk_in/P_clk;
+#NET "inst_template/cmp_gn4124_core/cmp_clk_in/P_clk" TNM_NET = inst_template/cmp_gn4124_core/cmp_clk_in/P_clk;
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2011/02/04
 NET "clk_20m_vcxo_i" TNM_NET = clk_20m_vcxo_i;
 TIMESPEC TS_clk_20m_vcxo_i = PERIOD "clk_20m_vcxo_i" 50 ns HIGH 50%;
