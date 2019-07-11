@@ -647,7 +647,6 @@ int spec_fpga_init(struct spec_gn412x *spec_gn412x)
 		goto err_valid;
 	}
 
-	memset(&spec_fpga->dev, 0, sizeof(spec_fpga->dev));
 	spec_fpga->dev.parent = &spec_gn412x->pdev->dev;
 	spec_fpga->dev.driver = spec_gn412x->pdev->dev.driver;
 	spec_fpga->dev.type = &spec_fpga_type;
