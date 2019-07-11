@@ -162,7 +162,7 @@ static void spec_fpga_vic_exit(struct spec_fpga *spec_fpga)
 }
 
 /* MFD devices */
-enum spce_fpga_mfd_devs_enum {
+enum spec_fpga_mfd_devs_enum {
 	SPEC_FPGA_MFD_FMC_I2C = 0,
 	SPEC_FPGA_MFD_SPI,
 };
