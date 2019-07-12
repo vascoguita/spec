@@ -262,6 +262,19 @@ entity spec_template_wr is
     wb_eth_master_o : out t_wishbone_master_out;
     wb_eth_master_i : in  t_wishbone_master_in := cc_dummy_master_in;
 
+    -- Timecode I/F
+    tm_link_up_o    : out std_logic;
+    tm_time_valid_o : out std_logic;
+    tm_tai_o        : out std_logic_vector(39 downto 0);
+    tm_cycles_o     : out std_logic_vector(27 downto 0);
+
+    -- PPS output
+    pps_p_o    : out std_logic;
+    pps_led_o  : out std_logic;
+
+    -- Link ok indication
+    link_ok_o  : out std_logic;
+
     --  The wishbone bus from the gennum/host to the application
     --  Addresses 0-0x1fff are not available (used by the carrier).
     --  This is a pipelined wishbone with byte granularity.
@@ -374,9 +387,6 @@ architecture top of spec_template_wr is
   -- LEDs and GPIO
   signal wrc_abscal_txts_out : std_logic;
   signal wrc_abscal_rxts_out : std_logic;
-  signal wrc_pps_out : std_logic;
-  signal wrc_pps_led : std_logic;
-  signal wrc_pps_in  : std_logic;
 
   attribute keep                 : string;
   attribute keep of clk_sys_62m5 : signal is "TRUE";
@@ -845,9 +855,14 @@ begin  -- architecture top
       abscal_txts_o       => wrc_abscal_txts_out,
       abscal_rxts_o       => wrc_abscal_rxts_out,
 
-      pps_ext_i           => wrc_pps_in,
-      pps_p_o             => wrc_pps_out,
-      pps_led_o           => wrc_pps_led,
+      tm_link_up_o        => tm_link_up_o,
+      tm_time_valid_o     => tm_time_valid_o,
+      tm_tai_o            => tm_tai_o,
+      tm_cycles_o         => tm_cycles_o,
+
+      pps_p_o             => pps_p_o,
+      pps_led_o           => pps_led_o,
+      link_ok_o           => link_ok_o,
       led_link_o          => led_link_o,
       led_act_o           => led_act_o);
 
@@ -873,8 +888,6 @@ begin  -- architecture top
     eeprom_scl_in <= fmc0_scl_b;
   end generate;
   
-  wrc_pps_in    <= '0';
-
   --  DDR3 controller
   cmp_ddr_ctrl_bank3 : entity work.ddr3_ctrl
   generic map(
