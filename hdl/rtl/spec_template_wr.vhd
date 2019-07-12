@@ -44,6 +44,8 @@ use work.wr_xilinx_pkg.all;
 use work.wr_board_pkg.all;
 use work.wr_spec_pkg.all;
 use work.synthesis_descriptor.all;
+use work.wr_fabric_pkg.all;
+use work.streamers_pkg.all;
 
 library unisim;
 use unisim.vcomponents.all;
@@ -60,6 +62,15 @@ entity spec_template_wr is
     g_APP_OFFSET    : std_logic_vector(31 downto 0) := x"0000_0000";
     --  WR PTP firmware.
     g_DPRAM_INITF   : string := "../../../../wr-cores/bin/wrpc/wrc_phy8.bram";
+    -- Fabric interface selection for WR Core:
+    -- plain     = expose WRC fabric interface
+    -- streamers = attach WRC streamers to fabric interface
+    -- etherbone = attach Etherbone slave to fabric interface
+    g_FABRIC_IFACE  : t_board_fabric_iface := plain;
+    -- parameters configuration when g_fabric_iface = "streamers" (otherwise ignored)
+    g_STREAMERS_OP_MODE  : t_streamers_op_mode  := TX_AND_RX;
+    g_TX_STREAMER_PARAMS : t_tx_streamer_params := c_TX_STREAMER_PARAMS_DEFAUT;
+    g_RX_STREAMER_PARAMS : t_rx_streamer_params := c_RX_STREAMER_PARAMS_DEFAUT;
     -- Simulation-mode enable parameter. Set by default (synthesis) to 0, and
     -- changed to non-zero in the instantiation of the top level DUT in the testbench.
     -- Its purpose is to reduce some internal counters/timeouts to speed up simulations.
@@ -216,6 +227,30 @@ entity spec_template_wr is
     --  Clocks and reset.
     clk_sys_62m5_o    : out std_logic;
     rst_sys_62m5_n_o  : out std_logic;
+
+    -- WR fabric interface (when g_fabric_iface = "plain")
+    wrf_src_o : out t_wrf_source_out;
+    wrf_src_i : in  t_wrf_source_in := c_DUMMY_SRC_IN;
+    wrf_snk_o : out t_wrf_sink_out;
+    wrf_snk_i : in  t_wrf_sink_in   := c_DUMMY_SNK_IN;
+
+    -- WR streamers (when g_fabric_iface = "streamers")
+    wrs_tx_data_i  : in  std_logic_vector(g_TX_STREAMER_PARAMS.DATA_WIDTH-1 downto 0) := (others => '0');
+    wrs_tx_valid_i : in  std_logic := '0';
+    wrs_tx_dreq_o  : out std_logic;
+    wrs_tx_last_i  : in  std_logic := '1';
+    wrs_tx_flush_i : in  std_logic := '0';
+    wrs_tx_cfg_i   : in  t_tx_streamer_cfg := c_TX_STREAMER_CFG_DEFAULT;
+    wrs_rx_first_o : out std_logic;
+    wrs_rx_last_o  : out std_logic;
+    wrs_rx_data_o  : out std_logic_vector(g_rx_streamer_params.data_width-1 downto 0);
+    wrs_rx_valid_o : out std_logic;
+    wrs_rx_dreq_i  : in  std_logic := '0';
+    wrs_rx_cfg_i   : in  t_rx_streamer_cfg := c_RX_STREAMER_CFG_DEFAULT;
+
+    -- Etherbone WB master interface (when g_fabric_iface = "etherbone")
+    wb_eth_master_o : out t_wishbone_master_out;
+    wb_eth_master_i : in  t_wishbone_master_in := cc_dummy_master_in;
 
     --  The wishbone bus from the gennum/host to the application
     --  Addresses 0-0x1fff are not available (used by the carrier).
@@ -692,7 +727,10 @@ begin  -- architecture top
       g_with_external_clock_input => TRUE,
       g_dpram_initf               => g_DPRAM_INITF,
       g_AUX_PLL_CFG               => c_WRPC_PLL_CONFIG,
-      g_fabric_iface              => ETHERBONE)
+      g_STREAMERS_OP_MODE         => g_STREAMERS_OP_MODE,
+      g_TX_STREAMER_PARAMS        => g_TX_STREAMER_PARAMS,
+      g_RX_STREAMER_PARAMS        => g_RX_STREAMER_PARAMS,
+      g_FABRIC_IFACE              => g_FABRIC_IFACE)
     port map (
       areset_n_i          => button1_i,
       areset_edge_n_i     => gn_rst_n_i,
@@ -748,8 +786,24 @@ begin  -- architecture top
       wb_slave_o          => wrc_in,
       wb_slave_i          => wrc_out_sh,
 
-      wb_eth_master_o     => open,
-      wb_eth_master_i     => open,
+      wrf_src_o           => wrf_src_o,
+      wrf_src_i           => wrf_src_i,
+      wrf_snk_o           => wrf_snk_o,
+      wrf_snk_i           => wrf_snk_i,
+      wrs_tx_data_i       => wrs_tx_data_i,
+      wrs_tx_valid_i      => wrs_tx_valid_i,
+      wrs_tx_dreq_o       => wrs_tx_dreq_o,
+      wrs_tx_last_i       => wrs_tx_last_i,
+      wrs_tx_flush_i      => wrs_tx_flush_i,
+      wrs_tx_cfg_i        => wrs_tx_cfg_i,
+      wrs_rx_first_o      => wrs_rx_first_o,
+      wrs_rx_last_o       => wrs_rx_last_o,
+      wrs_rx_data_o       => wrs_rx_data_o,
+      wrs_rx_valid_o      => wrs_rx_valid_o,
+      wrs_rx_dreq_i       => wrs_rx_dreq_i,
+      wrs_rx_cfg_i        => wrs_rx_cfg_i,
+      wb_eth_master_o     => wb_eth_master_o,
+      wb_eth_master_i     => wb_eth_master_i,
       
       abscal_txts_o       => wrc_abscal_txts_out,
       abscal_rxts_o       => wrc_abscal_rxts_out,
