@@ -226,6 +226,9 @@ entity spec_template_wr is
     ddr_dma_wb_i    : in  t_wishbone_slave_data64_in;
     ddr_dma_wb_o    : out t_wishbone_slave_data64_out;
 
+    -- DDR FIFO empty flag
+    ddr_wr_fifo_empty_o : out std_logic;
+
     --  Clocks and reset.
     clk_sys_62m5_o    : out std_logic;
     rst_sys_62m5_n_o  : out std_logic;
@@ -931,7 +934,7 @@ begin  -- architecture top
     p0_rd_overflow_o => open,
     p0_rd_error_o    => open,
     p0_wr_full_o     => open,
-    p0_wr_empty_o    => open,
+    p0_wr_empty_o    => ddr_wr_fifo_empty_o,
     p0_wr_count_o    => open,
     p0_wr_underrun_o => open,
     p0_wr_error_o    => open,
