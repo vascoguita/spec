@@ -229,6 +229,8 @@ entity spec_template_wr is
     --  Clocks and reset.
     clk_sys_62m5_o    : out std_logic;
     rst_sys_62m5_n_o  : out std_logic;
+    clk_ref_125m_o    : out std_logic;
+    rst_ref_125m_n_o  : out std_logic;
 
     --  Interrupts
     irq_user_i : in std_logic_vector(g_NUM_USER_IRQ + 5 downto 6) := (others => '0');
@@ -326,10 +328,12 @@ architecture top of spec_template_wr is
   signal wrc_out              : t_wishbone_master_out;
   signal wrc_out_sh           : t_wishbone_master_out;
 
-  signal csr_rst_app : std_logic;
   signal csr_rst_gbl : std_logic;
+  signal csr_rst_app : std_logic;
 
-  signal rst_app_n : std_logic;
+  signal rst_csr_app_n      : std_logic;
+  signal rst_csr_app_sync_n : std_logic;
+
   signal rst_gbl_n : std_logic;
 
   signal fmc0_scl_out, fmc0_sda_out : std_logic;
@@ -370,6 +374,13 @@ architecture top of spec_template_wr is
   signal wrc_pps_out : std_logic;
   signal wrc_pps_led : std_logic;
   signal wrc_pps_in  : std_logic;
+
+  attribute keep                 : string;
+  attribute keep of clk_sys_62m5 : signal is "TRUE";
+  attribute keep of clk_ref_125m : signal is "TRUE";
+  attribute keep of clk_ddr_333m : signal is "TRUE";
+  attribute keep of ddr_rst      : signal is "TRUE";
+
 begin  -- architecture top
 
   ------------------------------------------------------------------------------
@@ -659,11 +670,25 @@ begin  -- architecture top
     fmc_presence (31 downto 1) <= (others => '0');
     
     rst_gbl_n <= rst_sys_62m5_n and (not csr_rst_gbl);
-    rst_app_n <= rst_gbl_n and (not csr_rst_app);
+
+    -- reset for DDR including soft reset.
+    -- This is treated as async and will be re-synced by the DDR controller
     ddr_rst <= not rst_ddr_333m_n or csr_rst_gbl;
 
-    rst_sys_62m5_n_o <= rst_app_n;
+    rst_csr_app_n <= not (csr_rst_gbl or csr_rst_app);
+
+    rst_sys_62m5_n_o <= rst_sys_62m5_n and rst_csr_app_n;
     clk_sys_62m5_o <= clk_sys_62m5;
+
+    i_rst_csr_app_sync : gc_sync_ffs
+      port map (
+        clk_i    => clk_ref_125m,
+        rst_n_i  => '1',
+        data_i   => rst_csr_app_n,
+        synced_o => rst_csr_app_sync_n);
+
+    rst_ref_125m_n_o <= rst_ref_125m_n and rst_csr_app_sync_n;
+    clk_ref_125m_o   <= clk_ref_125m;
 
     i_i2c: entity work.xwb_i2c_master
       generic map (
