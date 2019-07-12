@@ -60,6 +60,8 @@ entity spec_template_wr is
     g_WITH_DDR      : boolean := True;
     --  Address of the application meta-data.  0 if none.
     g_APP_OFFSET    : std_logic_vector(31 downto 0) := x"0000_0000";
+    --  Number of user interrupts
+    g_NUM_USER_IRQ  : natural := 1;
     --  WR PTP firmware.
     g_DPRAM_INITF   : string := "../../../../wr-cores/bin/wrpc/wrc_phy8.bram";
     -- Fabric interface selection for WR Core:
@@ -228,6 +230,9 @@ entity spec_template_wr is
     clk_sys_62m5_o    : out std_logic;
     rst_sys_62m5_n_o  : out std_logic;
 
+    --  Interrupts
+    irq_user_i : in std_logic_vector(g_NUM_USER_IRQ + 5 downto 6) := (others => '0');
+
     -- WR fabric interface (when g_fabric_iface = "plain")
     wrf_src_o : out t_wrf_source_out;
     wrf_src_i : in  t_wrf_source_in := c_DUMMY_SRC_IN;
@@ -334,7 +339,7 @@ architecture top of spec_template_wr is
 
   signal irq_master : std_logic;
   
-  constant num_interrupts : natural := 4;
+  constant num_interrupts : natural := 6 + g_NUM_USER_IRQ;
   signal irqs : std_logic_vector(num_interrupts - 1 downto 0);
 
   -- clock and reset
@@ -685,6 +690,10 @@ begin  -- architecture top
     
     fmc0_scl_b <= fmc0_scl_out when fmc0_scl_oen = '0' else 'Z';
     fmc0_sda_b <= fmc0_sda_out when fmc0_sda_oen = '0' else 'Z';
+
+    gen_user_irq: if g_NUM_USER_IRQ > 0 generate
+      irqs(irq_user_i'range) <= irq_user_i;
+    end generate gen_user_irq;
 
     g_vic: if g_with_vic generate
       i_vic: entity work.xwb_vic
