@@ -133,10 +133,11 @@ NET "gn_vc_rdy[0]"     IOSTANDARD = "SSTL18_I";
 NET "gn_vc_rdy[1]"     LOC = B22;
 NET "gn_vc_rdy[1]"     IOSTANDARD = "SSTL18_I";
 
-NET "gn_gpio[1]" LOC = U16;
-NET "gn_gpio[1]" IOSTANDARD = "LVCMOS25";
-NET "gn_gpio[0]" LOC = AB19;
-NET "gn_gpio[0]" IOSTANDARD = "LVCMOS25";
+# GPIO 8 and 9 of the Genum
+NET "GN_GPIO[0]" LOC = U16;
+NET "GN_GPIO[0]" IOSTANDARD = "LVCMOS25";
+NET "GN_GPIO[1]" LOC = AB19;
+NET "GN_GPIO[1]" IOSTANDARD = "LVCMOS25";
 
 ## DDR-3
 NET "ddr_rzq_b"     LOC = K7;
