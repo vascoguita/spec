@@ -589,13 +589,17 @@ begin  -- architecture top
 
     --  Build information
     p_buildinfo: process (clk_sys_62m5) is
+      constant toolver : string :=
+        f_bits2string(c_sdb_synthesis_info.syn_tool_version);
+      constant syndate : string :=
+        f_bits2string(c_sdb_synthesis_info.syn_date);
       constant buildinfo : string :=
           "buildinfo:1" & LF
         & "module:" & c_sdb_synthesis_info.syn_module_name & LF
         & "commit:" & c_sdb_synthesis_info.syn_commit_id & LF
         & "syntool:" & c_sdb_synthesis_info.syn_tool_name & LF
-        & "toolver:" & f_bits2string(c_sdb_synthesis_info.syn_tool_version) & LF
-        & "syndate:" & f_bits2string(c_sdb_synthesis_info.syn_date) & LF
+        & "toolver:" & toolver(3 to toolver'right) & LF
+        & "syndate:" & syndate(3 to syndate'right) & LF
         & "synauth:" & c_sdb_synthesis_info.syn_username & LF
         & NUL & NUL & NUL & NUL 
         & NUL & NUL & NUL & NUL;
