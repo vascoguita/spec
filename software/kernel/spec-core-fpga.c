@@ -789,6 +789,9 @@ int spec_fpga_exit(struct spec_gn412x *spec_gn412x)
 {
 	struct spec_fpga *spec_fpga = spec_gn412x->spec_fpga;
 
+	if (!spec_fpga_is_valid(spec_gn412x, spec_fpga->meta))
+		return 0;
+
 	debugfs_remove_recursive(spec_fpga->dbg_dir_fpga);
 	spec_fpga_app_exit(spec_fpga);
 	spec_fmc_exit(spec_fpga);
