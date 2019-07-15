@@ -410,8 +410,8 @@ begin  -- architecture top
       g_L2P_ADDR_FIFO_FULL_SIZE     => 256,
       g_L2P_ADDR_FIFO_FULL_THRES    => 175,
       g_L2P_DATA_FIFO_FULL_SIZE     => 256,
-      g_L2P_DATA_FIFO_FULL_THRES    => 175)
-
+      g_L2P_DATA_FIFO_FULL_THRES    => 175
+    )
     port map (
       ---------------------------------------------------------
       -- Control and status
@@ -481,278 +481,277 @@ begin  -- architecture top
       wb_dma_dat_i       => gn_wb_ddr_in
     );
 
-    --  Mini-crossbar from gennum to carrier and application bus.
-    carrier_app_xb: process (clk_sys_62m5)
-    is
-      type t_ca_state is (S_IDLE, S_APP, S_CARRIER);
-      variable ca_state : t_ca_state;
-      constant wb_idle_master_out : t_wishbone_master_out :=
-        (cyc => '0', stb => '0', adr => (others => 'X'), sel => x"0",
-                       we => '0', dat => (others => 'X'));
-      constant wb_idle_master_in : t_wishbone_master_in :=
-        (stall => '0', ack => '0', err => '0', dat => (others => 'X'), rty => '0');
-    begin
-      if rising_edge(clk_sys_62m5) then
-        if rst_sys_62m5_n = '0' then
-          ca_state := S_IDLE;
-          gn_wb_in <= wb_idle_master_in;
-          app_wb_o <= wb_idle_master_out;
-          carrier_wb_in <= wb_idle_master_out;
-        else
-          --  Default: idle.
-          gn_wb_in <= wb_idle_master_in;
-          app_wb_o <= wb_idle_master_out;
-          carrier_wb_in <= wb_idle_master_out;
-          case ca_state is
-            when S_IDLE =>
-              if gn_wb_out.cyc = '1'
-                and gn_wb_out.stb = '1'
-              then
-                -- New transaction.
-                -- Stall
-                gn_wb_in.stall <= '1';
-                if gn_wb_out.adr (31 downto 13) = (31 downto 13 => '0') then
-                  ca_state := S_CARRIER;
-                  --  Pass to carrier
-                  carrier_wb_in <= gn_wb_out;
-                else
-                  ca_state := S_APP;
-                  app_wb_o <= gn_wb_out;
-                end if;
+  --  Mini-crossbar from gennum to carrier and application bus.
+  carrier_app_xb: process (clk_sys_62m5)
+  is
+    type t_ca_state is (S_IDLE, S_APP, S_CARRIER);
+    variable ca_state : t_ca_state;
+    constant wb_idle_master_out : t_wishbone_master_out :=
+      (cyc => '0', stb => '0', adr => (others => 'X'), sel => x"0",
+                     we => '0', dat => (others => 'X'));
+    constant wb_idle_master_in : t_wishbone_master_in :=
+      (stall => '0', ack => '0', err => '0', dat => (others => 'X'), rty => '0');
+  begin
+    if rising_edge(clk_sys_62m5) then
+      if rst_sys_62m5_n = '0' then
+        ca_state := S_IDLE;
+        gn_wb_in <= wb_idle_master_in;
+        app_wb_o <= wb_idle_master_out;
+        carrier_wb_in <= wb_idle_master_out;
+      else
+        --  Default: idle.
+        gn_wb_in <= wb_idle_master_in;
+        app_wb_o <= wb_idle_master_out;
+        carrier_wb_in <= wb_idle_master_out;
+        case ca_state is
+          when S_IDLE =>
+            if gn_wb_out.cyc = '1'
+              and gn_wb_out.stb = '1'
+            then
+              -- New transaction.
+              -- Stall
+              gn_wb_in.stall <= '1';
+              if gn_wb_out.adr (31 downto 13) = (31 downto 13 => '0') then
+                ca_state := S_CARRIER;
+                --  Pass to carrier
+                carrier_wb_in <= gn_wb_out;
               else
+                ca_state := S_APP;
+                app_wb_o <= gn_wb_out;
               end if;
-            when S_CARRIER =>
-              --  Pass from carrier.
-              carrier_wb_in.stb <= '0';
-              gn_wb_in <= carrier_wb_out;
-              gn_wb_in.stall <= '1';
-              if carrier_wb_out.ack = '1' then
-                ca_state := S_IDLE;
-              end if;
-            when S_APP =>
-              --  Pass from application
-              app_wb_o.stb <= '0';
-              gn_wb_in <= app_wb_i;
-              gn_wb_in.stall <= '1';
-              if app_wb_i.ack = '1' or app_wb_i.err = '1' then
-                ca_state := S_IDLE;
-              end if;
-          end case;
-        end if;
-      end if;
-    end process;
-
-    i_devs: entity work.spec_template_regs
-      port map (
-        rst_n_i    => rst_sys_62m5_n,
-        clk_i      => clk_sys_62m5,
-        wb_cyc_i   => carrier_wb_in.cyc,
-        wb_stb_i   => carrier_wb_in.stb,
-        wb_adr_i   => carrier_wb_in.adr (12 downto 2),  -- Bytes address from gennum
-        wb_sel_i   => carrier_wb_in.sel,
-        wb_we_i    => carrier_wb_in.we,
-        wb_dat_i   => carrier_wb_in.dat,
-        wb_ack_o   => carrier_wb_out.ack,
-        wb_err_o   => carrier_wb_out.err,
-        wb_rty_o   => carrier_wb_out.rty,
-        wb_stall_o => carrier_wb_out.stall,
-        wb_dat_o   => carrier_wb_out.dat,
-    
-        -- a ROM containing the carrier metadata
-        metadata_addr_o => metadata_addr,
-        metadata_data_i => metadata_data,
-        metadata_data_o => open,
-    
-        -- offset to the application metadata
-        csr_app_offset_i        => x"0000_0000",
-        csr_resets_global_o => csr_rst_gbl,
-        csr_resets_appl_o   => csr_rst_app,
-    
-        -- presence lines for the fmcs
-        csr_fmc_presence_i  => fmc_presence,
-    
-        csr_gn4124_status_i => gennum_status,
-        csr_ddr_status_calib_done_i    => ddr_calib_done,
-        csr_pcb_rev_rev_i   => pcbrev_i,
-
-        -- Thermometer and unique id
-        therm_id_i          => therm_id_in,
-        therm_id_o          => therm_id_out,
-    
-        -- i2c controllers to the fmcs
-        fmc_i2c_i           => fmc_i2c_in,
-        fmc_i2c_o           => fmc_i2c_out,
-    
-        -- dma registers for the gennum core
-        dma_i               => dma_in,
-        dma_o               => dma_out,
-    
-        -- spi controller to the flash
-        flash_spi_i         => flash_spi_in,
-        flash_spi_o         => flash_spi_out,
-    
-        -- vector interrupt controller
-        vic_i               => vic_in,
-        vic_o               => vic_out,
-    
-        -- a ROM containing build info
-        buildinfo_addr_o => buildinfo_addr,
-        buildinfo_data_i => buildinfo_data,
-        buildinfo_data_o => open,
-
-        -- white-rabbit core
-        wrc_regs_i          => wrc_in,
-        wrc_regs_o          => wrc_out
-      );
-    
-    --  Metadata
-    p_metadata: process (clk_sys_62m5) is
-    begin
-      if rising_edge(clk_sys_62m5) then
-        case metadata_addr is
-          when x"0" =>
-            --  Vendor ID
-            metadata_data <= x"000010dc";
-          when x"1" =>
-            --  Device ID
-            metadata_data <= x"53504543";
-          when x"2" =>
-            -- Version
-            metadata_data <= x"01040000";
-          when x"3" =>
-            -- BOM
-            metadata_data <= x"fffe0000";
-          when x"4" | x"5" | x"6" | x"7" =>
-            -- source id
-            metadata_data <= x"00000000";
-          when x"8" =>
-            -- capability mask
-            metadata_data <= x"00000000";
-            if g_WITH_VIC then
-              metadata_data(0) <= '1';
             end if;
-            if g_WITH_ONEWIRE and not g_WITH_WR then
-              metadata_data(1) <= '1';
+          when S_CARRIER =>
+            --  Pass from carrier.
+            carrier_wb_in.stb <= '0';
+            gn_wb_in <= carrier_wb_out;
+            gn_wb_in.stall <= '1';
+            if carrier_wb_out.ack = '1' then
+              ca_state := S_IDLE;
             end if;
-            if g_WITH_SPI then
-              metadata_data(2) <= '1';
+          when S_APP =>
+            --  Pass from application
+            app_wb_o.stb <= '0';
+            gn_wb_in <= app_wb_i;
+            gn_wb_in.stall <= '1';
+            if app_wb_i.ack = '1' or app_wb_i.err = '1' then
+              ca_state := S_IDLE;
             end if;
-            if g_WITH_WR then
-              metadata_data(3) <= '1';
-            end if;
-            if g_WITH_DDR then
-              metadata_data(4) <= '1';
-            end if;
-            --  Buildinfo
-            metadata_data(5) <= '1';
-          when others =>
-            metadata_data <= x"00000000";
         end case;
       end if;
-    end process;
+    end if;
+  end process;
 
-    --  Build information
-    p_buildinfo: process (clk_sys_62m5) is
-      constant toolver : string :=
-        f_bits2string(c_sdb_synthesis_info.syn_tool_version);
-      constant syndate : string :=
-        f_bits2string(c_sdb_synthesis_info.syn_date);
-      constant buildinfo : string :=
-          "buildinfo:1" & LF
-        & "module:" & c_sdb_synthesis_info.syn_module_name & LF
-        & "commit:" & c_sdb_synthesis_info.syn_commit_id & LF
-        & "syntool:" & c_sdb_synthesis_info.syn_tool_name & LF
-        & "toolver:" & toolver(3 to toolver'right) & LF
-        & "syndate:" & syndate(3 to syndate'right) & LF
-        & "synauth:" & c_sdb_synthesis_info.syn_username & LF
-        & NUL & NUL & NUL & NUL 
-        & NUL & NUL & NUL & NUL;
-      variable addr : natural;
-    begin
-      if rising_edge(clk_sys_62m5) then
-        addr := to_integer(unsigned(buildinfo_addr)) * 4;
-        if addr < buildinfo'right - 4 then
-          buildinfo_data <= f_string2svl(buildinfo(1 + addr to 4 + addr));
-        else
-          buildinfo_data <= x"00000000";
-        end if;
-      end if;
-    end process;
-
-    fmc_presence (0) <= not fmc0_prsnt_m2c_n_i;
-    fmc_presence (31 downto 1) <= (others => '0');
+  i_devs: entity work.spec_template_regs
+    port map (
+      rst_n_i    => rst_sys_62m5_n,
+      clk_i      => clk_sys_62m5,
+      wb_cyc_i   => carrier_wb_in.cyc,
+      wb_stb_i   => carrier_wb_in.stb,
+      wb_adr_i   => carrier_wb_in.adr (12 downto 2),  -- Bytes address from gennum
+      wb_sel_i   => carrier_wb_in.sel,
+      wb_we_i    => carrier_wb_in.we,
+      wb_dat_i   => carrier_wb_in.dat,
+      wb_ack_o   => carrier_wb_out.ack,
+      wb_err_o   => carrier_wb_out.err,
+      wb_rty_o   => carrier_wb_out.rty,
+      wb_stall_o => carrier_wb_out.stall,
+      wb_dat_o   => carrier_wb_out.dat,
     
-    rst_gbl_n <= rst_sys_62m5_n and (not csr_rst_gbl);
+      -- a ROM containing the carrier metadata
+      metadata_addr_o => metadata_addr,
+      metadata_data_i => metadata_data,
+      metadata_data_o => open,
+    
+      -- offset to the application metadata
+      csr_app_offset_i        => x"0000_0000",
+      csr_resets_global_o => csr_rst_gbl,
+      csr_resets_appl_o   => csr_rst_app,
+    
+      -- presence lines for the fmcs
+      csr_fmc_presence_i  => fmc_presence,
+    
+      csr_gn4124_status_i => gennum_status,
+      csr_ddr_status_calib_done_i    => ddr_calib_done,
+      csr_pcb_rev_rev_i   => pcbrev_i,
 
-    -- reset for DDR including soft reset.
-    -- This is treated as async and will be re-synced by the DDR controller
-    ddr_rst <= not rst_ddr_333m_n or csr_rst_gbl;
+      -- Thermometer and unique id
+      therm_id_i          => therm_id_in,
+      therm_id_o          => therm_id_out,
+    
+      -- i2c controllers to the fmcs
+      fmc_i2c_i           => fmc_i2c_in,
+      fmc_i2c_o           => fmc_i2c_out,
+    
+      -- dma registers for the gennum core
+      dma_i               => dma_in,
+      dma_o               => dma_out,
+    
+      -- spi controller to the flash
+      flash_spi_i         => flash_spi_in,
+      flash_spi_o         => flash_spi_out,
+    
+      -- vector interrupt controller
+      vic_i               => vic_in,
+      vic_o               => vic_out,
+    
+      -- a ROM containing build info
+      buildinfo_addr_o => buildinfo_addr,
+      buildinfo_data_i => buildinfo_data,
+      buildinfo_data_o => open,
 
-    rst_csr_app_n <= not (csr_rst_gbl or csr_rst_app);
+      -- white-rabbit core
+      wrc_regs_i          => wrc_in,
+      wrc_regs_o          => wrc_out
+    );
+    
+  --  Metadata
+  p_metadata: process (clk_sys_62m5) is
+  begin
+    if rising_edge(clk_sys_62m5) then
+      case metadata_addr is
+        when x"0" =>
+          --  Vendor ID
+          metadata_data <= x"000010dc";
+        when x"1" =>
+          --  Device ID
+          metadata_data <= x"53504543";
+        when x"2" =>
+          -- Version
+          metadata_data <= x"01040000";
+        when x"3" =>
+          -- BOM
+          metadata_data <= x"fffe0000";
+        when x"4" | x"5" | x"6" | x"7" =>
+          -- source id
+          metadata_data <= x"00000000";
+        when x"8" =>
+          -- capability mask
+          metadata_data <= x"00000000";
+          if g_WITH_VIC then
+            metadata_data(0) <= '1';
+          end if;
+          if g_WITH_ONEWIRE and not g_WITH_WR then
+            metadata_data(1) <= '1';
+          end if;
+          if g_WITH_SPI and not g_WITH_WR then
+            metadata_data(2) <= '1';
+          end if;
+          if g_WITH_WR then
+            metadata_data(3) <= '1';
+          end if;
+          if g_WITH_DDR then
+            metadata_data(4) <= '1';
+          end if;
+          --  Buildinfo
+          metadata_data(5) <= '1';
+        when others =>
+          metadata_data <= x"00000000";
+      end case;
+    end if;
+  end process;
 
-    rst_sys_62m5_n_o <= rst_sys_62m5_n and rst_csr_app_n;
-    clk_sys_62m5_o <= clk_sys_62m5;
+  --  Build information
+  p_buildinfo: process (clk_sys_62m5) is
+    constant toolver : string :=
+      f_bits2string(c_sdb_synthesis_info.syn_tool_version);
+    constant syndate : string :=
+      f_bits2string(c_sdb_synthesis_info.syn_date);
+    constant buildinfo : string :=
+        "buildinfo:1" & LF
+      & "module:" & c_sdb_synthesis_info.syn_module_name & LF
+      & "commit:" & c_sdb_synthesis_info.syn_commit_id & LF
+      & "syntool:" & c_sdb_synthesis_info.syn_tool_name & LF
+      & "toolver:" & toolver(3 to toolver'right) & LF
+      & "syndate:" & syndate(3 to syndate'right) & LF
+      & "synauth:" & c_sdb_synthesis_info.syn_username & LF
+      & NUL & NUL & NUL & NUL 
+      & NUL & NUL & NUL & NUL;
+    variable addr : natural;
+  begin
+    if rising_edge(clk_sys_62m5) then
+      addr := to_integer(unsigned(buildinfo_addr)) * 4;
+      if addr < buildinfo'right - 4 then
+        buildinfo_data <= f_string2svl(buildinfo(1 + addr to 4 + addr));
+      else
+        buildinfo_data <= x"00000000";
+      end if;
+    end if;
+  end process;
 
-    i_rst_csr_app_sync : gc_sync_ffs
-      port map (
-        clk_i    => clk_ref_125m,
-        rst_n_i  => '1',
-        data_i   => rst_csr_app_n,
-        synced_o => rst_csr_app_sync_n);
+  fmc_presence (0) <= not fmc0_prsnt_m2c_n_i;
+  fmc_presence (31 downto 1) <= (others => '0');
+    
+  rst_gbl_n <= rst_sys_62m5_n and (not csr_rst_gbl);
 
-    rst_ref_125m_n_o <= rst_ref_125m_n and rst_csr_app_sync_n;
-    clk_ref_125m_o   <= clk_ref_125m;
+  -- reset for DDR including soft reset.
+  -- This is treated as async and will be re-synced by the DDR controller
+  ddr_rst <= not rst_ddr_333m_n or csr_rst_gbl;
 
-    i_i2c: entity work.xwb_i2c_master
+  rst_csr_app_n <= not (csr_rst_gbl or csr_rst_app);
+
+  rst_sys_62m5_n_o <= rst_sys_62m5_n and rst_csr_app_n;
+  clk_sys_62m5_o <= clk_sys_62m5;
+
+  i_rst_csr_app_sync : gc_sync_ffs
+    port map (
+      clk_i    => clk_ref_125m,
+      rst_n_i  => '1',
+      data_i   => rst_csr_app_n,
+      synced_o => rst_csr_app_sync_n);
+
+  rst_ref_125m_n_o <= rst_ref_125m_n and rst_csr_app_sync_n;
+  clk_ref_125m_o   <= clk_ref_125m;
+
+  i_i2c: entity work.xwb_i2c_master
+    generic map (
+      g_interface_mode      => CLASSIC,
+      g_address_granularity => BYTE,
+      g_num_interfaces      => 1)
+    port map (
+      clk_sys_i => clk_sys_62m5,
+      rst_n_i   => rst_gbl_n,
+    
+      slave_i => fmc_i2c_out,
+      slave_o => fmc_i2c_in,
+      desc_o  => open,
+    
+      int_o   => irqs(0),
+    
+      scl_pad_i (0)    => fmc0_scl_b,
+      scl_pad_o (0)    => fmc0_scl_out,
+      scl_padoen_o (0) => fmc0_scl_oen,
+      sda_pad_i (0)    => fmc0_sda_b,
+      sda_pad_o (0)    => fmc0_sda_out,
+      sda_padoen_o (0) => fmc0_sda_oen
+    );
+    
+  fmc0_scl_b <= fmc0_scl_out when fmc0_scl_oen = '0' else 'Z';
+  fmc0_sda_b <= fmc0_sda_out when fmc0_sda_oen = '0' else 'Z';
+
+  gen_user_irq: if g_NUM_USER_IRQ > 0 generate
+    irqs(irq_user_i'range) <= irq_user_i;
+  end generate gen_user_irq;
+
+  g_vic: if g_with_vic generate
+    i_vic: entity work.xwb_vic
       generic map (
-        g_interface_mode      => CLASSIC,
         g_address_granularity => BYTE,
-        g_num_interfaces      => 1)
+        g_num_interrupts => num_interrupts
+      )
       port map (
         clk_sys_i => clk_sys_62m5,
-        rst_n_i   => rst_gbl_n,
-    
-        slave_i => fmc_i2c_out,
-        slave_o => fmc_i2c_in,
-        desc_o  => open,
-    
-        int_o   => irqs(0),
-    
-        scl_pad_i (0)    => fmc0_scl_b,
-        scl_pad_o (0)    => fmc0_scl_out,
-        scl_padoen_o (0) => fmc0_scl_oen,
-        sda_pad_i (0)    => fmc0_sda_b,
-        sda_pad_o (0)    => fmc0_sda_out,
-        sda_padoen_o (0) => fmc0_sda_oen
-        );
-    
-    fmc0_scl_b <= fmc0_scl_out when fmc0_scl_oen = '0' else 'Z';
-    fmc0_sda_b <= fmc0_sda_out when fmc0_sda_oen = '0' else 'Z';
+        rst_n_i => rst_gbl_n,
+        slave_i => vic_out,
+        slave_o => vic_in,
+        irqs_i => irqs,
+        irq_master_o => irq_master
+      );
+  end generate;
 
-    gen_user_irq: if g_NUM_USER_IRQ > 0 generate
-      irqs(irq_user_i'range) <= irq_user_i;
-    end generate gen_user_irq;
-
-    g_vic: if g_with_vic generate
-      i_vic: entity work.xwb_vic
-        generic map (
-          g_address_granularity => BYTE,
-          g_num_interrupts => num_interrupts
-        )
-        port map (
-          clk_sys_i => clk_sys_62m5,
-          rst_n_i => rst_gbl_n,
-          slave_i => vic_out,
-          slave_o => vic_in,
-          irqs_i => irqs,
-          irq_master_o => irq_master
-        );
-    end generate;
-
-    g_no_vic: if not g_with_vic generate
-      vic_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
-      irq_master <= '0';
-    end generate;
+  g_no_vic: if not g_with_vic generate
+    vic_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
+    irq_master <= '0';
+  end generate;
 
   therm_id_in <= (ack => '1', err => '0', rty => '0', stall => '0',
     dat => (others => '0'));
