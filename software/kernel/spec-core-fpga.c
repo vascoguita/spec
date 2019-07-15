@@ -38,6 +38,8 @@ enum spec_fpga_mem_offsets {
 	SPEC_FPGA_MEM_DMA_END = SPEC_CORE_FPGA + 0x00FF,
 	SPEC_FPGA_MEM_VIC_START = SPEC_CORE_FPGA + 0x0100,
 	SPEC_FPGA_MEM_VIC_END = SPEC_CORE_FPGA + 0x01FF,
+	SPEC_FPGA_MEM_BLD_START = SPEC_CORE_FPGA + 0x0200,
+	SPEC_FPGA_MEM_BLD_END = SPEC_CORE_FPGA + 0x02FF,
 	SPEC_FPGA_MEM_WR_START = SPEC_CORE_FPGA + 0x1000,
 	SPEC_FPGA_MEM_WR_END = SPEC_CORE_FPGA + 0x1FFF,
 };
@@ -70,6 +72,7 @@ enum spec_fpga_meta_cap_mask {
 	SPEC_META_CAP_SPI = BIT(2),
 	SPEC_META_CAP_WR = BIT(3),
 	SPEC_META_CAP_DMA = BIT(4),
+	SPEC_META_CAP_BLD = BIT(5),
 };
 
 
@@ -99,6 +102,52 @@ static const struct debugfs_reg32 spec_fpga_debugfs_reg32[] = {
 		.offset = SPEC_FPGA_CSR_PCB_REV,
 	},
 };
+
+static int spec_fpga_dbg_bld_info(struct seq_file *s, void *offset)
+{
+	struct spec_fpga *spec_fpga = s->private;
+	int off;
+
+	if (!(spec_fpga->meta->cap & SPEC_META_CAP_BLD)) {
+		seq_puts(s, "not available\n");
+		return 0;
+	}
+
+	for (off = SPEC_FPGA_MEM_BLD_START;
+	     off < SPEC_FPGA_MEM_BLD_END;
+	     off += 4) {
+		uint32_t tmp = ioread32(spec_fpga->fpga + off);
+		int i;
+
+		for (i = 3; i >= 0; --i) {
+			char c = (tmp >> (8 * i)) & 0xFF;
+
+			if (!c)
+				return 0;
+			seq_printf(s, "%c", c);
+		}
+	}
+
+	return 0;
+}
+
+static int spec_fpga_dbg_bld_info_open(struct inode *inode,
+					 struct file *file)
+{
+	struct spec_gn412x *spec = inode->i_private;
+
+	return single_open(file, spec_fpga_dbg_bld_info, spec);
+}
+
+static const struct file_operations spec_fpga_dbg_bld_info_ops = {
+	.owner = THIS_MODULE,
+	.open  = spec_fpga_dbg_bld_info_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+
+
 
 static inline uint32_t spec_fpga_csr_app_offset(struct spec_fpga *spec_fpga)
 {
@@ -700,8 +749,21 @@ int spec_fpga_init(struct spec_gn412x *spec_gn412x)
 		goto err_dbg_csr;
 	}
 
+	spec_fpga->dbg_bld_info = debugfs_create_file(SPEC_DBG_BLD_INFO_NAME, 0444,
+							spec_fpga->dbg_dir_fpga,
+							spec_fpga,
+							&spec_fpga_dbg_bld_info_ops);
+	if (IS_ERR_OR_NULL(spec_fpga->dbg_bld_info)) {
+		err = PTR_ERR(spec_fpga->dbg_bld_info);
+		dev_err(&spec_fpga->dev,
+			"Cannot create debugfs file \"%s\" (%d)\n",
+			SPEC_DBG_BLD_INFO_NAME, err);
+		goto err_dbg_bld;
+	}
+
 	return 0;
 
+err_dbg_bld:
 err_dbg_csr:
 	debugfs_remove_recursive(spec_fpga->dbg_dir_fpga);
 err_dbg_dir:
