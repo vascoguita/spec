@@ -14,6 +14,8 @@ syn_properties = [ ["-generics", "dpram=\"3\""]]
 board = "spec"
 ctrls = ["bank3_64b_32b" ]
 
+files = [ "synthesis_descriptor.vhd" ]
+
 modules = { 
   "local" : "../../top/golden_wr",
   "git" : [ "https://ohwr.org/project/wr-cores.git::proposed_master",
@@ -22,3 +24,7 @@ modules = {
             "https://ohwr.org/project/gn4124-core.git::proposed_master",
             "https://ohwr.org/project/ddr3-sp6-core.git::proposed_master" ]
 }
+
+syn_post_project_cmd = \
+  "$(TCL_INTERPRETER) " + fetchto + "/general-cores/tools/sdb_desc_gen.tcl " + \
+  syn_tool + " $(PROJECT_FILE);"

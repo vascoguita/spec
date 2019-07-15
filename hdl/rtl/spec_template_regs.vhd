@@ -62,6 +62,11 @@ entity spec_template_regs is
     vic_i                : in    t_wishbone_master_in;
     vic_o                : out   t_wishbone_master_out;
 
+    -- a ROM containing build information
+    buildinfo_addr_o     : out   std_logic_vector(7 downto 2);
+    buildinfo_data_i     : in    std_logic_vector(31 downto 0);
+    buildinfo_data_o     : out   std_logic_vector(31 downto 0);
+
     -- white-rabbit core registers
     wrc_regs_i           : in    t_wishbone_master_in;
     wrc_regs_o           : out   t_wishbone_master_out
@@ -111,6 +116,8 @@ architecture syn of spec_template_regs is
   signal vic_tr                         : std_logic;
   signal vic_wack                       : std_logic;
   signal vic_rack                       : std_logic;
+  signal buildinfo_rack                 : std_logic;
+  signal buildinfo_re                   : std_logic;
   signal wrc_regs_re                    : std_logic;
   signal wrc_regs_wt                    : std_logic;
   signal wrc_regs_rt                    : std_logic;
@@ -250,6 +257,15 @@ begin
   vic_o.sel <= (others => '1');
   vic_o.we <= vic_wt;
   vic_o.dat <= wb_dat_i;
+  process (clk_i, rst_n_i) begin
+    if rst_n_i = '0' then
+      buildinfo_rack <= '0';
+    elsif rising_edge(clk_i) then
+      buildinfo_rack <= buildinfo_re and not buildinfo_rack;
+    end if;
+  end process;
+  buildinfo_data_o <= wb_dat_i;
+  buildinfo_addr_o <= wb_adr_i(7 downto 2);
 
   -- Assignments for submap wrc_regs
   wrc_regs_tr <= wrc_regs_wt or wrc_regs_rt;
@@ -356,6 +372,8 @@ begin
           -- Submap vic
           vic_wt <= (vic_wt or wr_int) and not vic_wack;
           wr_ack_int <= vic_wack;
+        when "0010" => 
+          -- Submap buildinfo
         when others =>
           wr_ack_int <= wr_int;
         end case;
@@ -435,6 +453,7 @@ begin
             rd_ack1_int <= rd_int;
           end case;
         when "0001" => 
+        when "0010" => 
         when others =>
           rd_ack1_int <= rd_int;
         end case;
@@ -446,7 +465,7 @@ begin
   end process;
 
   -- Process for read requests.
-  process (wb_adr_i, reg_rdat_int, rd_ack1_int, rd_int, rd_int, metadata_data_i, metadata_rack, rd_int, therm_id_i.dat, therm_id_rack, therm_id_rt, rd_int, fmc_i2c_i.dat, fmc_i2c_rack, fmc_i2c_rt, rd_int, flash_spi_i.dat, flash_spi_rack, flash_spi_rt, rd_int, dma_i.dat, dma_rack, dma_rt, rd_int, vic_i.dat, vic_rack, vic_rt, rd_int, wrc_regs_i.dat, wrc_regs_rack, wrc_regs_rt) begin
+  process (wb_adr_i, reg_rdat_int, rd_ack1_int, rd_int, rd_int, metadata_data_i, metadata_rack, rd_int, therm_id_i.dat, therm_id_rack, therm_id_rt, rd_int, fmc_i2c_i.dat, fmc_i2c_rack, fmc_i2c_rt, rd_int, flash_spi_i.dat, flash_spi_rack, flash_spi_rt, rd_int, dma_i.dat, dma_rack, dma_rt, rd_int, vic_i.dat, vic_rack, vic_rt, rd_int, buildinfo_data_i, buildinfo_rack, rd_int, wrc_regs_i.dat, wrc_regs_rack, wrc_regs_rt) begin
     -- By default ack read requests
     wb_dat_o <= (others => '0');
     metadata_re <= '0';
@@ -455,6 +474,7 @@ begin
     flash_spi_re <= '0';
     dma_re <= '0';
     vic_re <= '0';
+    buildinfo_re <= '0';
     wrc_regs_re <= '0';
     case wb_adr_i(12 downto 12) is
     when "0" => 
@@ -538,6 +558,11 @@ begin
         vic_re <= rd_int;
         wb_dat_o <= vic_i.dat;
         rd_ack_int <= vic_rack;
+      when "0010" => 
+        -- Submap buildinfo
+        wb_dat_o <= buildinfo_data_i;
+        rd_ack_int <= buildinfo_rack;
+        buildinfo_re <= rd_int;
       when others =>
         rd_ack_int <= rd_int;
       end case;

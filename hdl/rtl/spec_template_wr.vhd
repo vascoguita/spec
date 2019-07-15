@@ -43,6 +43,7 @@ use work.gn4124_core_pkg.all;
 use work.wr_xilinx_pkg.all;
 use work.wr_board_pkg.all;
 use work.wr_spec_pkg.all;
+use work.synthesis_descriptor.all;
 
 library unisim;
 use unisim.vcomponents.all;
@@ -257,6 +258,9 @@ architecture top of spec_template_wr is
   
   signal metadata_addr : std_logic_vector(5 downto 2);
   signal metadata_data : std_logic_vector(31 downto 0);
+
+  signal buildinfo_addr : std_logic_vector(7 downto 2);
+  signal buildinfo_data : std_logic_vector(31 downto 0);
 
   signal therm_id_in          : t_wishbone_master_in;
   signal therm_id_out         : t_wishbone_master_out;
@@ -527,6 +531,11 @@ begin  -- architecture top
         vic_i               => vic_in,
         vic_o               => vic_out,
     
+        -- a ROM containing build info
+        buildinfo_addr_o => buildinfo_addr,
+        buildinfo_data_i => buildinfo_data,
+        buildinfo_data_o => open,
+
         -- white-rabbit core
         wrc_regs_i          => wrc_in,
         wrc_regs_o          => wrc_out
@@ -570,9 +579,35 @@ begin  -- architecture top
             if g_WITH_DDR then
               metadata_data(4) <= '1';
             end if;
+            --  Buildinfo
+            metadata_data(5) <= '1';
           when others =>
             metadata_data <= x"00000000";
         end case;
+      end if;
+    end process;
+
+    --  Build information
+    p_buildinfo: process (clk_sys_62m5) is
+      constant buildinfo : string :=
+          "buildinfo:1" & LF
+        & "module:" & c_sdb_synthesis_info.syn_module_name & LF
+        & "commit:" & c_sdb_synthesis_info.syn_commit_id & LF
+        & "syntool:" & c_sdb_synthesis_info.syn_tool_name & LF
+        & "toolver:" & f_bits2string(c_sdb_synthesis_info.syn_tool_version) & LF
+        & "syndate:" & f_bits2string(c_sdb_synthesis_info.syn_date) & LF
+        & "synauth:" & c_sdb_synthesis_info.syn_username & LF
+        & NUL & NUL & NUL & NUL 
+        & NUL & NUL & NUL & NUL;
+      variable addr : natural;
+    begin
+      if rising_edge(clk_sys_62m5) then
+        addr := to_integer(unsigned(buildinfo_addr)) * 4;
+        if addr < buildinfo'right - 4 then
+          buildinfo_data <= f_string2svl(buildinfo(1 + addr to 4 + addr));
+        else
+          buildinfo_data <= x"00000000";
+        end if;
       end if;
     end process;
 

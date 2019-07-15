@@ -4,10 +4,10 @@ memory-map:
   size: 0x2000
   children:
     - submap:
-       name: metadata
-       description: a ROM containing the carrier metadata
-       size: 0x40
-       interface: sram
+        name: metadata
+        description: a ROM containing the carrier metadata
+        size: 0x40
+        interface: sram
     - block:
        name: csr
        description: carrier and fmc status and control
@@ -100,6 +100,11 @@ memory-map:
         interface: wb-32-be
         x-hdl:
           busgroup: True
+    - submap:
+        name: buildinfo
+        description: a ROM containing build information
+        size: 0x100
+        interface: sram
     - submap:
         name: wrc_regs
         address: 0x1000
