@@ -295,7 +295,7 @@ architecture top of spec_template_wr is
 
   signal irq_master : std_logic;
   
-  constant num_interrupts : natural := 3;
+  constant num_interrupts : natural := 4;
   signal irqs : std_logic_vector(num_interrupts - 1 downto 0);
 
   -- clock and reset
@@ -386,7 +386,7 @@ begin  -- architecture top
       -- Interrupt interface
       -- Note: the dma_irq are synchronized with the wb_master_clk clock
       --  inside the gn4124 core.
-      dma_irq_o => irqs(1 downto 0),
+      dma_irq_o => irqs(3 downto 2),
       -- Note: this is a simple assignment.
       irq_p_i   => irq_master,
       irq_p_o   => gn_gpio_b(0),
@@ -564,8 +564,11 @@ begin  -- architecture top
             if g_WITH_SPI then
               metadata_data(2) <= '1';
             end if;
-            if g_with_WR then
+            if g_WITH_WR then
               metadata_data(3) <= '1';
+            end if;
+            if g_WITH_DDR then
+              metadata_data(4) <= '1';
             end if;
           when others =>
             metadata_data <= x"00000000";
@@ -596,7 +599,7 @@ begin  -- architecture top
         slave_o => fmc_i2c_in,
         desc_o  => open,
     
-        int_o   => irqs(2),
+        int_o   => irqs(0),
     
         scl_pad_i (0)    => fmc0_scl_b,
         scl_pad_o (0)    => fmc0_scl_out,
@@ -634,7 +637,8 @@ begin  -- architecture top
     dat => (others => '0'));
   flash_spi_in <= (ack => '1', err => '0', rty => '0', stall => '0',
     dat => (others => '0'));
-  
+  irqs(1) <= '0';
+
   -----------------------------------------------------------------------------
   -- The WR PTP core board package (WB Slave + WB Master #2 (Etherbone))
   -----------------------------------------------------------------------------

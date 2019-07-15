@@ -95,6 +95,7 @@ memory-map:
     - submap:
         name: vic
         description: vector interrupt controller
+        address: 0x100
         size: 0x100
         interface: wb-32-be
         x-hdl:
