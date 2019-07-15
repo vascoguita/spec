@@ -43,10 +43,10 @@ enum spec_fpga_mem_offsets {
 };
 
 enum spec_fpga_irq_lines {
-	SPEC_FPGA_IRQ_DMA_DONE = 0,
-	SPEC_FPGA_IRQ_DMA_ERROR,
-	SPEC_FPGA_IRQ_FMC_I2C,
+	SPEC_FPGA_IRQ_FMC_I2C = 0,
 	SPEC_FPGA_IRQ_SPI,
+	SPEC_FPGA_IRQ_DMA_DONE,
+	SPEC_FPGA_IRQ_DMA_ERROR,
 };
 
 enum spec_fpga_csr_offsets {
