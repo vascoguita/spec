@@ -576,11 +576,11 @@ static void spec_fpga_app_id_build(struct spec_fpga *spec_fpga,
 	if (vendor == 0xFF000000) {
 		uint32_t vendor_uuid[4];
 
-		vendor_uuid[0] = ioread32(spec_fpga->fpga + app_off + 0x30);
-		vendor_uuid[1] = ioread32(spec_fpga->fpga + app_off + 0x34);
-		vendor_uuid[2] = ioread32(spec_fpga->fpga + app_off + 0x38);
-		vendor_uuid[3] = ioread32(spec_fpga->fpga + app_off + 0x3C);
-		snprintf(id, size, "cern:%16phN:%4phN", &vendor_uuid, &device);
+		vendor_uuid[0] = ioread32(spec_fpga->fpga + app_off + FPGA_META_UUID + 0x0);
+		vendor_uuid[1] = ioread32(spec_fpga->fpga + app_off + FPGA_META_UUID + 0x4);
+		vendor_uuid[2] = ioread32(spec_fpga->fpga + app_off + FPGA_META_UUID + 0x8);
+		vendor_uuid[3] = ioread32(spec_fpga->fpga + app_off + FPGA_META_UUID + 0xC);
+		snprintf(id, size, "%16phN%4phN", &vendor_uuid, &device);
 	} else {
 		snprintf(id, size, "cern:%4phN:%4phN", &vendor, &device);
 	}
