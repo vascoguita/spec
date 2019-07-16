@@ -466,9 +466,49 @@ static ssize_t application_offset_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(application_offset);
 
+enum spec_fpga_csr_resets {
+	SPEC_FPGA_CSR_RESETS_ALL = BIT(0),
+	SPEC_FPGA_CSR_RESETS_APP = BIT(1),
+};
+
+static ssize_t reset_app_show(struct device *dev,
+			      struct device_attribute *attr,
+			      char *buf)
+{
+	struct spec_fpga *spec_fpga = to_spec_fpga(dev);
+	uint32_t resets;
+
+	resets = ioread32(spec_fpga->fpga + SPEC_FPGA_CSR_RESETS);
+	return snprintf(buf, PAGE_SIZE, "%d\n",
+			!!(resets & SPEC_FPGA_CSR_RESETS_APP));
+}
+static ssize_t reset_app_store(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buf, size_t count)
+{
+	struct spec_fpga *spec_fpga = to_spec_fpga(dev);
+	uint32_t resets;
+	long val;
+	int err;
+
+	err =kstrtol(buf, 10, &val);
+	if (err)
+		return err;
+	resets = ioread32(spec_fpga->fpga + SPEC_FPGA_CSR_RESETS);
+	if (val)
+		resets |= SPEC_FPGA_CSR_RESETS_APP;
+	else
+		resets &= ~SPEC_FPGA_CSR_RESETS_APP;
+	iowrite32(resets, spec_fpga->fpga + SPEC_FPGA_CSR_RESETS);
+
+	return count;
+}
+static DEVICE_ATTR(reset_app, 0644, reset_app_show, reset_app_store);
+
 static struct attribute *spec_fpga_csr_attrs[] = {
 	&dev_attr_pcb_rev.attr,
 	&dev_attr_application_offset.attr,
+	&dev_attr_reset_app.attr,
 	NULL,
 };
 
