@@ -582,7 +582,7 @@ static void spec_fpga_app_id_build(struct spec_fpga *spec_fpga,
 		vendor_uuid[3] = ioread32(spec_fpga->fpga + app_off + FPGA_META_UUID + 0xC);
 		snprintf(id, size, "%16phN%4phN", &vendor_uuid, &device);
 	} else {
-		snprintf(id, size, "cern:%4phN:%4phN", &vendor, &device);
+		snprintf(id, size, "id:%4phN%4phN", &vendor, &device);
 	}
 }
 
