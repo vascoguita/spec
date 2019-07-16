@@ -4,7 +4,7 @@ action = "synthesis"
 # Allow the user to override fetchto using:
 #  hdlmake -p "fetchto='xxx'"
 if locals().get('fetchto', None) is None:
-  fetchto = "../ip_cores"
+  fetchto = "../../ip_cores"
 
 syn_device = "xc6slx45t"
 syn_grade = "-3"
@@ -18,13 +18,16 @@ ctrls = ["bank3_64b_32b" ]
 
 files = [ "buildinfo_pkg.vhd" ]
 
-modules = { 
-  "local" : "../../top/golden_wr",
-  "git" : [ "https://ohwr.org/project/wr-cores.git::proposed_master",
-            "https://ohwr.org/project/general-cores.git::proposed_master",
-            "https://ohwr.org/project/etherbone-core.git::proposed_master",
-            "https://ohwr.org/project/gn4124-core.git::proposed_master",
-            "https://ohwr.org/project/ddr3-sp6-core.git::proposed_master" ]
+modules = {
+  "local" : [
+      "../../top/golden_wr",
+      ],
+  "git" : [
+      "https://ohwr.org/project/wr-cores.git",
+      "https://ohwr.org/project/general-cores.git",
+      "https://ohwr.org/project/gn4124-core.git",
+      "https://ohwr.org/project/ddr3-sp6-core.git",
+  ],
 }
 
 # Do not fail during hdlmake fetch

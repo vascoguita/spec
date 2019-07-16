@@ -10,10 +10,13 @@ syn_project = "spec_golden.xise"
 syn_tool = "ise"
 syn_top = "spec_golden"
 
-modules = { 
-  "local" : "../../top/golden",
-  "git" : [ "https://ohwr.org/project/wr-cores.git::proposed_master",
-            "https://ohwr.org/project/general-cores.git::proposed_master",
-            "https://ohwr.org/project/gn4124-core.git::proposed_master" ]
+modules = {
+  "local" : [
+      "../../top/golden",
+      ],
+  "git" : [
+      "https://ohwr.org/project/wr-cores.git",
+      "https://ohwr.org/project/general-cores.git",
+      "https://ohwr.org/project/gn4124-core.git",
+  ],
 }
-
