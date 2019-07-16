@@ -489,32 +489,30 @@ begin  -- architecture top
   carrier_app_xb: process (clk_sys_62m5)
   is
     type t_ca_state is (S_IDLE, S_APP, S_CARRIER);
-    variable ca_state : t_ca_state;
-    constant wb_idle_master_out : t_wishbone_master_out :=
-      (cyc => '0', stb => '0', adr => (others => 'X'), sel => x"0",
-                     we => '0', dat => (others => 'X'));
-    constant wb_idle_master_in : t_wishbone_master_in :=
-      (stall => '0', ack => '0', err => '0', dat => (others => 'X'), rty => '0');
+    variable ca_state            : t_ca_state;
+    variable can_stall           : std_logic;
+    constant c_IDLE_WB_MASTER_IN : t_wishbone_master_in :=
+      ('0', '0', '0', '0', c_DUMMY_WB_DATA);
   begin
     if rising_edge(clk_sys_62m5) then
       if rst_sys_62m5_n = '0' then
-        ca_state := S_IDLE;
-        gn_wb_in <= wb_idle_master_in;
-        app_wb_o <= wb_idle_master_out;
-        carrier_wb_in <= wb_idle_master_out;
+        ca_state      := S_IDLE;
+        gn_wb_in      <= c_IDLE_WB_MASTER_IN;
+        app_wb_o      <= c_DUMMY_WB_MASTER_OUT;
+        carrier_wb_in <= c_DUMMY_WB_MASTER_OUT;
       else
-        --  Default: idle.
-        gn_wb_in <= wb_idle_master_in;
-        app_wb_o <= wb_idle_master_out;
-        carrier_wb_in <= wb_idle_master_out;
         case ca_state is
           when S_IDLE =>
+            gn_wb_in      <= c_IDLE_WB_MASTER_IN;
+            app_wb_o      <= c_DUMMY_WB_MASTER_OUT;
+            carrier_wb_in <= c_DUMMY_WB_MASTER_OUT;
             if gn_wb_out.cyc = '1'
               and gn_wb_out.stb = '1'
             then
               -- New transaction.
               -- Stall
               gn_wb_in.stall <= '1';
+              can_stall      := '1';
               if gn_wb_out.adr (31 downto 13) = (31 downto 13 => '0') then
                 ca_state := S_CARRIER;
                 --  Pass to carrier
@@ -526,16 +524,18 @@ begin  -- architecture top
             end if;
           when S_CARRIER =>
             --  Pass from carrier.
-            carrier_wb_in.stb <= '0';
-            gn_wb_in <= carrier_wb_out;
-            gn_wb_in.stall <= '1';
+            carrier_wb_in.stb <= carrier_wb_out.stall and can_stall;
+            can_stall         := can_stall and carrier_wb_out.stall;
+            gn_wb_in          <= carrier_wb_out;
+            gn_wb_in.stall    <= '1';
             if carrier_wb_out.ack = '1' then
               ca_state := S_IDLE;
             end if;
           when S_APP =>
             --  Pass from application
-            app_wb_o.stb <= '0';
-            gn_wb_in <= app_wb_i;
+            app_wb_o.stb   <= app_wb_i.stall and can_stall;
+            can_stall      := can_stall and app_wb_i.stall;
+            gn_wb_in       <= app_wb_i;
             gn_wb_in.stall <= '1';
             if app_wb_i.ack = '1' or app_wb_i.err = '1' then
               ca_state := S_IDLE;
@@ -543,7 +543,7 @@ begin  -- architecture top
         end case;
       end if;
     end if;
-  end process;
+  end process carrier_app_xb;
 
   i_devs: entity work.spec_template_regs
     port map (
