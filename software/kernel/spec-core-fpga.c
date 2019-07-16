@@ -147,7 +147,58 @@ static const struct file_operations spec_fpga_dbg_bld_info_ops = {
 	.release = single_release,
 };
 
+static int spec_fpga_dbg_init(struct spec_fpga *spec_fpga)
+{
+	struct pci_dev *pdev = to_pci_dev(spec_fpga->dev.parent);
+	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pdev);
+	int err;
 
+	spec_fpga->dbg_dir_fpga = debugfs_create_dir(dev_name(&spec_fpga->dev),
+						     spec_gn412x->dbg_dir);
+	if (IS_ERR_OR_NULL(spec_fpga->dbg_dir_fpga)) {
+		err = PTR_ERR(spec_fpga->dbg_dir_fpga);
+		dev_err(&spec_fpga->dev,
+			"Cannot create debugfs directory \"%s\" (%d)\n",
+			dev_name(&spec_fpga->dev), err);
+		return err;
+	}
+
+	spec_fpga->dbg_csr_reg.regs = spec_fpga_debugfs_reg32;
+	spec_fpga->dbg_csr_reg.nregs = ARRAY_SIZE(spec_fpga_debugfs_reg32);
+	spec_fpga->dbg_csr_reg.base = spec_fpga->fpga;
+	spec_fpga->dbg_csr = debugfs_create_regset32(SPEC_DBG_CSR_NAME, 0200,
+						spec_fpga->dbg_dir_fpga,
+						&spec_fpga->dbg_csr_reg);
+	if (IS_ERR_OR_NULL(spec_fpga->dbg_csr)) {
+		err = PTR_ERR(spec_fpga->dbg_csr);
+		dev_warn(&spec_fpga->dev,
+			"Cannot create debugfs file \"%s\" (%d)\n",
+			SPEC_DBG_CSR_NAME, err);
+		goto err;
+	}
+
+	spec_fpga->dbg_bld_info = debugfs_create_file(SPEC_DBG_BLD_INFO_NAME, 0444,
+							spec_fpga->dbg_dir_fpga,
+							spec_fpga,
+							&spec_fpga_dbg_bld_info_ops);
+	if (IS_ERR_OR_NULL(spec_fpga->dbg_bld_info)) {
+		err = PTR_ERR(spec_fpga->dbg_bld_info);
+		dev_err(&spec_fpga->dev,
+			"Cannot create debugfs file \"%s\" (%d)\n",
+			SPEC_DBG_BLD_INFO_NAME, err);
+		goto err;
+	}
+
+	return 0;
+err:
+	debugfs_remove_recursive(spec_fpga->dbg_dir_fpga);
+	return err;
+}
+
+static void spec_fpga_dbg_exit(struct spec_fpga *spec_fpga)
+{
+	debugfs_remove_recursive(spec_fpga->dbg_dir_fpga);
+}
 
 static inline uint32_t spec_fpga_csr_app_offset(struct spec_fpga *spec_fpga)
 {
@@ -724,50 +775,10 @@ int spec_fpga_init(struct spec_gn412x *spec_gn412x)
 	err = spec_fpga_app_init(spec_fpga);
 	if (err)
 		goto err_app;
-
-	spec_fpga->dbg_dir_fpga = debugfs_create_dir(dev_name(&spec_fpga->dev),
-						     spec_gn412x->dbg_dir);
-	if (IS_ERR_OR_NULL(spec_fpga->dbg_dir_fpga)) {
-		err = PTR_ERR(spec_fpga->dbg_dir_fpga);
-		dev_err(&spec_fpga->dev,
-			"Cannot create debugfs directory \"%s\" (%d)\n",
-			dev_name(&spec_fpga->dev), err);
-		goto err_dbg_dir;
-	}
-
-	spec_fpga->dbg_csr_reg.regs = spec_fpga_debugfs_reg32;
-	spec_fpga->dbg_csr_reg.nregs = ARRAY_SIZE(spec_fpga_debugfs_reg32);
-	spec_fpga->dbg_csr_reg.base = spec_fpga->fpga;
-	spec_fpga->dbg_csr = debugfs_create_regset32(SPEC_DBG_CSR_NAME, 0200,
-						spec_fpga->dbg_dir_fpga,
-						&spec_fpga->dbg_csr_reg);
-	if (IS_ERR_OR_NULL(spec_fpga->dbg_csr)) {
-		err = PTR_ERR(spec_fpga->dbg_csr);
-		dev_warn(&spec_fpga->dev,
-			"Cannot create debugfs file \"%s\" (%d)\n",
-			SPEC_DBG_CSR_NAME, err);
-		goto err_dbg_csr;
-	}
-
-	spec_fpga->dbg_bld_info = debugfs_create_file(SPEC_DBG_BLD_INFO_NAME, 0444,
-							spec_fpga->dbg_dir_fpga,
-							spec_fpga,
-							&spec_fpga_dbg_bld_info_ops);
-	if (IS_ERR_OR_NULL(spec_fpga->dbg_bld_info)) {
-		err = PTR_ERR(spec_fpga->dbg_bld_info);
-		dev_err(&spec_fpga->dev,
-			"Cannot create debugfs file \"%s\" (%d)\n",
-			SPEC_DBG_BLD_INFO_NAME, err);
-		goto err_dbg_bld;
-	}
+	spec_fpga_dbg_init(spec_fpga);
 
 	return 0;
 
-err_dbg_bld:
-err_dbg_csr:
-	debugfs_remove_recursive(spec_fpga->dbg_dir_fpga);
-err_dbg_dir:
-	spec_fpga_app_exit(spec_fpga);
 err_app:
 	spec_fmc_exit(spec_fpga);
 err_fmc:
@@ -792,11 +803,12 @@ int spec_fpga_exit(struct spec_gn412x *spec_gn412x)
 	if (!spec_fpga_is_valid(spec_gn412x, spec_fpga->meta))
 		return 0;
 
-	debugfs_remove_recursive(spec_fpga->dbg_dir_fpga);
+	spec_fpga_dbg_exit(spec_fpga);
 	spec_fpga_app_exit(spec_fpga);
 	spec_fmc_exit(spec_fpga);
 	spec_fpga_devices_exit(spec_fpga);
 	spec_fpga_vic_exit(spec_fpga);
+
 	device_unregister(&spec_fpga->dev);
 	iounmap(spec_fpga->fpga);
 	kfree(spec_fpga);
