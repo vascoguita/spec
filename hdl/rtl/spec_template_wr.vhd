@@ -43,7 +43,7 @@ use work.gn4124_core_pkg.all;
 use work.wr_xilinx_pkg.all;
 use work.wr_board_pkg.all;
 use work.wr_spec_pkg.all;
-use work.synthesis_descriptor.all;
+use work.buildinfo_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.streamers_pkg.all;
 
@@ -652,29 +652,20 @@ begin  -- architecture top
 
   --  Build information
   p_buildinfo: process (clk_sys_62m5) is
-    constant toolver : string :=
-      f_bits2string(c_sdb_synthesis_info.syn_tool_version);
-    constant syndate : string :=
-      f_bits2string(c_sdb_synthesis_info.syn_date);
-    constant buildinfo : string :=
-        "buildinfo:1" & LF
-      & "module:" & c_sdb_synthesis_info.syn_module_name & LF
-      & "commit:" & c_sdb_synthesis_info.syn_commit_id & LF
-      & "syntool:" & c_sdb_synthesis_info.syn_tool_name & LF
-      & "toolver:" & toolver(3 to toolver'right) & LF
-      & "syndate:" & syndate(3 to syndate'right) & LF
-      & "synauth:" & c_sdb_synthesis_info.syn_username & LF
-      & NUL & NUL & NUL & NUL 
-      & NUL & NUL & NUL & NUL;
     variable addr : natural;
+    variable b : std_logic_vector(7 downto 0);
   begin
     if rising_edge(clk_sys_62m5) then
       addr := to_integer(unsigned(buildinfo_addr)) * 4;
-      if addr < buildinfo'right - 4 then
-        buildinfo_data <= f_string2svl(buildinfo(1 + addr to 4 + addr));
-      else
-        buildinfo_data <= x"00000000";
-      end if;
+      for i in 0 to 3 loop
+        if addr + i < buildinfo'length then
+           b := std_logic_vector(to_unsigned(character'pos(
+             buildinfo(buildinfo'left + addr + i)), 8));
+        else
+           b := x"00";
+        end if;
+        buildinfo_data (7 + i * 8 downto i * 8) <= b;
+      end loop;
     end if;
   end process;
 

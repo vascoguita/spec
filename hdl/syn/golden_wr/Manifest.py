@@ -1,7 +1,10 @@
 target = "xilinx"
 action = "synthesis"
 
-fetchto = "../ip_cores"
+# Allow the user to override fetchto using:
+#  hdlmake -p "fetchto='xxx'"
+if locals().get('fetchto', None) is None:
+  fetchto = "../ip_cores"
 
 syn_device = "xc6slx45t"
 syn_grade = "-3"
@@ -9,12 +12,11 @@ syn_package = "fgg484"
 syn_project = "spec_golden_wr.xise"
 syn_tool = "ise"
 syn_top = "spec_golden_wr"
-syn_properties = [ ["-generics", "dpram=\"3\""]]
 
 board = "spec"
 ctrls = ["bank3_64b_32b" ]
 
-files = [ "synthesis_descriptor.vhd" ]
+files = [ "buildinfo_pkg.vhd" ]
 
 modules = { 
   "local" : "../../top/golden_wr",
@@ -25,6 +27,8 @@ modules = {
             "https://ohwr.org/project/ddr3-sp6-core.git::proposed_master" ]
 }
 
-syn_post_project_cmd = \
-  "$(TCL_INTERPRETER) " + fetchto + "/general-cores/tools/sdb_desc_gen.tcl " + \
-  syn_tool + " $(PROJECT_FILE);"
+# Do not fail during hdlmake fetch
+try:
+  exec(open(fetchto + "/general-cores/tools/gen_buildinfo.py").read())
+except:
+  pass
