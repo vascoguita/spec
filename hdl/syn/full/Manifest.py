@@ -6,12 +6,12 @@ action = "synthesis"
 if locals().get('fetchto', None) is None:
   fetchto = "../../ip_cores"
 
-syn_device = "xc6slx150t"
+syn_device = "xc6slx45t"
 syn_grade = "-3"
 syn_package = "fgg484"
-syn_project = "spec_golden_wr.xise"
+syn_project = "spec_full.xise"
 syn_tool = "ise"
-syn_top = "spec_golden_wr"
+syn_top = "spec_full"
 
 board = "spec"
 ctrls = ["bank3_64b_32b" ]
@@ -20,7 +20,7 @@ files = [ "buildinfo_pkg.vhd" ]
 
 modules = {
   "local" : [
-      "../../top/golden_wr",
+      "../../top/full",
       ],
   "git" : [
       "https://ohwr.org/project/wr-cores.git",
@@ -29,6 +29,7 @@ modules = {
       "https://ohwr.org/project/ddr3-sp6-core.git",
   ],
 }
+
 
 # Do not fail during hdlmake fetch
 try:

@@ -1,0 +1,5 @@
+*
+!.gitignore
+!Manifest.py
+!*.ucf
+!syn_extra_steps.tcl

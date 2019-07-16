@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Title      : SPEC golden
+-- Title      : SPEC full
 -- Project    : SPEC
 -- URL        : http://www.ohwr.org/projects/spec
 -------------------------------------------------------------------------------
@@ -8,7 +8,7 @@
 -- Last update: 2019-07-16
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
--- Description: SPEC golden.
+-- Description: SPEC full.
 --
 -------------------------------------------------------------------------------
 -- Copyright (c) 2017-2018 CERN
@@ -38,7 +38,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 use work.wishbone_pkg.all;
 
-entity spec_golden_wr is
+entity spec_full is
   generic (
     g_DPRAM_INITF : string := "../../../../wr-cores/bin/wrpc/wrc_phy8.bram";
     -- Simulation-mode enable parameter. Set by default (synthesis) to 0, and
@@ -160,11 +160,31 @@ entity spec_golden_wr is
     sfp_rate_select_o : out   std_logic;
     sfp_tx_fault_i    : in    std_logic;
     sfp_tx_disable_o  : out   std_logic;
-    sfp_los_i         : in    std_logic
-  );
-end entity spec_golden_wr;
+    sfp_los_i         : in    std_logic;
 
-architecture top of spec_golden_wr is
+    --  DDR3
+    ddr_a_o       : out   std_logic_vector(13 downto 0);
+    ddr_ba_o      : out   std_logic_vector(2 downto 0);
+    ddr_cas_n_o   : out   std_logic;
+    ddr_ck_n_o    : out   std_logic;
+    ddr_ck_p_o    : out   std_logic;
+    ddr_cke_o     : out   std_logic;
+    ddr_dq_b      : inout std_logic_vector(15 downto 0);
+    ddr_ldm_o     : out   std_logic;
+    ddr_ldqs_n_b  : inout std_logic;
+    ddr_ldqs_p_b  : inout std_logic;
+    ddr_odt_o     : out   std_logic;
+    ddr_ras_n_o   : out   std_logic;
+    ddr_reset_n_o : out   std_logic;
+    ddr_rzq_b     : inout std_logic;
+    ddr_udm_o     : out   std_logic;
+    ddr_udqs_n_b  : inout std_logic;
+    ddr_udqs_p_b  : inout std_logic;
+    ddr_we_n_o    : out   std_logic
+  );
+end entity spec_full;
+
+architecture top of spec_full is
   signal clk_sys_62m5  : std_logic;
   signal rst_sys_62m5_n  : std_logic;
 
@@ -176,7 +196,7 @@ begin
       g_with_vic => True,
       g_with_onewire => False,
       g_with_spi => False,
-      g_WITH_DDR => False,
+      g_with_ddr => True,
       g_dpram_initf => g_dpram_initf,
       g_simulation => g_simulation
     )
@@ -237,7 +257,25 @@ begin
       sfp_tx_fault_i => sfp_tx_fault_i,
       sfp_tx_disable_o => sfp_tx_disable_o,
       sfp_los_i => sfp_los_i,
-
+      ddr_a_o      => ddr_a_o,
+      ddr_ba_o     => ddr_ba_o,
+      ddr_cas_n_o  => ddr_cas_n_o,
+      ddr_ck_n_o   => ddr_ck_n_o,
+      ddr_ck_p_o   => ddr_ck_p_o,
+      ddr_cke_o    => ddr_cke_o,
+      ddr_dq_b     => ddr_dq_b,
+      ddr_ldm_o    => ddr_ldm_o,
+      ddr_ldqs_n_b => ddr_ldqs_n_b,
+      ddr_ldqs_p_b => ddr_ldqs_p_b,
+      ddr_odt_o    => ddr_odt_o,
+      ddr_ras_n_o  => ddr_ras_n_o,
+      ddr_reset_n_o => ddr_reset_n_o,
+      ddr_rzq_b    => ddr_rzq_b,
+      ddr_udm_o    => ddr_udm_o,
+      ddr_udqs_n_b => ddr_udqs_n_b,
+      ddr_udqs_p_b => ddr_udqs_p_b,
+      ddr_we_n_o   => ddr_we_n_o,
+  
       ddr_dma_clk_i  => clk_sys_62m5,
       ddr_dma_rst_n_i => rst_sys_62m5_n,
       ddr_dma_wb_i.cyc => '0',
