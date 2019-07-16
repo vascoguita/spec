@@ -115,17 +115,12 @@ static int spec_fpga_dbg_bld_info(struct seq_file *s, void *offset)
 
 	for (off = SPEC_FPGA_MEM_BLD_START;
 	     off < SPEC_FPGA_MEM_BLD_END;
-	     off += 4) {
-		uint32_t tmp = ioread32(spec_fpga->fpga + off);
-		int i;
+	     off++) {
+		char tmp = ioread8(spec_fpga->fpga + off);
 
-		for (i = 3; i >= 0; --i) {
-			char c = (tmp >> (8 * i)) & 0xFF;
-
-			if (!c)
-				return 0;
-			seq_printf(s, "%c", c);
-		}
+		if (!tmp)
+			return 0;
+		seq_putc(s, tmp);
 	}
 
 	return 0;
