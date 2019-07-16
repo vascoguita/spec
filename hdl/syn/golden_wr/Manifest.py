@@ -35,3 +35,5 @@ try:
   exec(open(fetchto + "/general-cores/tools/gen_buildinfo.py").read())
 except:
   pass
+
+syn_post_project_cmd = "$(TCL_INTERPRETER) syn_extra_steps.tcl $(PROJECT_FILE)"
