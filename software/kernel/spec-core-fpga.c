@@ -589,8 +589,8 @@ static void spec_fpga_app_id_build(struct spec_fpga *spec_fpga,
 static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 {
 #define SPEC_FPGA_APP_NAME_MAX 47
-#define SPEC_FPGA_APP_IRQ_BASE 5
-#define SPEC_FPGA_APP_RES_N 28
+#define SPEC_FPGA_APP_IRQ_BASE 6
+#define SPEC_FPGA_APP_RES_N (32 - SPEC_FPGA_APP_IRQ_BASE + 1)
 	struct pci_dev *pcidev = to_pci_dev(spec_fpga->dev.parent);
 	unsigned int res_n = SPEC_FPGA_APP_RES_N;
 	struct resource res[SPEC_FPGA_APP_RES_N] = {
