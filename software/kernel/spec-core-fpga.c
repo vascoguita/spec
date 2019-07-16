@@ -19,12 +19,6 @@
 
 #include "platform_data/spi-ocores.h"
 
-
-/* FIXME find better ID */
-static int vic_id;
-static int mfd_id;
-static int app_id;
-
 enum spec_fpga_mem_offsets {
 	SPEC_FPGA_MEM_CSR_START = SPEC_CORE_FPGA + 0x40,
 	SPEC_FPGA_MEM_CSR_END = SPEC_CORE_FPGA + 0x5F,
@@ -239,7 +233,8 @@ static int spec_fpga_vic_init(struct spec_fpga *spec_fpga)
 	res[1].start = gpiod_to_irq(spec_gn412x->gpiod[GN4124_GPIO_IRQ1]);
 	res[1].end = res[1].start;
 	pdev = platform_device_register_resndata(&spec_fpga->dev,
-						 "htvic-spec", vic_id++,
+						 "htvic-spec",
+						 PLATFORM_DEVID_AUTO,
 						 res, res_n,
 						 NULL, 0);
 	if (IS_ERR(pdev))
@@ -379,7 +374,8 @@ static int spec_fpga_devices_init(struct spec_fpga *spec_fpga)
 		fpga_mfd_devs[0].num_resources = 1;  /* FMC I2C */
 		fpga_mfd_devs[1].num_resources = 1;  /* SPI */
 	}
-	err = mfd_add_devices(&spec_fpga->dev, mfd_id++,
+	err = mfd_add_devices(&spec_fpga->dev,
+			      PLATFORM_DEVID_AUTO,
 			      fpga_mfd_devs, n_mfd,
 			      &pcidev->resource[0],
 			      0, vic_domain);
@@ -640,7 +636,7 @@ static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 	spec_fpga_app_id_build(spec_fpga, SPEC_FPGA_CSR_APP_OFF,
 			       app_name, SPEC_FPGA_APP_NAME_MAX);
 	pdev = platform_device_register_resndata(&spec_fpga->dev,
-						 app_name, app_id++,
+						 app_name, PLATFORM_DEVID_AUTO,
 						 res, res_n,
 						 NULL, 0);
 	if (IS_ERR(pdev))

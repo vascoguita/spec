@@ -20,8 +20,6 @@
 #include "spec.h"
 #include "spec-compat.h"
 
-static int mfd_id; /* FIXME look for something better */
-
 static char *spec_fw_name_45t = "spec-golden-45T.bin";
 static char *spec_fw_name_100t = "spec-golden-100T.bin";
 static char *spec_fw_name_150t = "spec-golden-150T.bin";
@@ -601,7 +599,7 @@ static int spec_probe(struct pci_dev *pdev,
 	}
 
 	pci_set_master(pdev);
-	err = mfd_add_devices(&pdev->dev, mfd_id++,
+	err = mfd_add_devices(&pdev->dev, PLATFORM_DEVID_AUTO,
 			      spec_mfd_devs,
 			      ARRAY_SIZE(spec_mfd_devs),
 			      &pdev->resource[4], pdev->irq, NULL);
