@@ -379,10 +379,6 @@ architecture top of spec_template_wr is
   signal sfp_scl_in  : std_logic;
   signal sfp_scl_out : std_logic;
 
-  -- OneWire
-  signal onewire_data : std_logic;
-  signal onewire_oe   : std_logic;
-
   -- LEDs and GPIO
   signal wrc_abscal_txts_out : std_logic;
   signal wrc_abscal_rxts_out : std_logic;
@@ -608,6 +604,9 @@ begin  -- architecture top
       wrc_regs_o          => wrc_out
     );
 
+  fmc_presence (0) <= not fmc0_prsnt_m2c_n_i;
+  fmc_presence (31 downto 1) <= (others => '0');
+  
   --  Metadata
   p_metadata: process (clk_sys_62m5) is
   begin
@@ -672,9 +671,6 @@ begin  -- architecture top
       end loop;
     end if;
   end process;
-
-  fmc_presence (0) <= not fmc0_prsnt_m2c_n_i;
-  fmc_presence (31 downto 1) <= (others => '0');
 
   rst_gbl_n <= rst_sys_62m5_n and (not csr_rst_gbl);
 
@@ -748,11 +744,6 @@ begin  -- architecture top
     irq_master <= '0';
   end generate;
 
-  therm_id_in <= (ack => '1', err => '0', rty => '0', stall => '0',
-    dat => (others => '0'));
-  flash_spi_in <= (ack => '1', err => '0', rty => '0', stall => '0',
-    dat => (others => '0'));
-  irqs(1) <= '0';
   irqs(4) <= '0';
   irqs(5) <= '0';
 
@@ -760,134 +751,281 @@ begin  -- architecture top
   -- The WR PTP core board package (WB Slave + WB Master #2 (Etherbone))
   -----------------------------------------------------------------------------
 
-  wrc_out_sh <= (cyc => wrc_out.cyc, stb => wrc_out.stb,
-                 adr => wrc_out.adr or x"00020000",
-                 sel => wrc_out.sel, we => wrc_out.we, dat => wrc_out.dat);
+  g_wr: if g_WITH_WR generate
+    -- OneWire
+    signal onewire_data : std_logic;
+    signal onewire_oe   : std_logic;
+  begin
+    --  Remap WR registers.
+    wrc_out_sh <= (cyc => wrc_out.cyc, stb => wrc_out.stb,
+                   adr => wrc_out.adr or x"00020000",
+                   sel => wrc_out.sel, we => wrc_out.we, dat => wrc_out.dat);
 
-  cmp_xwrc_board_spec : xwrc_board_spec
-    generic map (
-      g_simulation                => g_SIMULATION,
-      g_VERBOSE                   => g_VERBOSE,
-      g_with_external_clock_input => TRUE,
-      g_dpram_initf               => g_DPRAM_INITF,
-      g_AUX_PLL_CFG               => c_WRPC_PLL_CONFIG,
-      g_STREAMERS_OP_MODE         => g_STREAMERS_OP_MODE,
-      g_TX_STREAMER_PARAMS        => g_TX_STREAMER_PARAMS,
-      g_RX_STREAMER_PARAMS        => g_RX_STREAMER_PARAMS,
-      g_FABRIC_IFACE              => g_FABRIC_IFACE)
-    port map (
-      areset_n_i          => button1_i,
-      areset_edge_n_i     => gn_rst_n_i,
-      clk_20m_vcxo_i      => clk_20m_vcxo_i,
-      clk_125m_pllref_p_i => clk_125m_pllref_p_i,
-      clk_125m_pllref_n_i => clk_125m_pllref_n_i,
-      clk_125m_gtp_n_i    => clk_125m_gtp_n_i,
-      clk_125m_gtp_p_i    => clk_125m_gtp_p_i,
-      clk_10m_ext_i       => clk_ext_10m,
+    cmp_xwrc_board_spec : xwrc_board_spec
+      generic map (
+        g_simulation                => g_SIMULATION,
+        g_VERBOSE                   => g_VERBOSE,
+        g_with_external_clock_input => TRUE,
+        g_dpram_initf               => g_DPRAM_INITF,
+        g_AUX_PLL_CFG               => c_WRPC_PLL_CONFIG,
+        g_STREAMERS_OP_MODE         => g_STREAMERS_OP_MODE,
+        g_TX_STREAMER_PARAMS        => g_TX_STREAMER_PARAMS,
+        g_RX_STREAMER_PARAMS        => g_RX_STREAMER_PARAMS,
+        g_FABRIC_IFACE              => g_FABRIC_IFACE)
+      port map (
+        areset_n_i          => button1_i,
+        areset_edge_n_i     => gn_rst_n_i,
+        clk_20m_vcxo_i      => clk_20m_vcxo_i,
+        clk_125m_pllref_p_i => clk_125m_pllref_p_i,
+        clk_125m_pllref_n_i => clk_125m_pllref_n_i,
+        clk_125m_gtp_n_i    => clk_125m_gtp_n_i,
+        clk_125m_gtp_p_i    => clk_125m_gtp_p_i,
+        clk_10m_ext_i       => clk_ext_10m,
+  
+        clk_sys_62m5_o      => clk_sys_62m5,
+        clk_ref_125m_o      => clk_ref_125m,
+        clk_pll_aux_o       => clk_pll_aux,
+        rst_sys_62m5_n_o    => rst_sys_62m5_n,
+        rst_ref_125m_n_o    => rst_ref_125m_n,
+        rst_pll_aux_n_o     => rst_pll_aux_n,
+  
+        plldac_sclk_o       => plldac_sclk_o,
+        plldac_din_o        => plldac_din_o,
+        pll25dac_cs_n_o     => pll25dac_cs_n_o,
+        pll20dac_cs_n_o     => pll20dac_cs_n_o,
+  
+        sfp_txp_o           => sfp_txp_o,
+        sfp_txn_o           => sfp_txn_o,
+        sfp_rxp_i           => sfp_rxp_i,
+        sfp_rxn_i           => sfp_rxn_i,
+        sfp_det_i           => sfp_mod_def0_i,
+        sfp_sda_i           => sfp_sda_in,
+        sfp_sda_o           => sfp_sda_out,
+        sfp_scl_i           => sfp_scl_in,
+        sfp_scl_o           => sfp_scl_out,
+        sfp_rate_select_o   => sfp_rate_select_o,
+        sfp_tx_fault_i      => sfp_tx_fault_i,
+        sfp_tx_disable_o    => sfp_tx_disable_o,
+        sfp_los_i           => sfp_los_i,
+  
+        eeprom_sda_i        => eeprom_sda_in,
+        eeprom_sda_o        => eeprom_sda_out,
+        eeprom_scl_i        => eeprom_scl_in,
+        eeprom_scl_o        => eeprom_scl_out,
+  
+        onewire_i           => onewire_data,
+        onewire_oen_o       => onewire_oe,
+        -- Uart
+        uart_rxd_i          => uart_rxd_i,
+        uart_txd_o          => uart_txd_o,
+        -- SPI Flash
+        flash_sclk_o        => spi_sclk_o,
+        flash_ncs_o         => spi_ncs_o,
+        flash_mosi_o        => spi_mosi_o,
+        flash_miso_i        => spi_miso_i,
+  
+        wb_slave_o          => wrc_in,
+        wb_slave_i          => wrc_out_sh,
+  
+        wrf_src_o           => wrf_src_o,
+        wrf_src_i           => wrf_src_i,
+        wrf_snk_o           => wrf_snk_o,
+        wrf_snk_i           => wrf_snk_i,
+        wrs_tx_data_i       => wrs_tx_data_i,
+        wrs_tx_valid_i      => wrs_tx_valid_i,
+        wrs_tx_dreq_o       => wrs_tx_dreq_o,
+        wrs_tx_last_i       => wrs_tx_last_i,
+        wrs_tx_flush_i      => wrs_tx_flush_i,
+        wrs_tx_cfg_i        => wrs_tx_cfg_i,
+        wrs_rx_first_o      => wrs_rx_first_o,
+        wrs_rx_last_o       => wrs_rx_last_o,
+        wrs_rx_data_o       => wrs_rx_data_o,
+        wrs_rx_valid_o      => wrs_rx_valid_o,
+        wrs_rx_dreq_i       => wrs_rx_dreq_i,
+        wrs_rx_cfg_i        => wrs_rx_cfg_i,
+        wb_eth_master_o     => wb_eth_master_o,
+        wb_eth_master_i     => wb_eth_master_i,
+  
+        abscal_txts_o       => wrc_abscal_txts_out,
+        abscal_rxts_o       => wrc_abscal_rxts_out,
+  
+        tm_link_up_o        => tm_link_up_o,
+        tm_time_valid_o     => tm_time_valid_o,
+        tm_tai_o            => tm_tai_o,
+        tm_cycles_o         => tm_cycles_o,
+  
+        pps_p_o             => pps_p_o,
+        pps_led_o           => pps_led_o,
+        link_ok_o           => link_ok_o,
+        led_link_o          => led_link_o,
+        led_act_o           => led_act_o);
 
-      clk_sys_62m5_o      => clk_sys_62m5,
-      clk_ref_125m_o      => clk_ref_125m,
-      clk_pll_aux_o       => clk_pll_aux,
-      rst_sys_62m5_n_o    => rst_sys_62m5_n,
-      rst_ref_125m_n_o    => rst_ref_125m_n,
-      rst_pll_aux_n_o     => rst_pll_aux_n,
+    clk_ddr_333m   <= clk_pll_aux(0);
+    rst_ddr_333m_n <= rst_pll_aux_n(0);
+    clk_ext_10m <= '0';
 
-      plldac_sclk_o       => plldac_sclk_o,
-      plldac_din_o        => plldac_din_o,
-      pll25dac_cs_n_o     => pll25dac_cs_n_o,
-      pll20dac_cs_n_o     => pll20dac_cs_n_o,
+    -- Tristates for SFP EEPROM
+    sfp_mod_def1_b <= '0' when sfp_scl_out = '0' else 'Z';
+    sfp_mod_def2_b <= '0' when sfp_sda_out = '0' else 'Z';
+    sfp_scl_in     <= sfp_mod_def1_b;
+    sfp_sda_in     <= sfp_mod_def2_b;
 
-      sfp_txp_o           => sfp_txp_o,
-      sfp_txn_o           => sfp_txn_o,
-      sfp_rxp_i           => sfp_rxp_i,
-      sfp_rxn_i           => sfp_rxn_i,
-      sfp_det_i           => sfp_mod_def0_i,
-      sfp_sda_i           => sfp_sda_in,
-      sfp_sda_o           => sfp_sda_out,
-      sfp_scl_i           => sfp_scl_in,
-      sfp_scl_o           => sfp_scl_out,
-      sfp_rate_select_o   => sfp_rate_select_o,
-      sfp_tx_fault_i      => sfp_tx_fault_i,
-      sfp_tx_disable_o    => sfp_tx_disable_o,
-      sfp_los_i           => sfp_los_i,
+    -- tri-state onewire access
+    onewire_b    <= '0' when (onewire_oe = '1') else 'Z';
+    onewire_data <= onewire_b;
 
-      eeprom_sda_i        => eeprom_sda_in,
-      eeprom_sda_o        => eeprom_sda_out,
-      eeprom_scl_i        => eeprom_scl_in,
-      eeprom_scl_o        => eeprom_scl_out,
-
-      onewire_i           => onewire_data,
-      onewire_oen_o       => onewire_oe,
-      -- Uart
-      uart_rxd_i          => uart_rxd_i,
-      uart_txd_o          => uart_txd_o,
-      -- SPI Flash
-      flash_sclk_o        => spi_sclk_o,
-      flash_ncs_o         => spi_ncs_o,
-      flash_mosi_o        => spi_mosi_o,
-      flash_miso_i        => spi_miso_i,
-
-      wb_slave_o          => wrc_in,
-      wb_slave_i          => wrc_out_sh,
-
-      wrf_src_o           => wrf_src_o,
-      wrf_src_i           => wrf_src_i,
-      wrf_snk_o           => wrf_snk_o,
-      wrf_snk_i           => wrf_snk_i,
-      wrs_tx_data_i       => wrs_tx_data_i,
-      wrs_tx_valid_i      => wrs_tx_valid_i,
-      wrs_tx_dreq_o       => wrs_tx_dreq_o,
-      wrs_tx_last_i       => wrs_tx_last_i,
-      wrs_tx_flush_i      => wrs_tx_flush_i,
-      wrs_tx_cfg_i        => wrs_tx_cfg_i,
-      wrs_rx_first_o      => wrs_rx_first_o,
-      wrs_rx_last_o       => wrs_rx_last_o,
-      wrs_rx_data_o       => wrs_rx_data_o,
-      wrs_rx_valid_o      => wrs_rx_valid_o,
-      wrs_rx_dreq_i       => wrs_rx_dreq_i,
-      wrs_rx_cfg_i        => wrs_rx_cfg_i,
-      wb_eth_master_o     => wb_eth_master_o,
-      wb_eth_master_i     => wb_eth_master_i,
-
-      abscal_txts_o       => wrc_abscal_txts_out,
-      abscal_rxts_o       => wrc_abscal_rxts_out,
-
-      tm_link_up_o        => tm_link_up_o,
-      tm_time_valid_o     => tm_time_valid_o,
-      tm_tai_o            => tm_tai_o,
-      tm_cycles_o         => tm_cycles_o,
-
-      pps_p_o             => pps_p_o,
-      pps_led_o           => pps_led_o,
-      link_ok_o           => link_ok_o,
-      led_link_o          => led_link_o,
-      led_act_o           => led_act_o);
-
-  clk_ddr_333m   <= clk_pll_aux(0);
-  rst_ddr_333m_n <= rst_pll_aux_n(0);
-  clk_ext_10m <= '0';
-
-  -- Tristates for SFP EEPROM
-  sfp_mod_def1_b <= '0' when sfp_scl_out = '0' else 'Z';
-  sfp_mod_def2_b <= '0' when sfp_sda_out = '0' else 'Z';
-  sfp_scl_in     <= sfp_mod_def1_b;
-  sfp_sda_in     <= sfp_mod_def2_b;
-
-  -- tri-state onewire access
-  onewire_b    <= '0' when (onewire_oe = '1') else 'Z';
-  onewire_data <= onewire_b;
-
-  -- EEPROM I2C tri-states
-  g_eeprom: if true generate
-    fmc0_sda_b <= '0' when (eeprom_sda_out = '0') else 'Z';
-    fmc0_scl_b <= '0' when (eeprom_scl_out = '0') else 'Z';
-    eeprom_sda_in <= fmc0_sda_b;
-    eeprom_scl_in <= fmc0_scl_b;
+    --  WR means neither onewire nor spi.
+    assert not g_WITH_ONEWIRE report "WR is not yet compatible with ONEWIRE"
+      severity failure;
+    assert not g_WITH_SPI report "WR is not yet compatible with SPI"
+      severity failure;
+    therm_id_in <= (ack => '1', err => '0', rty => '0', stall => '0',
+      dat => (others => '0'));
+    flash_spi_in <= (ack => '1', err => '0', rty => '0', stall => '0',
+      dat => (others => '0'));
+    irqs(1) <= '0';
   end generate;
 
-  gen_with_ddr: if g_WITH_DDR generate
+  g_no_wr: if not g_WITH_WR generate
+    signal clk_125m_pllref : std_logic;
+    signal pllout_clk_fb_pllref : std_logic;
+    signal pllout_clk_62m5 : std_logic;
+    signal pllout_clk_125m : std_logic;
+    signal pllout_clk_333m : std_logic;
+    signal pllout_locked : std_logic;
+    signal rstlogic_arst : std_logic;
+  begin
+    -- Input clock
+    cmp_pllrefclk_buf : IBUFGDS
+      generic map (
+        DIFF_TERM    => true,             -- Differential Termination
+        IBUF_LOW_PWR => true,  -- Low power (TRUE) vs. performance (FALSE) setting for referenced I/O standards
+        IOSTANDARD   => "DEFAULT")
+      port map (
+        O  => clk_125m_pllref,            -- Buffer output
+        I  => clk_125m_pllref_p_i,  -- Diff_p buffer input (connect directly to top-level port)
+        IB => clk_125m_pllref_n_i  -- Diff_n buffer input (connect directly to top-level port)
+      );
 
-    --  DDR3 controller
+    cmp_sys_clk_pll : PLL_BASE
+      generic map (
+        BANDWIDTH          => "OPTIMIZED",
+        CLK_FEEDBACK       => "CLKFBOUT",
+        COMPENSATION       => "INTERNAL",
+        DIVCLK_DIVIDE      => 1,
+        CLKFBOUT_MULT      => 8,
+        CLKFBOUT_PHASE     => 0.000,
+        CLKOUT0_DIVIDE     => 16,        -- 62.5 MHz
+        CLKOUT0_PHASE      => 0.000,
+        CLKOUT0_DUTY_CYCLE => 0.500,
+        CLKOUT1_DIVIDE     => 8,         -- 125 MHz
+        CLKOUT1_PHASE      => 0.000,
+        CLKOUT1_DUTY_CYCLE => 0.500,
+        CLKOUT2_DIVIDE     => 3,         -- 333 MHz
+        CLKOUT2_PHASE      => 0.000,
+        CLKOUT2_DUTY_CYCLE => 0.500,
+        CLKIN_PERIOD       => 8.0,
+        REF_JITTER         => 0.016)
+      port map (
+        CLKFBOUT => pllout_clk_fb_pllref,
+        CLKOUT0  => pllout_clk_62m5,
+        CLKOUT1  => pllout_clk_125m,
+        CLKOUT2  => pllout_clk_333m,
+        CLKOUT3  => open,
+        CLKOUT4  => open,
+        CLKOUT5  => open,
+        LOCKED   => pllout_locked,
+        RST      => '0',
+        CLKFBIN  => pllout_clk_fb_pllref,
+        CLKIN    => clk_125m_pllref);
+    
+    cmp_clk_62m5_buf : BUFG
+      port map (
+        O => clk_sys_62m5,
+        I => pllout_clk_62m5);
+
+    cmp_clk_125m_buf : BUFG
+      port map (
+        O => clk_ref_125m,
+        I => pllout_clk_125m);
+
+    cmp_clk_333m_buf : BUFG
+      port map (
+        O => clk_ddr_333m,
+        I => pllout_clk_333m);
+    
+      -- logic AND of all async reset sources (active high)
+    rstlogic_arst <= (not pllout_locked) and (not gn_rst_n_i);
+
+    -- Clocks required to have synced resets
+    cmp_rstlogic_reset : gc_reset_multi_aasd
+      generic map (
+        g_CLOCKS  => 3,
+        g_RST_LEN => 16)  -- 16 clock cycles
+      port map (
+        arst_i  => rstlogic_arst,
+        clks_i (0)  => clk_sys_62m5,
+        clks_i (1)  => clk_ref_125m,
+        clks_i (2)  => clk_ddr_333m,
+        rst_n_o (0) => rst_sys_62m5_n,
+        rst_n_o (1) => rst_ref_125m_n,
+        rst_n_o (2) => rst_ddr_333m_n);
+
+    --  Not used.
+    wrc_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
+  end generate;
+
+  g_onewire: if g_WITH_ONEWIRE and not g_WITH_WR generate
+    i_onewire: entity work.xwb_ds182x_readout
+      generic map (
+        g_CLOCK_FREQ_KHZ => 62_500,
+        g_USE_INTERNAL_PPS => True)
+      port map (
+        clk_i => clk_sys_62m5,
+        rst_n_i => rst_gbl_n,
+    
+        wb_i => therm_id_out,
+        wb_o => therm_id_in,
+    
+        pps_p_i => '0',
+        onewire_b => onewire_b
+      );
+  end generate;
+
+  g_no_onewire: if not g_WITH_ONEWIRE and not g_WITH_WR generate
+    therm_id_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
+    onewire_b <= 'Z';
+  end generate;
+
+  g_spi: if g_WITH_SPI and not g_WITH_WR generate
+    i_spi: entity work.xwb_spi
+      generic map (
+        g_interface_mode => CLASSIC,
+        g_address_granularity => BYTE,
+        g_divider_len => open,
+        g_max_char_len => open,
+        g_num_slaves => 1
+      )
+      port map (
+        clk_sys_i => clk_sys_62m5,
+        rst_n_i => rst_gbl_n,
+        slave_i => flash_spi_out,
+        slave_o => flash_spi_in,
+        desc_o => open,
+        int_o => irqs(1),
+        pad_cs_o(0) => spi_ncs_o,
+        pad_sclk_o => spi_sclk_o,
+        pad_mosi_o => spi_mosi_o,
+        pad_miso_i => spi_miso_i
+      );
+  end generate;
+
+  g_no_spi: if not g_WITH_SPI and not g_WITH_WR generate
+    flash_spi_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
+  end generate;
+
+  --  DDR3 controller
+  gen_with_ddr: if g_WITH_DDR generate
     cmp_ddr_ctrl_bank3 : entity work.ddr3_ctrl
       generic map(
         g_RST_ACT_LOW        => 0, -- active high reset (simpler internal logic)
@@ -1013,5 +1151,4 @@ begin  -- architecture top
 
   ddr_dma_wb_o.err <= '0';
   ddr_dma_wb_o.rty <= '0';
-
 end architecture top;
