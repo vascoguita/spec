@@ -605,25 +605,22 @@ static int spec_fmc_exit(struct spec_fpga *spec_fpga)
 }
 
 /* FPGA Application */
-static void spec_fpga_app_id_build(struct spec_fpga *spec_fpga,
-				   unsigned long app_off,
-				   char *id, unsigned int size)
+static int spec_fpga_app_id_build(struct spec_fpga *spec_fpga,
+				  unsigned long app_off,
+				  char *id, unsigned int size)
 {
 	uint32_t vendor = ioread32(spec_fpga->fpga + app_off);
 	uint32_t device = ioread32(spec_fpga->fpga + app_off);
 
 	memset(id, 0, size);
 	if (vendor == 0xFF000000) {
-		uint32_t vendor_uuid[4];
-
-		vendor_uuid[0] = ioread32(spec_fpga->fpga + app_off + FPGA_META_UUID + 0x0);
-		vendor_uuid[1] = ioread32(spec_fpga->fpga + app_off + FPGA_META_UUID + 0x4);
-		vendor_uuid[2] = ioread32(spec_fpga->fpga + app_off + FPGA_META_UUID + 0x8);
-		vendor_uuid[3] = ioread32(spec_fpga->fpga + app_off + FPGA_META_UUID + 0xC);
-		snprintf(id, size, "%16phN%4phN", &vendor_uuid, &device);
+		dev_warn(&spec_fpga->dev, "Vendor UUID not supported yet\n");
+		return -ENODEV;
 	} else {
 		snprintf(id, size, "id:%4phN%4phN", &vendor, &device);
 	}
+
+	return 0;
 }
 
 static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
@@ -643,6 +640,7 @@ static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 	struct irq_domain *vic_domain;
 	char app_name[SPEC_FPGA_APP_NAME_MAX];
 	unsigned long app_offset;
+	int err;
 
 	app_offset = spec_fpga_csr_app_offset(spec_fpga);
 	if (!app_offset) {
@@ -673,8 +671,11 @@ static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 		res_n = 1;
 	}
 
-	spec_fpga_app_id_build(spec_fpga, SPEC_FPGA_CSR_APP_OFF,
-			       app_name, SPEC_FPGA_APP_NAME_MAX);
+	err = spec_fpga_app_id_build(spec_fpga, SPEC_FPGA_CSR_APP_OFF,
+				     app_name, SPEC_FPGA_APP_NAME_MAX);
+	if (err)
+		return err;
+
 	pdev = platform_device_register_resndata(&spec_fpga->dev,
 						 app_name, PLATFORM_DEVID_AUTO,
 						 res, res_n,
