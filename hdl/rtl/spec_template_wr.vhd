@@ -502,7 +502,7 @@ begin  -- architecture top
               and gn_wb_out.stb = '1'
             then
               -- New transaction.
-              -- Stall
+              -- Stall so that there is no new requests from the master.
               gn_wb_in.stall <= '1';
               can_stall      := '1';
               if gn_wb_out.adr (31 downto 13) = (31 downto 13 => '0') then
@@ -516,6 +516,7 @@ begin  -- architecture top
             end if;
           when S_CARRIER =>
             --  Pass from carrier.
+            --  Maintain stb as long as the carrier stalls.
             carrier_wb_in.stb <= carrier_wb_out.stall and can_stall;
             can_stall         := can_stall and carrier_wb_out.stall;
             gn_wb_in          <= carrier_wb_out;
