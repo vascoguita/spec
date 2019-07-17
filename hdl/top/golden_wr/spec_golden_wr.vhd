@@ -162,12 +162,13 @@ architecture top of spec_golden_wr is
 begin
   inst_template: entity work.spec_template_wr
     generic map (
-      g_with_vic => True,
-      g_with_onewire => False,
-      g_with_spi => False,
-      g_WITH_DDR => False,
-      g_dpram_initf => g_dpram_initf,
-      g_simulation => g_simulation
+      g_WITH_VIC     => True,
+      g_WITH_ONEWIRE => False,
+      g_WITH_SPI     => False,
+      g_WITH_DDR     => False,
+      g_WITH_WR      => True,
+      g_dpram_initf  => g_dpram_initf,
+      g_simulation   => g_simulation
     )
     port map (
       clk_125m_pllref_p_i => clk_125m_pllref_p_i,
