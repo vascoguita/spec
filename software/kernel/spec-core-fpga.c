@@ -605,12 +605,20 @@ static int spec_fmc_exit(struct spec_fpga *spec_fpga)
 }
 
 /* FPGA Application */
+
+/**
+ * Build the platform_device_id->name from metadata
+ *
+ * The byte order on SPEC is little endian, but we want to convert it
+ * in string. Use big-endian read to swap word and get the string order
+ * from MSB to LSB
+ */
 static int spec_fpga_app_id_build(struct spec_fpga *spec_fpga,
 				  unsigned long app_off,
 				  char *id, unsigned int size)
 {
-	uint32_t vendor = ioread32(spec_fpga->fpga + app_off);
-	uint32_t device = ioread32(spec_fpga->fpga + app_off);
+	uint32_t vendor = ioread32be(spec_fpga->fpga + app_off + FPGA_META_VENDOR);
+	uint32_t device = ioread32be(spec_fpga->fpga + app_off + FPGA_META_DEVICE);
 
 	memset(id, 0, size);
 	if (vendor == 0xFF000000) {
@@ -671,7 +679,7 @@ static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 		res_n = 1;
 	}
 
-	err = spec_fpga_app_id_build(spec_fpga, SPEC_FPGA_CSR_APP_OFF,
+	err = spec_fpga_app_id_build(spec_fpga, app_offset,
 				     app_name, SPEC_FPGA_APP_NAME_MAX);
 	if (err)
 		return err;
