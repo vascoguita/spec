@@ -13,6 +13,7 @@
 #include <linux/spi/flash.h>
 #include <linux/bitops.h>
 #include <linux/fmc.h>
+#include <linux/delay.h>
 
 #include "spec.h"
 #include "spec-compat.h"
@@ -471,6 +472,18 @@ enum spec_fpga_csr_resets {
 	SPEC_FPGA_CSR_RESETS_APP = BIT(1),
 };
 
+static void spec_fpga_app_reset(struct spec_fpga *spec_fpga, bool val)
+{
+	uint32_t resets;
+
+	resets = ioread32(spec_fpga->fpga + SPEC_FPGA_CSR_RESETS);
+	if (val)
+		resets |= SPEC_FPGA_CSR_RESETS_APP;
+	else
+		resets &= ~SPEC_FPGA_CSR_RESETS_APP;
+	iowrite32(resets, spec_fpga->fpga + SPEC_FPGA_CSR_RESETS);
+}
+
 static ssize_t reset_app_show(struct device *dev,
 			      struct device_attribute *attr,
 			      char *buf)
@@ -486,20 +499,14 @@ static ssize_t reset_app_store(struct device *dev,
 			       struct device_attribute *attr,
 			       const char *buf, size_t count)
 {
-	struct spec_fpga *spec_fpga = to_spec_fpga(dev);
-	uint32_t resets;
 	long val;
 	int err;
 
-	err =kstrtol(buf, 10, &val);
+	err = kstrtol(buf, 10, &val);
 	if (err)
 		return err;
-	resets = ioread32(spec_fpga->fpga + SPEC_FPGA_CSR_RESETS);
-	if (val)
-		resets |= SPEC_FPGA_CSR_RESETS_APP;
-	else
-		resets &= ~SPEC_FPGA_CSR_RESETS_APP;
-	iowrite32(resets, spec_fpga->fpga + SPEC_FPGA_CSR_RESETS);
+
+	spec_fpga_app_reset(to_spec_fpga(dev), val);
 
 	return count;
 }
@@ -683,6 +690,11 @@ static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 				     app_name, SPEC_FPGA_APP_NAME_MAX);
 	if (err)
 		return err;
+
+	spec_fpga_app_reset(spec_fpga, true);
+	mdelay(1);
+	spec_fpga_app_reset(spec_fpga, false);
+	mdelay(1);
 
 	pdev = platform_device_register_resndata(&spec_fpga->dev,
 						 app_name, PLATFORM_DEVID_AUTO,
