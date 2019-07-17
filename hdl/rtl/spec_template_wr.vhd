@@ -484,7 +484,7 @@ begin  -- architecture top
     variable ca_state            : t_ca_state;
     variable can_stall           : std_logic;
     constant c_IDLE_WB_MASTER_IN : t_wishbone_master_in :=
-      ('0', '0', '0', '0', c_DUMMY_WB_DATA);
+      (ack => '0', err => '0', rty => '0', stall => '0', dat => c_DUMMY_WB_DATA);
   begin
     if rising_edge(clk_sys_62m5) then
       if rst_sys_62m5_n = '0' then
