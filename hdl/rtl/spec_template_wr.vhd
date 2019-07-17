@@ -42,7 +42,7 @@ use unisim.vcomponents.all;
 
 entity spec_template_wr is
   generic (
-    --  If true, instantiate a VIC/ONEWIRE/SPI/WR.
+    --  If true, instantiate a VIC/ONEWIRE/SPI/WR/DDRAM+DMA.
     g_WITH_VIC      : boolean := True;
     g_WITH_ONEWIRE  : boolean := True;
     g_WITH_SPI      : boolean := True;
@@ -75,8 +75,16 @@ entity spec_template_wr is
     -- Clocks/resets
     ---------------------------------------------------------------------------
 
-    clk_125m_pllref_p_i : in std_logic;           -- 125 MHz PLL reference
+    -- 125 MHz PLL reference
+    clk_125m_pllref_p_i : in std_logic;
     clk_125m_pllref_n_i : in std_logic;
+
+    -- 20MHz VCXO clock (for WR)
+    clk_20m_vcxo_i : in std_logic;
+
+    -- 125 MHz GTP reference
+    clk_125m_gtp_n_i : in std_logic;
+    clk_125m_gtp_p_i : in std_logic;
 
     ---------------------------------------------------------------------------
     -- GN4124 PCIe bridge signals
@@ -111,11 +119,15 @@ entity spec_template_wr is
     gn_gpio_b     : inout std_logic_vector(1 downto 0);  -- gn_gpio[0] -> GN4124 GPIO8
                                                    -- gn_gpio[1] -> GN4124 GPIO9
 
+    ---------------------------------------------------------------------------
+    -- FMC interface
+    ---------------------------------------------------------------------------
+
     -- I2C interface for accessing FMC EEPROM.
     fmc0_scl_b : inout std_logic;
     fmc0_sda_b : inout std_logic;
 
-    --  FMC presence  (there is a pull-up)
+    -- Presence  (there is a pull-up)
     fmc0_prsnt_m2c_n_i: in std_logic;
 
     ---------------------------------------------------------------------------
@@ -132,7 +144,6 @@ entity spec_template_wr is
     spi_ncs_o  : out std_logic;
     spi_mosi_o : out std_logic;
     spi_miso_i : in  std_logic;
-
 
     ---------------------------------------------------------------------------
     -- Miscellanous SPEC pins
@@ -155,12 +166,6 @@ entity spec_template_wr is
 
     uart_rxd_i : in  std_logic;
     uart_txd_o : out std_logic;
-
-    -- Local oscillators
-    clk_20m_vcxo_i : in std_logic;                -- 20MHz VCXO clock
-
-    clk_125m_gtp_n_i : in std_logic;              -- 125 MHz GTP reference
-    clk_125m_gtp_p_i : in std_logic;
 
     ---------------------------------------------------------------------------
     -- SPI interface to DACs
@@ -209,7 +214,9 @@ entity spec_template_wr is
     ddr_udqs_p_b  : inout std_logic;
     ddr_we_n_o    : out   std_logic;
 
+    ------------------------------------------
     --  User part
+    ------------------------------------------
 
     --  Direct access to the DDR-3
     --  Classic wishbone
