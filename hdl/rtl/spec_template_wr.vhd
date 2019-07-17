@@ -66,7 +66,9 @@ entity spec_template_wr is
     -- Simulation-mode enable parameter. Set by default (synthesis) to 0, and
     -- changed to non-zero in the instantiation of the top level DUT in the testbench.
     -- Its purpose is to reduce some internal counters/timeouts to speed up simulations.
-    g_SIMULATION : integer := 0
+    g_SIMULATION : integer := 0;
+    -- Increase information messages during simulation
+    g_VERBOSE    : boolean := False
   );
   port (
     ---------------------------------------------------------------------------
@@ -757,6 +759,7 @@ begin  -- architecture top
   cmp_xwrc_board_spec : xwrc_board_spec
     generic map (
       g_simulation                => g_SIMULATION,
+      g_VERBOSE                   => g_VERBOSE,
       g_with_external_clock_input => TRUE,
       g_dpram_initf               => g_DPRAM_INITF,
       g_AUX_PLL_CFG               => c_WRPC_PLL_CONFIG,
