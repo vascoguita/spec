@@ -825,6 +825,7 @@ err_valid:
 	iounmap(spec_fpga->fpga);
 err_map:
 	kfree(spec_fpga);
+	spec_gn412x->spec_fpga = NULL;
 	return err;
 }
 
@@ -832,7 +833,7 @@ int spec_fpga_exit(struct spec_gn412x *spec_gn412x)
 {
 	struct spec_fpga *spec_fpga = spec_gn412x->spec_fpga;
 
-	if (!spec_fpga_is_valid(spec_gn412x, spec_fpga->meta))
+	if (!spec_fpga)
 		return 0;
 
 	spec_fpga_dbg_exit(spec_fpga);
