@@ -559,7 +559,7 @@ begin  -- architecture top
       metadata_data_o => open,
 
       -- offset to the application metadata
-      csr_app_offset_i        => x"0000_0000",
+      csr_app_offset_i    => g_APP_OFFSET,
       csr_resets_global_o => csr_rst_gbl,
       csr_resets_appl_o   => csr_rst_app,
 
