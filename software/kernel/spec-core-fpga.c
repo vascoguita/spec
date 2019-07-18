@@ -55,6 +55,10 @@ enum spec_fpga_csr_offsets {
 	SPEC_FPGA_CSR_PCB_REV = SPEC_FPGA_MEM_CSR_START + 0x14,
 };
 
+enum spec_fpga_csr_fields {
+	SPEC_FPGA_CSR_DDR_STATUS_DONE = 0x1,
+};
+
 enum spec_fpga_therm_offsets {
 	SPEC_FPGA_THERM_SERID_MSB = SPEC_FPGA_MEM_THERM_START + 0x0,
 	SPEC_FPGA_THERM_SERID_LSB = SPEC_FPGA_MEM_THERM_START + 0x4,
@@ -251,6 +255,28 @@ static void spec_fpga_vic_exit(struct spec_fpga *spec_fpga)
 		platform_device_unregister(spec_fpga->vic_pdev);
 		spec_fpga->vic_pdev = NULL;
 	}
+}
+
+/* DMA engine */
+static int spec_fpga_dma_init(struct spec_fpga *spec_fpga)
+{
+	uint32_t ddr_status;
+
+	if (!(spec_fpga->meta->cap & SPEC_META_CAP_DMA))
+		return 0;
+
+	ddr_status = ioread32(spec_fpga->fpga + SPEC_FPGA_CSR_DDR_STATUS);
+	if (!(ddr_status & SPEC_FPGA_CSR_DDR_STATUS_DONE)) {
+		dev_err(&spec_fpga->dev,
+			"Failed to load DMA engine: DDR controller not calibrated.\n");
+		return -ENODEV;
+	}
+
+	return 0;
+}
+static void spec_fpga_dma_exit(struct spec_fpga *spec_fpga)
+{
+
 }
 
 /* MFD devices */
@@ -818,6 +844,9 @@ int spec_fpga_init(struct spec_gn412x *spec_gn412x)
 	err = spec_fpga_vic_init(spec_fpga);
 	if (err)
 		goto err_vic;
+	err = spec_fpga_dma_init(spec_fpga);
+	if (err)
+		goto err_dma;
 	err = spec_fpga_devices_init(spec_fpga);
 	if (err)
 		goto err_devs;
@@ -836,6 +865,8 @@ err_app:
 err_fmc:
 	spec_fpga_devices_exit(spec_fpga);
 err_devs:
+	spec_fpga_dma_exit(spec_fpga);
+err_dma:
 	spec_fpga_vic_exit(spec_fpga);
 err_vic:
 	device_unregister(&spec_fpga->dev);
@@ -860,6 +891,7 @@ int spec_fpga_exit(struct spec_gn412x *spec_gn412x)
 	spec_fpga_app_exit(spec_fpga);
 	spec_fmc_exit(spec_fpga);
 	spec_fpga_devices_exit(spec_fpga);
+	spec_fpga_dma_exit(spec_fpga);
 	spec_fpga_vic_exit(spec_fpga);
 
 	device_unregister(&spec_fpga->dev);
