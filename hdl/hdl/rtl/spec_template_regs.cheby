@@ -1,0 +1,115 @@
+memory-map:
+  name: spec_template_regs
+  bus: wb-32-be
+  size: 0x2000
+  children:
+    - submap:
+        name: metadata
+        description: a ROM containing the carrier metadata
+        size: 0x40
+        interface: sram
+    - block:
+       name: csr
+       description: carrier and fmc status and control
+       address: 0x40
+       children:
+       - reg:
+          name: app_offset
+          description: offset to the application metadata
+          access: ro
+          width: 32
+       - reg:
+          name: resets
+          description: global and application resets
+          access: rw
+          width: 32
+          children:
+           - field:
+              name: global
+              range: 0
+           - field:
+              name: appl
+              range: 1
+       - reg:
+          name: fmc_presence
+          description: presence lines for the fmcs
+          access: ro
+          width: 32
+       - reg:
+          name: gn4124_status
+          description: status of gennum
+          access: ro
+          width: 32
+          # field 0: pll locked.
+       - reg:
+          name: ddr_status
+          description: status of the ddr3 controller
+          access: ro
+          width: 32
+          children:
+           - field:
+               description: Set when calibration is done.
+               name: calib_done
+               range: 0
+       - reg:
+          name: pcb_rev
+          description: pcb revision
+          access: ro
+          width: 32
+          children:
+           - field:
+              name: rev
+              range: 3-0
+    - submap:
+        name: therm_id
+        description: Thermometer and unique id
+        address: 0x70
+        size: 0x10
+        interface: wb-32-be
+        x-hdl:
+          busgroup: True
+    - submap:
+        name: fmc_i2c
+        description: i2c controllers to the fmcs
+        address: 0x80
+        size: 0x20
+        interface: wb-32-be
+        x-hdl:
+          busgroup: True
+    - submap:
+        name: flash_spi
+        description: spi controller to the flash
+        address: 0xa0
+        size: 0x20
+        interface: wb-32-be
+        x-hdl:
+          busgroup: True
+    - submap:
+        name: dma
+        description: dma registers for the gennum core
+        address: 0xc0
+        size: 0x40
+        interface: wb-32-be
+        x-hdl:
+          busgroup: True
+    - submap:
+        name: vic
+        description: vector interrupt controller
+        address: 0x100
+        size: 0x100
+        interface: wb-32-be
+        x-hdl:
+          busgroup: True
+    - submap:
+        name: buildinfo
+        description: a ROM containing build information
+        size: 0x100
+        interface: sram
+    - submap:
+        name: wrc_regs
+        address: 0x1000
+        description: white-rabbit core registers
+        size: 0x1000
+        interface: wb-32-be
+        x-hdl:
+          busgroup: True
