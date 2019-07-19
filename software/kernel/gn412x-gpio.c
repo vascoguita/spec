@@ -308,6 +308,7 @@ static irqreturn_t gn412x_gpio_irq_handler_t(int irq, void *arg)
 	int i;
 
 	gpio_int_status = gn412x_ioread32(gn412x, GNGPIO_INT_STATUS);
+	gpio_int_status &= ~gn412x_ioread32(gn412x, GNGPIO_INT_MASK);
 	if (!gpio_int_status)
 		goto out_enable_irq;
 
