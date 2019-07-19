@@ -70,8 +70,8 @@ enum spec_fpga_meta_cap_mask {
 	SPEC_META_CAP_THERM = BIT(1),
 	SPEC_META_CAP_SPI = BIT(2),
 	SPEC_META_CAP_WR = BIT(3),
-	SPEC_META_CAP_DMA = BIT(4),
-	SPEC_META_CAP_BLD = BIT(5),
+	SPEC_META_CAP_BLD = BIT(4),
+	SPEC_META_CAP_DMA = BIT(5),
 };
 
 
