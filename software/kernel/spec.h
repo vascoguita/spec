@@ -116,6 +116,7 @@ struct spec_fpga {
 	void __iomem *fpga;
 	struct spec_meta_id __iomem *meta;
 	struct platform_device *vic_pdev;
+	struct platform_device *dma_pdev;
 	struct platform_device *app_pdev;
 	struct fmc_slot_info slot_info;
 	struct dentry *dbg_dir_fpga;

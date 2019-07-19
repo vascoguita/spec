@@ -258,8 +258,33 @@ static void spec_fpga_vic_exit(struct spec_fpga *spec_fpga)
 }
 
 /* DMA engine */
+static struct resource spec_fpga_dma_res[] = {
+	{
+		.name = "spec-gn412x-dma-mem",
+		.flags = IORESOURCE_MEM,
+		.start = SPEC_FPGA_MEM_DMA_START,
+		.end = SPEC_FPGA_MEM_DMA_END,
+	}, {
+		.name = "spec-gn412x-dma-irq-done",
+		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
+		.start = 0,
+		.end = 0,
+	}, {
+		.name = "spec-gn412x-dma-irq-err",
+		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
+		.start = 0,
+		.end = 0,
+	},
+};
+
 static int spec_fpga_dma_init(struct spec_fpga *spec_fpga)
 {
+	struct pci_dev *pcidev = to_pci_dev(spec_fpga->dev.parent);
+	unsigned long pci_start = pci_resource_start(pcidev, 0);
+	const unsigned int res_n = ARRAY_SIZE(spec_fpga_dma_res);
+	struct resource res[ARRAY_SIZE(spec_fpga_dma_res)];
+	struct platform_device *pdev;
+	struct irq_domain *vic_domain;
 	uint32_t ddr_status;
 
 	if (!(spec_fpga->meta->cap & SPEC_META_CAP_DMA))
@@ -272,12 +297,35 @@ static int spec_fpga_dma_init(struct spec_fpga *spec_fpga)
 			ddr_status);
 		return -ENODEV;
 	}
+	vic_domain = irq_find_host((void *)&spec_fpga->vic_pdev->dev);
+	if (!vic_domain) {
+		dev_err(&spec_fpga->dev,
+			"Failed to load DMA engine: missing can't find VIC.\n");
+		return -ENODEV;
+	}
+
+	memcpy(&res, spec_fpga_dma_res, sizeof(spec_fpga_dma_res));
+	res[0].start += pci_start;
+	res[0].end += pci_start;
+	res[1].start = irq_find_mapping(vic_domain, SPEC_FPGA_IRQ_DMA_DONE);
+	res[2].start = irq_find_mapping(vic_domain, SPEC_FPGA_IRQ_DMA_ERROR);
+	pdev = platform_device_register_resndata(&spec_fpga->dev,
+						 "spec-gn412x-dma",
+						 PLATFORM_DEVID_AUTO,
+						 res, res_n,
+						 NULL, 0);
+	if (IS_ERR(pdev))
+		return PTR_ERR(pdev);
+	spec_fpga->dma_pdev = pdev;
 
 	return 0;
 }
 static void spec_fpga_dma_exit(struct spec_fpga *spec_fpga)
 {
-
+	if (spec_fpga->dma_pdev) {
+		platform_device_unregister(spec_fpga->dma_pdev);
+		spec_fpga->dma_pdev = NULL;
+	}
 }
 
 /* MFD devices */
