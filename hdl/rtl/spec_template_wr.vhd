@@ -541,7 +541,7 @@ begin  -- architecture top
     end if;
   end process carrier_app_xb;
 
-  i_devs: entity work.spec_template_regs
+  inst_devs: entity work.spec_template_regs
     port map (
       rst_n_i    => rst_sys_62m5_n,
       clk_i      => clk_sys_62m5,
@@ -683,7 +683,7 @@ begin  -- architecture top
   rst_sys_62m5_n_o <= rst_sys_62m5_n and rst_csr_app_n;
   clk_sys_62m5_o <= clk_sys_62m5;
 
-  i_rst_csr_app_sync : gc_sync_ffs
+  inst_rst_csr_app_sync : gc_sync_ffs
     port map (
       clk_i    => clk_ref_125m,
       rst_n_i  => '1',
@@ -693,7 +693,7 @@ begin  -- architecture top
   rst_ref_125m_n_o <= rst_ref_125m_n and rst_csr_app_sync_n;
   clk_ref_125m_o   <= clk_ref_125m;
 
-  i_i2c: entity work.xwb_i2c_master
+  inst_i2c: entity work.xwb_i2c_master
     generic map (
       g_interface_mode      => CLASSIC,
       g_address_granularity => BYTE,
@@ -723,8 +723,8 @@ begin  -- architecture top
     irqs(irq_user_i'range) <= irq_user_i;
   end generate gen_user_irq;
 
-  g_vic: if g_with_vic generate
-    i_vic: entity work.xwb_vic
+  gen_vic: if g_with_vic generate
+    inst_vic: entity work.xwb_vic
       generic map (
         g_address_granularity => BYTE,
         g_num_interrupts => num_interrupts
@@ -739,7 +739,7 @@ begin  -- architecture top
       );
   end generate;
 
-  g_no_vic: if not g_with_vic generate
+  gen_no_vic: if not g_with_vic generate
     vic_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
     irq_master <= '0';
   end generate;
@@ -751,7 +751,7 @@ begin  -- architecture top
   -- The WR PTP core board package (WB Slave + WB Master #2 (Etherbone))
   -----------------------------------------------------------------------------
 
-  g_wr: if g_WITH_WR generate
+  gen_wr: if g_WITH_WR generate
     -- OneWire
     signal onewire_data : std_logic;
     signal onewire_oe   : std_logic;
@@ -886,7 +886,7 @@ begin  -- architecture top
     irqs(1) <= '0';
   end generate;
 
-  g_no_wr: if not g_WITH_WR generate
+  gen_no_wr: if not g_WITH_WR generate
     signal clk_125m_pllref : std_logic;
     signal pllout_clk_fb_pllref : std_logic;
     signal pllout_clk_62m5 : std_logic;
@@ -975,8 +975,8 @@ begin  -- architecture top
     wrc_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
   end generate;
 
-  g_onewire: if g_WITH_ONEWIRE and not g_WITH_WR generate
-    i_onewire: entity work.xwb_ds182x_readout
+  gen_onewire: if g_WITH_ONEWIRE and not g_WITH_WR generate
+    inst_onewire: entity work.xwb_ds182x_readout
       generic map (
         g_CLOCK_FREQ_KHZ => 62_500,
         g_USE_INTERNAL_PPS => True)
@@ -992,13 +992,13 @@ begin  -- architecture top
       );
   end generate;
 
-  g_no_onewire: if not g_WITH_ONEWIRE and not g_WITH_WR generate
+  gen_no_onewire: if not g_WITH_ONEWIRE and not g_WITH_WR generate
     therm_id_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
     onewire_b <= 'Z';
   end generate;
 
-  g_spi: if g_WITH_SPI and not g_WITH_WR generate
-    i_spi: entity work.xwb_spi
+  gen_spi: if g_WITH_SPI and not g_WITH_WR generate
+    inst_spi: entity work.xwb_spi
       generic map (
         g_interface_mode => CLASSIC,
         g_address_granularity => BYTE,
@@ -1020,7 +1020,7 @@ begin  -- architecture top
       );
   end generate;
 
-  g_no_spi: if not g_WITH_SPI and not g_WITH_WR generate
+  gen_no_spi: if not g_WITH_SPI and not g_WITH_WR generate
     flash_spi_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
   end generate;
 
