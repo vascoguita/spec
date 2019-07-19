@@ -264,8 +264,8 @@ TIMESPEC TS_clk_125m_gtp_n_i = PERIOD "clk_125m_gtp_n_i" 8 ns HIGH 50%;
 # refclock is 62.5MHz and we don't use g_divide_input_by_2.
 #PIN "WRC_PLATFORM/cmp_pllrefclk_bufg.O" CLOCK_DEDICATED_ROUTE = FALSE; 
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2017/02/20
-NET "inst_template/g_wr.cmp_xwrc_board_spec/cmp_xwrc_platform/gen_phy_spartan6.cmp_gtp/ch1_gtp_clkout_int<1>" TNM_NET = inst_template/g_wr.cmp_xwrc_board_spec/cmp_xwrc_platform/gen_phy_spartan6.cmp_gtp/ch1_gtp_clkout_int<1>;
-TIMESPEC TS_cmp_xwrc_board_spec_cmp_xwrc_platform_gen_phy_spartan6_cmp_gtp_ch1_gtp_clkout_int_1_ = PERIOD "inst_template/cmp_xwrc_board_spec/g_wr.cmp_xwrc_platform/gen_phy_spartan6.cmp_gtp/ch1_gtp_clkout_int<1>" 8 ns HIGH 50%;
+NET "inst_template/gen_wr.cmp_xwrc_board_spec/cmp_xwrc_platform/gen_phy_spartan6.cmp_gtp/ch1_gtp_clkout_int<1>" TNM_NET = inst_template/gen_wr.cmp_xwrc_board_spec/cmp_xwrc_platform/gen_phy_spartan6.cmp_gtp/ch1_gtp_clkout_int<1>;
+TIMESPEC TS_cmp_xwrc_board_spec_cmp_xwrc_platform_gen_phy_spartan6_cmp_gtp_ch1_gtp_clkout_int_1_ = PERIOD "inst_template/cmp_xwrc_board_spec/gen_wr.cmp_xwrc_platform/gen_phy_spartan6.cmp_gtp/ch1_gtp_clkout_int<1>" 8 ns HIGH 50%;
 # PIN "cmp_clk_dmtd_buf.O" CLOCK_DEDICATED_ROUTE = FALSE; 
 ##Created by Constraints Editor (xc6slx45t-fgg484-3) - 2012/08/07
 INST "*/U_SOFTPLL/U_Wrapped_Softpll/gen_feedback_dmtds*/clk_in" TNM = skew_limit;
