@@ -302,7 +302,7 @@ static irqreturn_t gn412x_gpio_irq_handler_t(int irq, void *arg)
 	struct gn412x_gpio_dev *gn412x = arg;
 	struct gpio_chip *gc = &gn412x->gpiochip;
 	unsigned int cascade_irq;
-	uint32_t gpio_int_status;
+	uint32_t gpio_int_status, gpio_int_type;
 	unsigned long loop;
 	irqreturn_t ret = IRQ_NONE;
 	int i;
@@ -322,6 +322,23 @@ static irqreturn_t gn412x_gpio_irq_handler_t(int irq, void *arg)
 		 */
 		handle_nested_irq(cascade_irq);
 	}
+	/*
+	 * Level interrupts are cleared only when they are processed. This
+	 * means that at this point (interrupts have been processed) the
+	 * GPIO_INT_STATUS is still set because it is a sticky bit that got
+	 * set again after our first read because we did not handle yet
+	 * the IRQ. For this reason we have to clear it (defentivelly) by
+	 * reading again the register ...
+	 */
+	gpio_int_status = gn412x_ioread32(gn412x, GNGPIO_INT_STATUS);
+	/*
+	 * ... but like this edge interrupts are lost. So write back
+	 * in the register the status of all pending edge interrupts.
+	 * (NOTE: not yet prooven that it works)
+	 */
+	gpio_int_type = gn412x_ioread32(gn412x, GNGPIO_INT_TYPE);
+	gn412x_iowrite32(gn412x, (gpio_int_status & (~gpio_int_type)),
+			 GNGPIO_INT_STATUS);
 	ret = IRQ_HANDLED;
 
 out_enable_irq:
