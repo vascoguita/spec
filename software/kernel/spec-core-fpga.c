@@ -841,6 +841,8 @@ int spec_fpga_init(struct spec_gn412x *spec_gn412x)
 		goto err_dev;
 	}
 
+	spec_fpga_dbg_init(spec_fpga);
+
 	err = spec_fpga_vic_init(spec_fpga);
 	if (err)
 		goto err_vic;
@@ -856,7 +858,6 @@ int spec_fpga_init(struct spec_gn412x *spec_gn412x)
 	err = spec_fpga_app_init(spec_fpga);
 	if (err)
 		goto err_app;
-	spec_fpga_dbg_init(spec_fpga);
 
 	return 0;
 
@@ -869,7 +870,8 @@ err_devs:
 err_dma:
 	spec_fpga_vic_exit(spec_fpga);
 err_vic:
-	device_unregister(&spec_fpga->dev);
+	return err;
+
 err_dev:
 err_name:
 err_valid:
@@ -887,13 +889,13 @@ int spec_fpga_exit(struct spec_gn412x *spec_gn412x)
 	if (!spec_fpga)
 		return 0;
 
-	spec_fpga_dbg_exit(spec_fpga);
 	spec_fpga_app_exit(spec_fpga);
 	spec_fmc_exit(spec_fpga);
 	spec_fpga_devices_exit(spec_fpga);
 	spec_fpga_dma_exit(spec_fpga);
 	spec_fpga_vic_exit(spec_fpga);
 
+	spec_fpga_dbg_exit(spec_fpga);
 	device_unregister(&spec_fpga->dev);
 	iounmap(spec_fpga->fpga);
 	kfree(spec_fpga);
