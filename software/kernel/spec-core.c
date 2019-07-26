@@ -41,10 +41,10 @@ static int spec_irq_dbg_info(struct seq_file *s, void *offset)
 	seq_puts(s, "  irq-mapping:\n");
 	seq_puts(s, "    - hardware: 8\n");
 	seq_printf(s, "      linux: %d\n",
-		   gpiod_to_irq(spec_gn412x->gpiod[GN4124_GPIO_IRQ0]));
+		   gpiod_to_irq(spec_gn412x->gpiod[GN4124_GPIO_IRQ1]));
 	seq_puts(s, "    - hardware: 9\n");
 	seq_printf(s, "      linux: %d\n",
-		   gpiod_to_irq(spec_gn412x->gpiod[GN4124_GPIO_IRQ1]));
+		   gpiod_to_irq(spec_gn412x->gpiod[GN4124_GPIO_IRQ0]));
 
 	return 0;
 }
