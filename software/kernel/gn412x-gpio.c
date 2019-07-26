@@ -423,6 +423,8 @@ static int gn412x_gpio_probe(struct platform_device *pdev)
 		dev_warn(&pdev->dev, "Missing platform data, use default\n");
 		gn412x->pdata = &gn412x_gpio_pdata_default;
 	}
+	gn412x_iowrite32(gn412x, 0, GNGPIO_BYPASS_MODE);
+
 	gn412x->gpiochip.dev = &pdev->dev;
 	gn412x->gpiochip.label = "gn412x-gpio";
 	gn412x->gpiochip.owner = THIS_MODULE;
