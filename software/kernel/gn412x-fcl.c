@@ -83,7 +83,7 @@ int compat_fpga_mgr_register(struct fpga_manager *mgr)
 
 void compat_fpga_mgr_unregister(struct fpga_manager *mgr)
 {
-	fpga_mgr_unregister((struct device *)mgr);
+	return mgr ? 0 : 1;
 }
 #else
 struct fpga_manager *compat_fpga_mgr_create(struct device *dev,
