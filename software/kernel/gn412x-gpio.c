@@ -389,6 +389,7 @@ static irqreturn_t gn412x_gpio_irq_handler_t(int irq, void *arg)
 	loop = gpio_int_status;
 	for_each_set_bit(i, &loop, GN4124_GPIO_MAX) {
 		cascade_irq = irq_find_mapping(gc->irqdomain, i);
+		dev_dbg(gc->dev, "GPIO: %d, IRQ: %d\n", i, cascade_irq);
 		/*
 		 * Ok, now we execute the handler for the given IRQ. Please
 		 * note that this is not the action requested by the device
