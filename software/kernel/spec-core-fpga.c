@@ -268,7 +268,8 @@ static int spec_fpga_dma_init(struct spec_fpga *spec_fpga)
 	ddr_status = ioread32(spec_fpga->fpga + SPEC_FPGA_CSR_DDR_STATUS);
 	if (!(ddr_status & SPEC_FPGA_CSR_DDR_STATUS_DONE)) {
 		dev_err(&spec_fpga->dev,
-			"Failed to load DMA engine: DDR controller not calibrated.\n");
+			"Failed to load DMA engine: DDR controller not calibrated - 0x%x.\n",
+			ddr_status);
 		return -ENODEV;
 	}
 
