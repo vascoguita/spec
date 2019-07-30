@@ -570,6 +570,7 @@ static int gn412x_gpio_remove(struct platform_device *pdev)
 	free_irq(platform_get_irq(pdev, 0), gn412x);
 	gn412x_gpio_irq_set_nested_thread_all(gn412x, false);
 	gpiochip_remove(&gn412x->gpiochip);
+	dev_dbg(&pdev->dev, "%s\n", __func__);
 
 	return 0;
 }

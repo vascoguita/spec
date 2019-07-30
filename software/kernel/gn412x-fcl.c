@@ -456,6 +456,7 @@ static int gn412x_fcl_remove(struct platform_device *pdev)
 
 	compat_fpga_mgr_unregister(gn412x->mgr);
 	compat_fpga_mgr_free(gn412x->mgr);
+	dev_dbg(&pdev->dev, "%s\n", __func__);
 
 	return 0;
 }
