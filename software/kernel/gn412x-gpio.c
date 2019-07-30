@@ -5,6 +5,7 @@
  */
 #include <linux/module.h>
 #include <linux/gpio/driver.h>
+#include <linux/debugfs.h>
 
 #include "spec.h"
 #include "gn412x.h"
@@ -21,6 +22,11 @@ struct gn412x_gpio_dev {
 
 	struct completion	compl;
 	struct gn412x_platform_data *pdata;
+
+	struct dentry *dbg_dir;
+#define GN412X_DBG_REG_NAME "regs"
+	struct dentry *dbg_reg;
+	struct debugfs_regset32 dbg_reg32;
 };
 
 static struct gn412x_platform_data gn412x_gpio_pdata_default = {
@@ -39,6 +45,74 @@ enum gn412x_gpio_versions {
 enum htvic_mem_resources {
 	GN412X_MEM_BASE = 0,
 };
+
+#define REG32(_name, _offset) {.name = _name, .offset = _offset}
+static const struct debugfs_reg32 gn412x_debugfs_reg32[] = {
+	REG32("INT_CTRL", GNINT_CTRL),
+	REG32("INT_STAT", GNINT_STAT),
+	REG32("INT_CFG0", GNINT_CFG_0),
+	REG32("INT_CFG1", GNINT_CFG_1),
+	REG32("INT_CFG2", GNINT_CFG_2),
+	REG32("INT_CFG3", GNINT_CFG_3),
+	REG32("INT_CFG4", GNINT_CFG_4),
+	REG32("INT_CFG5", GNINT_CFG_5),
+	REG32("INT_CFG6", GNINT_CFG_6),
+	REG32("INT_CFG7", GNINT_CFG_7),
+	REG32("GPIO_BYPASS_MODE", GNGPIO_BYPASS_MODE),
+	REG32("GPIO_DIRECTION_MODE", GNGPIO_DIRECTION_MODE),
+	REG32("GPIO_OUTPUT_ENABLE", GNGPIO_OUTPUT_ENABLE),
+	REG32("GPIO_OUTPUT_VALUE", GNGPIO_OUTPUT_VALUE),
+	REG32("GPIO_INPUT_VALUE", GNGPIO_INPUT_VALUE),
+	REG32("GPIO_INT_MASK", GNGPIO_INT_MASK),
+	REG32("GPIO_INT_MASK_CLR", GNGPIO_INT_MASK_CLR),
+	REG32("GPIO_INT_MASK_SET", GNGPIO_INT_MASK_SET),
+	REG32("GPIO_INT_STATUS", GNGPIO_INT_STATUS),
+	REG32("GPIO_INT_TYPE", GNGPIO_INT_TYPE),
+	REG32("GPIO_INT_VALUE", GNGPIO_INT_VALUE),
+	REG32("GPIO_INT_ON_ANY", GNGPIO_INT_ON_ANY),
+};
+
+static int gn412x_dbg_init(struct gn412x_gpio_dev *gn412x)
+{
+	struct dentry *dir, *file;
+	int err;
+
+	dir = debugfs_create_dir(dev_name(gn412x->gpiochip.dev), NULL);
+	if (IS_ERR_OR_NULL(dir)) {
+		err = PTR_ERR(dir);
+		dev_warn(gn412x->gpiochip.dev,
+			"Cannot create debugfs directory \"%s\" (%d)\n",
+			dev_name(gn412x->gpiochip.dev), err);
+		goto err_dir;
+	}
+
+	gn412x->dbg_reg32.regs = gn412x_debugfs_reg32;
+	gn412x->dbg_reg32.nregs = ARRAY_SIZE(gn412x_debugfs_reg32);
+	gn412x->dbg_reg32.base = gn412x->mem;
+	file = debugfs_create_regset32(GN412X_DBG_REG_NAME, 0200,
+				       dir, &gn412x->dbg_reg32);
+	if (IS_ERR_OR_NULL(file)) {
+		err = PTR_ERR(file);
+		dev_warn(gn412x->gpiochip.dev,
+			 "Cannot create debugfs file \"%s\" (%d)\n",
+			 GN412X_DBG_REG_NAME, err);
+		goto err_reg32;
+	}
+
+	gn412x->dbg_dir = dir;
+	gn412x->dbg_reg = file;
+	return 0;
+
+err_reg32:
+	debugfs_remove_recursive(dir);
+err_dir:
+	return err;
+}
+
+static void gn412x_dbg_exit(struct gn412x_gpio_dev *gn412x)
+{
+	debugfs_remove_recursive(gn412x->dbg_dir);
+}
 
 static uint32_t gn412x_ioread32(struct gn412x_gpio_dev *gn412x,
 				int reg)
@@ -468,6 +542,8 @@ static int gn412x_gpio_probe(struct platform_device *pdev)
 
 	gn412x_gpio_int_cfg_enable(gn412x);
 
+	gn412x_dbg_init(gn412x);
+
 	return 0;
 
 err_req:
@@ -485,6 +561,8 @@ err_res_mem:
 static int gn412x_gpio_remove(struct platform_device *pdev)
 {
 	struct gn412x_gpio_dev *gn412x = platform_get_drvdata(pdev);
+
+	gn412x_dbg_exit(gn412x);
 
 	gn412x_gpio_int_cfg_disable(gn412x);
 
