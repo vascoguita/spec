@@ -511,6 +511,14 @@ static void spec_fpga_app_reset(struct spec_fpga *spec_fpga, bool val)
 	iowrite32(resets, spec_fpga->fpga + SPEC_FPGA_CSR_RESETS);
 }
 
+static void spec_fpga_app_restart(struct spec_fpga *spec_fpga)
+{
+	spec_fpga_app_reset(spec_fpga, true);
+	udelay(1);
+	spec_fpga_app_reset(spec_fpga, false);
+	udelay(1);
+}
+
 static ssize_t reset_app_show(struct device *dev,
 			      struct device_attribute *attr,
 			      char *buf)
@@ -717,12 +725,7 @@ static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 				     app_name, SPEC_FPGA_APP_NAME_MAX);
 	if (err)
 		return err;
-
-	spec_fpga_app_reset(spec_fpga, true);
-	mdelay(1);
-	spec_fpga_app_reset(spec_fpga, false);
-	mdelay(1);
-
+	spec_fpga_app_restart(spec_fpga);
 	pdev = platform_device_register_resndata(&spec_fpga->dev,
 						 app_name, PLATFORM_DEVID_AUTO,
 						 res, res_n,
