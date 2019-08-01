@@ -489,7 +489,7 @@ static int spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name)
 	err = spec_fpga_init(spec_gn412x);
 	if (err)
 		dev_warn(&spec_gn412x->pdev->dev,
-			 "FPGA incorrectly programmed\n");
+			 "FPGA incorrectly programmed %d\n", err);
 
 out:
 	spec_gpio_fpga_select_set(spec_gn412x, sel);
