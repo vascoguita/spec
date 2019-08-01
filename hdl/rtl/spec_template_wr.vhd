@@ -453,7 +453,7 @@ begin  -- architecture top
       -- Interrupt interface
       -- Note: the dma_irq are synchronized with the wb_master_clk clock
       --  inside the gn4124 core.
-      dma_irq_o => irqs(3 downto 2),
+      dma_irq_o => irqs(2),
       -- Note: this is a simple assignment.
       irq_p_i   => irq_master,
       irq_p_o   => gn_gpio_b(0),
@@ -701,6 +701,7 @@ begin  -- architecture top
     irq_master <= '0';
   end generate;
 
+  irqs(3) <= '0';
   irqs(4) <= '0';
   irqs(5) <= '0';
 
