@@ -430,10 +430,8 @@ static int gn412x_fcl_probe(struct platform_device *pdev)
 	}
 
 	err = compat_fpga_mgr_register(gn412x->mgr);
-	if (err) {
-		compat_fpga_mgr_free(gn412x->mgr);
+	if (err)
 		goto err_fpga_reg;
-	}
 
 	return 0;
 
