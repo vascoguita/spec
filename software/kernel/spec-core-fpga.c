@@ -896,20 +896,35 @@ int spec_fpga_init(struct spec_gn412x *spec_gn412x)
 	spec_fpga_dbg_init(spec_fpga);
 
 	err = spec_fpga_vic_init(spec_fpga);
-	if (err)
+	if (err) {
+		dev_err(&spec_gn412x->pdev->dev,
+			"Failed to initialize VIC %d\n", err);
 		goto err_vic;
+	}
 	err = spec_fpga_dma_init(spec_fpga);
-	if (err)
-		goto err_dma;
+	if (err) {
+		dev_err(&spec_gn412x->pdev->dev,
+			"Failed to initialize DMA %d\n", err);
+			goto err_dma;
+	}
 	err = spec_fpga_devices_init(spec_fpga);
-	if (err)
+	if (err) {
+		dev_err(&spec_gn412x->pdev->dev,
+			"Failed to initialize Devices %d\n", err);
 		goto err_devs;
+	}
 	err = spec_fmc_init(spec_fpga);
-	if (err)
-		goto err_fmc;
+	if (err) {
+		dev_err(&spec_gn412x->pdev->dev,
+			"Failed to initialize FMC %d\n", err);
+			goto err_fmc;
+	}
 	err = spec_fpga_app_init(spec_fpga);
-	if (err)
+	if (err) {
+		dev_err(&spec_gn412x->pdev->dev,
+			"Failed to initialize APP %d\n", err);
 		goto err_app;
+	}
 
 	return 0;
 
