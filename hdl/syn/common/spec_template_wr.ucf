@@ -1,0 +1,93 @@
+NET "clk_20m_vcxo_i" LOC = H12;
+NET "clk_20m_vcxo_i" IOSTANDARD = "LVCMOS25";
+
+NET "clk_125m_gtp_n_i" LOC = D11;
+NET "clk_125m_gtp_n_i" IOSTANDARD = "LVDS_25";
+NET "clk_125m_gtp_p_i" LOC = C11;
+NET "clk_125m_gtp_p_i" IOSTANDARD = "LVDS_25";
+
+###########################################################################
+## SPI interface to DACs
+###########################################################################
+NET "plldac_sclk_o" LOC = A4;
+NET "plldac_sclk_o" IOSTANDARD = "LVCMOS25";
+NET "plldac_din_o" LOC = C4;
+NET "plldac_din_o" IOSTANDARD = "LVCMOS25";
+NET "pll25dac_cs_n_o" LOC = A3;
+NET "pll25dac_cs_n_o" IOSTANDARD = "LVCMOS25";
+NET "pll20dac_cs_n_o" LOC = B3;
+NET "pll20dac_cs_n_o" IOSTANDARD = "LVCMOS25";
+
+###########################################################################
+## SFP I/O for transceiver
+###########################################################################
+#NET "sfp_txp_o" IOSTANDARD = "LVDS_12";
+NET "sfp_txp_o" LOC= B16;
+#NET "sfp_txn_o" IOSTANDARD = "LVDS_12";
+NET "sfp_txn_o" LOC= A16;
+#NET "sfp_rxp_i" IOSTANDARD = "LVDS_12";
+NET "sfp_rxp_i" LOC= D15;
+#NET "sfp_rxn_i" IOSTANDARD = "LVDS_12";
+NET "sfp_rxn_i" LOC= C15;
+NET "sfp_mod_def0_i"    LOC = G15;
+NET "sfp_mod_def0_i"    IOSTANDARD = "LVCMOS25";
+NET "sfp_mod_def1_b"    LOC = C17;
+NET "sfp_mod_def1_b"    IOSTANDARD = "LVCMOS25";
+NET "sfp_mod_def2_b"    LOC = G16;
+NET "sfp_mod_def2_b"    IOSTANDARD = "LVCMOS25";
+NET "sfp_rate_select_o" LOC = H14;
+NET "sfp_rate_select_o" IOSTANDARD = "LVCMOS25";
+NET "sfp_tx_fault_i"    LOC = B18;
+NET "sfp_tx_fault_i"    IOSTANDARD = "LVCMOS25";
+NET "sfp_tx_disable_o"  LOC = F17;
+NET "sfp_tx_disable_o"  IOSTANDARD = "LVCMOS25";
+NET "sfp_los_i"         LOC = D18;
+NET "sfp_los_i"         IOSTANDARD = "LVCMOS25";
+
+###########################################################################
+## UART
+###########################################################################
+NET "uart_rxd_i" LOC= A2;
+NET "uart_rxd_i" IOSTANDARD=LVCMOS25;
+NET "uart_txd_o" LOC= B2;
+NET "uart_txd_o" IOSTANDARD=LVCMOS25;
+
+###########################################################################
+## Miscellanous SPEC pins
+###########################################################################
+NET "led_act_o"  LOC = D5;
+NET "led_act_o"  IOSTANDARD = "LVCMOS25";
+NET "led_link_o" LOC = E5;
+NET "led_link_o" IOSTANDARD = "LVCMOS25";
+
+###########################################################################
+## Clocks
+###########################################################################
+
+#Created by Constraints Editor (xc6slx45t-fgg484-3) - 2011/02/04
+NET "clk_20m_vcxo_i" TNM_NET = clk_20m_vcxo_i;
+TIMESPEC TS_clk_20m_vcxo_i = PERIOD "clk_20m_vcxo_i" 50 ns HIGH 50%;
+NET "clk_125m_gtp_p_i" TNM_NET = clk_125m_gtp_p_i;
+TIMESPEC TS_clk_125m_gtp_p_i = PERIOD "clk_125m_gtp_p_i" 8 ns HIGH 50%;
+NET "clk_125m_gtp_n_i" TNM_NET = clk_125m_gtp_n_i;
+TIMESPEC TS_clk_125m_gtp_n_i = PERIOD "clk_125m_gtp_n_i" 8 ns HIGH 50%;
+
+# Needed only when DMTD samples 125m refclock (clock has to be fed to D input of
+# a flip-flop).
+# However, in case of SPEC we use g_divide_input_by_2 generic in the dmtd_with_deglitcher.
+# This re-generates 62.5MHz clock from 125Mhz and we don't feed 125M clock directly to D
+# input of a flip-flop. This constraint would be needed e.g. for Kintex, where
+# refclock is 62.5MHz and we don't use g_divide_input_by_2.
+#PIN "WRC_PLATFORM/cmp_pllrefclk_bufg.O" CLOCK_DEDICATED_ROUTE = FALSE;
+#Created by Constraints Editor (xc6slx45t-fgg484-3) - 2017/02/20
+NET "inst_template/gen_wr.cmp_xwrc_board_spec/cmp_xwrc_platform/gen_phy_spartan6.cmp_gtp/ch1_gtp_clkout_int<1>" TNM_NET = inst_template/gen_wr.cmp_xwrc_board_spec/cmp_xwrc_platform/gen_phy_spartan6.cmp_gtp/ch1_gtp_clkout_int<1>;
+TIMESPEC TS_cmp_xwrc_board_spec_cmp_xwrc_platform_gen_phy_spartan6_cmp_gtp_ch1_gtp_clkout_int_1_ = PERIOD "inst_template/cmp_xwrc_board_spec/gen_wr.cmp_xwrc_platform/gen_phy_spartan6.cmp_gtp/ch1_gtp_clkout_int<1>" 8 ns HIGH 50%;
+# PIN "cmp_clk_dmtd_buf.O" CLOCK_DEDICATED_ROUTE = FALSE;
+##Created by Constraints Editor (xc6slx45t-fgg484-3) - 2012/08/07
+INST "*/U_SOFTPLL/U_Wrapped_Softpll/gen_feedback_dmtds*/clk_in" TNM = skew_limit;
+INST "*/U_SOFTPLL/U_Wrapped_Softpll/gen_ref_dmtds*/clk_in" TNM = skew_limit;
+
+TIMESPEC TS_ = FROM "skew_limit" TO "FFS" 1 ns DATAPATHONLY;
+
+# Force PPS output to always be placed as IOB register
+# INST "inst_template/cmp_xwrc_board_spec/cmp_board_common/cmp_xwr_core/WRPC/PPS_GEN/WRAPPED_PPSGEN/pps_out_o" IOB = FORCE;
