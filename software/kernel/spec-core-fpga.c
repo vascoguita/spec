@@ -43,7 +43,6 @@ enum spec_fpga_irq_lines {
 	SPEC_FPGA_IRQ_FMC_I2C = 0,
 	SPEC_FPGA_IRQ_SPI,
 	SPEC_FPGA_IRQ_DMA_DONE,
-	SPEC_FPGA_IRQ_DMA_ERROR,
 };
 
 enum spec_fpga_csr_offsets {
@@ -269,11 +268,6 @@ static struct resource spec_fpga_dma_res[] = {
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
 		.start = 0,
 		.end = 0,
-	}, {
-		.name = "spec-gn412x-dma-irq-err",
-		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
-		.start = 0,
-		.end = 0,
 	},
 };
 
@@ -308,7 +302,6 @@ static int spec_fpga_dma_init(struct spec_fpga *spec_fpga)
 	res[0].start += pci_start;
 	res[0].end += pci_start;
 	res[1].start = irq_find_mapping(vic_domain, SPEC_FPGA_IRQ_DMA_DONE);
-	res[2].start = irq_find_mapping(vic_domain, SPEC_FPGA_IRQ_DMA_ERROR);
 	pdev = platform_device_register_resndata(&spec_fpga->dev,
 						 "spec-gn412x-dma",
 						 PLATFORM_DEVID_AUTO,

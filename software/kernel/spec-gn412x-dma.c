@@ -143,12 +143,11 @@ enum gn412x_dma_id_enum {
 
 enum gn412x_dma_state {
 	GN412X_DMA_STAT_IDLE = 0,
-	GN412X_DMA_STAT_DONE,
 	GN412X_DMA_STAT_BUSY,
 	GN412X_DMA_STAT_ERROR,
 	GN412X_DMA_STAT_ABORTED,
 };
-
+#define GN412X_DMA_STAT_ACK BIT(2)
 
 
 /**
@@ -304,13 +303,9 @@ static void gn412x_dma_ctrl_swapping(struct gn412x_dma_device *gn412x_dma,
 	iowrite32(ctrl, gn412x_dma->addr + GN412X_DMA_CTRL);
 }
 
-static bool gn412x_dma_is_done(struct gn412x_dma_device *gn412x_dma)
+static enum gn412x_dma_state gn412x_dma_state(struct gn412x_dma_device *gn412x_dma)
 {
-	uint32_t status;
-
-	status = ioread32(gn412x_dma->addr + GN412X_DMA_STAT);
-
-	return status & GN412X_DMA_STAT_DONE;
+	return ioread32(gn412x_dma->addr + GN412X_DMA_STAT);
 }
 
 static bool gn412x_dma_is_busy(struct gn412x_dma_device *gn412x_dma)
@@ -322,15 +317,6 @@ static bool gn412x_dma_is_busy(struct gn412x_dma_device *gn412x_dma)
 	return status & GN412X_DMA_STAT_BUSY;
 }
 
-static bool gn412x_dma_is_error(struct gn412x_dma_device *gn412x_dma)
-{
-	uint32_t status;
-
-	status = ioread32(gn412x_dma->addr + GN412X_DMA_STAT);
-
-	return status & GN412X_DMA_STAT_ERROR;
-}
-
 static bool gn412x_dma_is_abort(struct gn412x_dma_device *gn412x_dma)
 {
 	uint32_t status;
@@ -338,6 +324,11 @@ static bool gn412x_dma_is_abort(struct gn412x_dma_device *gn412x_dma)
 	status = ioread32(gn412x_dma->addr + GN412X_DMA_STAT);
 
 	return status & GN412X_DMA_STAT_ABORTED;
+}
+
+static void gn412x_dma_irq_ack(struct gn412x_dma_device *gn412x_dma)
+{
+	iowrite32(GN412X_DMA_STAT_ACK, gn412x_dma->addr + GN412X_DMA_STAT);
 }
 
 static void gn412x_dma_config(struct gn412x_dma_device *gn412x_dma,
@@ -572,39 +563,39 @@ static int gn412x_dma_device_control(struct dma_chan *chan,
 }
 
 
-static irqreturn_t gn412x_dma_irq_handler_err(int irq, void *arg)
-{
-	struct gn412x_dma_device *gn412x_dma = arg;
-	struct gn412x_dma_chan *chan = &gn412x_dma->chan;
-
-	if (unlikely(!gn412x_dma_is_error(gn412x_dma)))
-		return IRQ_NONE;
-	/* FIXM check also done?*/
-
-	chan->error++;
-
-	return IRQ_HANDLED;
-}
-
-static irqreturn_t gn412x_dma_irq_handler_done(int irq, void *arg)
+static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 {
 	struct gn412x_dma_device *gn412x_dma = arg;
 	struct gn412x_dma_chan *chan = &gn412x_dma->chan;
 	struct gn412x_dma_tx *tx;
 	unsigned long flags;
 	unsigned int i;
+	uint32_t state;
 
-	if (unlikely(!gn412x_dma_is_done(gn412x_dma)))
-		return IRQ_NONE;
-	/* FIXM check also error?*/
+	/* FIXME check for spurious - need HDL fix */
+	gn412x_dma_irq_ack(gn412x_dma);
 
 	spin_lock_irqsave(&chan->lock, flags);
 	tx = chan->tx_curr;
 	chan->tx_curr = NULL;
 	spin_unlock_irqrestore(&chan->lock, flags);
 
-	dma_cookie_complete(&tx->tx);
-	tx->tx.callback(tx->tx.callback_param);
+	state = gn412x_dma_state(gn412x_dma);
+	switch (state) {
+	case GN412X_DMA_STAT_IDLE:
+		dma_cookie_complete(&tx->tx);
+		tx->tx.callback(tx->tx.callback_param);
+		break;
+	case GN412X_DMA_STAT_ERROR:
+		dev_err(&gn412x_dma->pdev->dev,
+			"DMA transfer failed: error\n");
+		break;
+	default:
+		dev_err(&gn412x_dma->pdev->dev,
+			"DMA transfer failed: inconsitent state %d\n",
+			state);
+		break;
+	}
 
 	/* Clean up memory */
 	for (i = 0; i < tx->sg_len; ++i)
@@ -749,15 +740,10 @@ static int gn412x_dma_probe(struct platform_device *pdev)
 	}
 
 	err = request_any_context_irq(platform_get_irq(pdev, 0),
-				      gn412x_dma_irq_handler_done, 0,
+				      gn412x_dma_irq_handler, 0,
 				      dev_name(&pdev->dev), gn412x_dma);
 	if (err < 0)
-		goto err_irq_done;
-	err = request_any_context_irq(platform_get_irq(pdev, 1),
-				      gn412x_dma_irq_handler_err, 0,
-				      dev_name(&pdev->dev), gn412x_dma);
-	if (err < 0)
-		goto err_irq_err;
+		goto err_irq;
 
 	/* Get the pci_dev device because it is the one configured for DMA */
 	err = gn412x_dma_engine_init(gn412x_dma, pdev->dev.parent->parent);
@@ -776,10 +762,8 @@ static int gn412x_dma_probe(struct platform_device *pdev)
 err_reg:
 	gn412x_dma_engine_exit(gn412x_dma);
 err_dma_init:
-	free_irq(platform_get_irq(pdev, 1), gn412x_dma);
-err_irq_err:
 	free_irq(platform_get_irq(pdev, 0), gn412x_dma);
-err_irq_done:
+err_irq:
 	iounmap(gn412x_dma->addr);
 err_map:
 err_res_mem:
@@ -804,7 +788,6 @@ static int gn412x_dma_remove(struct platform_device *pdev)
 	dmaengine_terminate_all(&gn412x_dma->chan.chan);
 	dma_async_device_unregister(&gn412x_dma->dma);
 	gn412x_dma_engine_exit(gn412x_dma);
-	free_irq(platform_get_irq(pdev, 1), gn412x_dma);
 	free_irq(platform_get_irq(pdev, 0), gn412x_dma);
 	iounmap(gn412x_dma->addr);
 	kfree(gn412x_dma);
