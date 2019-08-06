@@ -1,0 +1,113 @@
+#===============================================================================
+# IO Location Constraints
+#===============================================================================
+
+#----------------------------------------
+# Clock and reset inputs
+#----------------------------------------
+NET "clk_20m_vcxo_i" LOC = H12;
+NET "clk_20m_vcxo_i" IOSTANDARD = "LVCMOS25";
+
+NET "clk_125m_gtp_n_i" LOC = D11;
+NET "clk_125m_gtp_n_i" IOSTANDARD = "LVDS_25";
+NET "clk_125m_gtp_p_i" LOC = C11;
+NET "clk_125m_gtp_p_i" IOSTANDARD = "LVDS_25";
+
+#----------------------------------------
+# DAC interfaces (for VCXO)
+#----------------------------------------
+NET "plldac_sclk_o" LOC = A4;
+NET "plldac_sclk_o" IOSTANDARD = "LVCMOS25";
+NET "plldac_din_o" LOC = C4;
+NET "plldac_din_o" IOSTANDARD = "LVCMOS25";
+NET "pll25dac_cs_n_o" LOC = A3;
+NET "pll25dac_cs_n_o" IOSTANDARD = "LVCMOS25";
+NET "pll20dac_cs_n_o" LOC = B3;
+NET "pll20dac_cs_n_o" IOSTANDARD = "LVCMOS25";
+
+#----------------------------------------
+# SFP slot
+#----------------------------------------
+NET "sfp_txp_o" LOC= B16;
+NET "sfp_txn_o" LOC= A16;
+NET "sfp_rxp_i" LOC= D15;
+NET "sfp_rxn_i" LOC= C15;
+
+NET "sfp_mod_def0_i"    LOC = G15;
+NET "sfp_mod_def0_i"    IOSTANDARD = "LVCMOS25";
+NET "sfp_mod_def1_b"    LOC = C17;
+NET "sfp_mod_def1_b"    IOSTANDARD = "LVCMOS25";
+NET "sfp_mod_def2_b"    LOC = G16;
+NET "sfp_mod_def2_b"    IOSTANDARD = "LVCMOS25";
+NET "sfp_rate_select_o" LOC = H14;
+NET "sfp_rate_select_o" IOSTANDARD = "LVCMOS25";
+NET "sfp_tx_fault_i"    LOC = B18;
+NET "sfp_tx_fault_i"    IOSTANDARD = "LVCMOS25";
+NET "sfp_tx_disable_o"  LOC = F17;
+NET "sfp_tx_disable_o"  IOSTANDARD = "LVCMOS25";
+NET "sfp_los_i"         LOC = D18;
+NET "sfp_los_i"         IOSTANDARD = "LVCMOS25";
+
+#----------------------------------------
+# UART
+#----------------------------------------
+NET "uart_rxd_i" LOC= A2;
+NET "uart_rxd_i" IOSTANDARD="LVCMOS25";
+NET "uart_txd_o" LOC= B2;
+NET "uart_txd_o" IOSTANDARD="LVCMOS25";
+
+#----------------------------------------
+# SFP LEDs
+#----------------------------------------
+NET "led_act_o"  LOC = D5;
+NET "led_act_o"  IOSTANDARD = "LVCMOS25";
+NET "led_link_o" LOC = E5;
+NET "led_link_o" IOSTANDARD = "LVCMOS25";
+
+#===============================================================================
+# Timing constraints and exceptions
+#===============================================================================
+
+NET "clk_125m_gtp_p_i"  TNM_NET = "clk_125m_gtp";
+NET "clk_125m_gtp_n_i"  TNM_NET = "clk_125m_gtp";
+TIMESPEC TS_clk_125m_gtp = PERIOD "clk_125m_gtp" 8 ns HIGH 50%;
+
+NET "clk_20m_vcxo_i"    TNM_NET = "clk_20m_vcxo";
+TIMESPEC TS_clk_20m_vcxo = PERIOD "clk_20m_vcxo" 50 ns HIGH 50%;
+
+NET "inst_spec_template/gen_wr.cmp_xwrc_board_spec/cmp_xwrc_platform/gen_phy_spartan6.cmp_gtp/ch1_gtp_clkout_int[1]" TNM_NET = wrc_gtp_clk;
+TIMESPEC TS_wrc_gtp_clk = PERIOD "wrc_gtp_clk" 8 ns HIGH 50%;
+
+#-------------------------------------------------------------
+# Constrain the phase between input and sampling clock in DMTD
+#-------------------------------------------------------------
+
+INST "*/U_SOFTPLL/U_Wrapped_Softpll/gen_feedback_dmtds*/clk_in" TNM = skew_limit;
+INST "*/U_SOFTPLL/U_Wrapped_Softpll/gen_ref_dmtds*/clk_in"      TNM = skew_limit;
+
+TIMESPEC TS_dmtd_skew = FROM "skew_limit" TO "FFS" 1.25 ns DATAPATHONLY;
+
+#----------------------------------------
+# Cross-clock domain sync
+#----------------------------------------
+
+# Declaration of domains
+NET "*cmp_xwrc_board_spec/clk_pll_dmtd"            TNM_NET = clk_dmtd;
+NET "*cmp_xwrc_board_spec/phy8_to_wrc_rx_clk"      TNM_NET = phy_clk;
+
+TIMEGRP "dmtd_sync_ffs" = "sync_ffs" EXCEPT "clk_dmtd";
+TIMEGRP "phy_sync_ffs"  = "sync_ffs" EXCEPT "phy_clk";
+
+TIMESPEC TS_dmtd_sync_ffs = FROM clk_dmtd  TO "dmtd_sync_ffs" TIG;
+TIMESPEC TS_phy_sync_ffs  = FROM phy_clk   TO "phy_sync_ffs"  TIG;
+
+TIMEGRP "dmtd_sync_reg" = "sync_reg" EXCEPT "clk_dmtd";
+TIMEGRP "phy_sync_reg"  = "sync_reg" EXCEPT "phy_clk";
+
+# no gc_sync_reg for DMTD
+#TIMESPEC TS_dmtd_sync_reg = FROM clk_dmtd TO "dmtd_sync_reg" 16ns DATAPATHONLY;
+TIMESPEC TS_phy_sync_reg = FROM phy_clk TO "phy_sync_reg" 8ns DATAPATHONLY;
+
+# no gc_sync_word for DMTD or PHY
+#TIMESPEC TS_dmtd_sync_word = FROM sync_word TO clk_dmtd 48ns DATAPATHONLY;
+#TIMESPEC TS_phy_sync_word  = FROM sync_word TO phy_clk  24ns DATAPATHONLY;

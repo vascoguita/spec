@@ -1,0 +1,11 @@
+###########################################################################
+## Flash memory SPI interface
+###########################################################################
+NET "spi_ncs_o"  LOC = AA3;
+NET "spi_ncs_o"  IOSTANDARD = "LVCMOS25";
+NET "spi_sclk_o" LOC = Y20;
+NET "spi_sclk_o" IOSTANDARD = "LVCMOS25";
+NET "spi_mosi_o" LOC = AB20;
+NET "spi_mosi_o" IOSTANDARD = "LVCMOS25";
+NET "spi_miso_i" LOC = AA20;
+NET "spi_miso_i" IOSTANDARD = "LVCMOS25";

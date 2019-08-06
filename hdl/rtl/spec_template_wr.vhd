@@ -453,7 +453,7 @@ begin  -- architecture top
       -- Interrupt interface
       -- Note: the dma_irq are synchronized with the wb_master_clk clock
       --  inside the gn4124 core.
-      dma_irq_o => irqs(3 downto 2),
+      dma_irq_o => irqs(2),
       -- Note: this is a simple assignment.
       irq_p_i   => irq_master,
       irq_p_o   => gn_gpio_b(0),
@@ -481,67 +481,22 @@ begin  -- architecture top
     );
 
   --  Mini-crossbar from gennum to carrier and application bus.
-  carrier_app_xb: process (clk_sys_62m5)
-  is
-    type t_ca_state is (S_IDLE, S_APP, S_CARRIER);
-    variable ca_state            : t_ca_state;
-    variable can_stall           : std_logic;
-    constant c_IDLE_WB_MASTER_IN : t_wishbone_master_in :=
-      (ack => '0', err => '0', rty => '0', stall => '0', dat => c_DUMMY_WB_DATA);
-  begin
-    if rising_edge(clk_sys_62m5) then
-      if rst_sys_62m5_n = '0' then
-        ca_state      := S_IDLE;
-        gn_wb_in      <= c_IDLE_WB_MASTER_IN;
-        app_wb_o      <= c_DUMMY_WB_MASTER_OUT;
-        carrier_wb_in <= c_DUMMY_WB_MASTER_OUT;
-      else
-        case ca_state is
-          when S_IDLE =>
-            gn_wb_in      <= c_IDLE_WB_MASTER_IN;
-            app_wb_o      <= c_DUMMY_WB_MASTER_OUT;
-            carrier_wb_in <= c_DUMMY_WB_MASTER_OUT;
-            if gn_wb_out.cyc = '1'
-              and gn_wb_out.stb = '1'
-            then
-              -- New transaction.
-              -- Stall so that there is no new requests from the master.
-              gn_wb_in.stall <= '1';
-              can_stall      := '1';
-              if gn_wb_out.adr (31 downto 13) = (31 downto 13 => '0') then
-                ca_state := S_CARRIER;
-                --  Pass to carrier
-                carrier_wb_in <= gn_wb_out;
-              else
-                ca_state := S_APP;
-                app_wb_o <= gn_wb_out;
-              end if;
-            end if;
-          when S_CARRIER =>
-            --  Pass from carrier.
-            --  Maintain stb as long as the carrier stalls.
-            carrier_wb_in.stb <= carrier_wb_out.stall and can_stall;
-            can_stall         := can_stall and carrier_wb_out.stall;
-            gn_wb_in          <= carrier_wb_out;
-            gn_wb_in.stall    <= '1';
-            if carrier_wb_out.ack = '1' then
-              ca_state := S_IDLE;
-            end if;
-          when S_APP =>
-            --  Pass from application
-            app_wb_o.stb   <= app_wb_i.stall and can_stall;
-            can_stall      := can_stall and app_wb_i.stall;
-            gn_wb_in       <= app_wb_i;
-            gn_wb_in.stall <= '1';
-            if app_wb_i.ack = '1' or app_wb_i.err = '1' then
-              ca_state := S_IDLE;
-            end if;
-        end case;
-      end if;
-    end if;
-  end process carrier_app_xb;
-
-  i_devs: entity work.spec_template_regs
+  inst_split: entity work.xwb_split
+    generic map (
+      g_mask => x"ffff_e000"
+    )
+    port map (
+      clk_sys_i => clk_sys_62m5,
+      rst_n_i => rst_sys_62m5_n,
+      slave_i => gn_wb_out,
+      slave_o => gn_wb_in,
+      master_i (0) => carrier_wb_out,
+      master_i (1) => app_wb_i,
+      master_o (0) => carrier_wb_in,
+      master_o (1) => app_wb_o
+    );
+  
+  inst_devs: entity work.spec_template_regs
     port map (
       rst_n_i    => rst_sys_62m5_n,
       clk_i      => clk_sys_62m5,
@@ -642,11 +597,11 @@ begin  -- architecture top
           if g_WITH_WR then
             metadata_data(3) <= '1';
           end if;
-          if g_WITH_DDR then
-            metadata_data(4) <= '1';
-          end if;
           --  Buildinfo
-          metadata_data(5) <= '1';
+          metadata_data(4) <= '1';
+          if g_WITH_DDR then
+            metadata_data(5) <= '1';
+          end if;
         when others =>
           metadata_data <= x"00000000";
       end case;
@@ -683,7 +638,7 @@ begin  -- architecture top
   rst_sys_62m5_n_o <= rst_sys_62m5_n and rst_csr_app_n;
   clk_sys_62m5_o <= clk_sys_62m5;
 
-  i_rst_csr_app_sync : gc_sync_ffs
+  inst_rst_csr_app_sync : gc_sync_ffs
     port map (
       clk_i    => clk_ref_125m,
       rst_n_i  => '1',
@@ -693,7 +648,7 @@ begin  -- architecture top
   rst_ref_125m_n_o <= rst_ref_125m_n and rst_csr_app_sync_n;
   clk_ref_125m_o   <= clk_ref_125m;
 
-  i_i2c: entity work.xwb_i2c_master
+  inst_i2c: entity work.xwb_i2c_master
     generic map (
       g_interface_mode      => CLASSIC,
       g_address_granularity => BYTE,
@@ -723,11 +678,13 @@ begin  -- architecture top
     irqs(irq_user_i'range) <= irq_user_i;
   end generate gen_user_irq;
 
-  g_vic: if g_with_vic generate
-    i_vic: entity work.xwb_vic
+  gen_vic: if g_with_vic generate
+    inst_vic: entity work.xwb_vic
       generic map (
         g_address_granularity => BYTE,
-        g_num_interrupts => num_interrupts
+        g_num_interrupts => num_interrupts,
+        g_FIXED_POLARITY => True,
+        g_POLARITY => '1'
       )
       port map (
         clk_sys_i => clk_sys_62m5,
@@ -739,11 +696,12 @@ begin  -- architecture top
       );
   end generate;
 
-  g_no_vic: if not g_with_vic generate
+  gen_no_vic: if not g_with_vic generate
     vic_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
     irq_master <= '0';
   end generate;
 
+  irqs(3) <= '0';
   irqs(4) <= '0';
   irqs(5) <= '0';
 
@@ -751,7 +709,7 @@ begin  -- architecture top
   -- The WR PTP core board package (WB Slave + WB Master #2 (Etherbone))
   -----------------------------------------------------------------------------
 
-  g_wr: if g_WITH_WR generate
+  gen_wr: if g_WITH_WR generate
     -- OneWire
     signal onewire_data : std_logic;
     signal onewire_oe   : std_logic;
@@ -886,7 +844,7 @@ begin  -- architecture top
     irqs(1) <= '0';
   end generate;
 
-  g_no_wr: if not g_WITH_WR generate
+  gen_no_wr: if not g_WITH_WR generate
     signal clk_125m_pllref : std_logic;
     signal pllout_clk_fb_pllref : std_logic;
     signal pllout_clk_62m5 : std_logic;
@@ -975,8 +933,8 @@ begin  -- architecture top
     wrc_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
   end generate;
 
-  g_onewire: if g_WITH_ONEWIRE and not g_WITH_WR generate
-    i_onewire: entity work.xwb_ds182x_readout
+  gen_onewire: if g_WITH_ONEWIRE and not g_WITH_WR generate
+    inst_onewire: entity work.xwb_ds182x_readout
       generic map (
         g_CLOCK_FREQ_KHZ => 62_500,
         g_USE_INTERNAL_PPS => True)
@@ -992,13 +950,13 @@ begin  -- architecture top
       );
   end generate;
 
-  g_no_onewire: if not g_WITH_ONEWIRE and not g_WITH_WR generate
+  gen_no_onewire: if not g_WITH_ONEWIRE and not g_WITH_WR generate
     therm_id_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
     onewire_b <= 'Z';
   end generate;
 
-  g_spi: if g_WITH_SPI and not g_WITH_WR generate
-    i_spi: entity work.xwb_spi
+  gen_spi: if g_WITH_SPI and not g_WITH_WR generate
+    inst_spi: entity work.xwb_spi
       generic map (
         g_interface_mode => CLASSIC,
         g_address_granularity => BYTE,
@@ -1020,7 +978,7 @@ begin  -- architecture top
       );
   end generate;
 
-  g_no_spi: if not g_WITH_SPI and not g_WITH_WR generate
+  gen_no_spi: if not g_WITH_SPI and not g_WITH_WR generate
     flash_spi_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
   end generate;
 

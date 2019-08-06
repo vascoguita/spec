@@ -13,6 +13,7 @@ syn_project = "spec_golden_wr.xise"
 syn_tool = "ise"
 syn_top = "spec_golden_wr"
 
+spec_template_ucf = ['wr', 'onewire', 'spi']
 board = "spec"
 ctrls = ["bank3_64b_32b" ]
 
@@ -20,7 +21,7 @@ files = [ "buildinfo_pkg.vhd" ]
 
 modules = {
   "local" : [
-      "../../top/golden_wr",
+      "../../top/golden_wr", "../../syn/common"
       ],
   "git" : [
       "https://ohwr.org/project/wr-cores.git",
