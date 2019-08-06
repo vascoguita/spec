@@ -17,6 +17,7 @@
 #include <linux/fmc.h>
 
 #include "gn412x.h"
+#include "spec-core-fpga.h"
 
 #define SPEC_FMC_SLOTS 1
 
@@ -66,8 +67,7 @@ enum {
 
 enum {
 	/* Metadata */
-	SPEC_CORE_FPGA = 0x0,
-	SPEC_META_BASE = SPEC_CORE_FPGA + 0x00,
+	SPEC_META_BASE = SPEC_TEMPLATE_REGS_METADATA,
 	SPEC_META_VENDOR = SPEC_META_BASE + FPGA_META_VENDOR,
 	SPEC_META_DEVICE = SPEC_META_BASE + FPGA_META_DEVICE,
 	SPEC_META_VERSION = SPEC_META_BASE + FPGA_META_VERSION,

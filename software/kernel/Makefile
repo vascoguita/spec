@@ -7,17 +7,25 @@ REPO_PARENT ?= $(shell /bin/pwd)/../..
 KVERSION ?= $(shell uname -r)
 LINUX ?= /lib/modules/$(KVERSION)/build
 
+TOP_DIR ?= $(shell pwd)/../..
+HDL_DIR ?= $(TOP_DIR)/hdl
+
 CONFIG_FPGA_MGR_BACKPORT_PATH_ABS ?= $(abspath $(CONFIG_FPGA_MGR_BACKPORT_PATH))
 FMC_ABS ?= $(abspath $(FMC))
 I2C_ABS ?= $(abspath $(I2C))
 
 VERSION = $(shell git describe --dirty --long --tags)
 
+CHEBY ?= /usr/bin/cheby
+
 all: modules
 
-.PHONY: all modules clean help install modules_install
+.PHONY: all modules clean help install modules_install spec-core-fpga.h
 
-modules help install modules_install:
+spec-core-fpga.h:
+	$(CHEBY) --gen-c -i $(HDL_DIR)/rtl/spec_template_regs.cheby > $@
+
+modules help install modules_install: spec-core-fpga.h
 	$(MAKE) -C $(LINUX) M=$(shell pwd) VERSION=$(VERSION) CONFIG_FPGA_MGR_BACKPORT_PATH_ABS=$(CONFIG_FPGA_MGR_BACKPORT_PATH_ABS) CONFIG_FPGA_MGR_BACKPORT=$(CONFIG_FPGA_MGR_BACKPORT) FMC_ABS=$(FMC_ABS) I2C_ABS=$(I2C_ABS) $@
 
 # be able to run the "clean" rule even if $(LINUX) is not valid
