@@ -284,6 +284,7 @@ static int spec_fpga_dma_init(struct spec_fpga *spec_fpga)
 	if (!(spec_fpga->meta->cap & SPEC_META_CAP_DMA))
 		return 0;
 
+	mdelay(1);
 	ddr_status = ioread32(spec_fpga->fpga + SPEC_FPGA_CSR_DDR_STATUS);
 	if (!(ddr_status & SPEC_FPGA_CSR_DDR_STATUS_DONE)) {
 		dev_err(&spec_fpga->dev,
