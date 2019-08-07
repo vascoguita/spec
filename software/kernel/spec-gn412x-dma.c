@@ -275,6 +275,8 @@ static void gn412x_dma_ctrl_start(struct gn412x_dma_device *gn412x_dma)
 	ctrl = ioread32(gn412x_dma->addr + GN412X_DMA_CTRL);
 	ctrl |= GN412X_DMA_CTRL_START;
 	iowrite32(ctrl, gn412x_dma->addr + GN412X_DMA_CTRL);
+	dev_dbg(&gn412x_dma->pdev->dev, "%s: stat: 0x%x\n",
+		__func__, ioread32(gn412x_dma->addr + GN412X_DMA_STAT));
 }
 
 /**
