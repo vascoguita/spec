@@ -269,19 +269,14 @@ static inline size_t spec_gpiod_table_size(void)
 	       (sizeof(struct gpiod_lookup) * 9);
 }
 
-static int spec_gpio_init(struct spec_gn412x *spec_gn412x)
+static int spec_gpio_init_table(struct spec_gn412x *spec_gn412x)
 {
-	struct gpio_desc *gpiod;
 	struct gpiod_lookup_table *lookup;
 	int err = 0;
 
-	lookup = devm_kzalloc(&spec_gn412x->pdev->dev,
-			      spec_gpiod_table_size(),
-			      GFP_KERNEL);
-	if (!lookup) {
-		err = -ENOMEM;
-		goto err_alloc;
-	}
+	lookup = kzalloc(spec_gpiod_table_size(), GFP_KERNEL);
+	if (!lookup)
+		return -ENOMEM;
 
 	memcpy(lookup, &spec_gpiod_table, spec_gpiod_table_size());
 
@@ -294,11 +289,47 @@ static int spec_gpio_init(struct spec_gn412x *spec_gn412x)
 	if (err)
 		goto err_lookup;
 
+	return 0;
+
+err_lookup:
+	kfree(lookup->dev_id);
+err_dup:
+	kfree(lookup);
+
+	return err;
+}
+
+static void spec_gpio_exit_table(struct spec_gn412x *spec_gn412x)
+{
+	struct gpiod_lookup_table *lookup = spec_gn412x->gpiod_table;
+
+	gpiod_remove_lookup_table(spec_gn412x->gpiod_table);
+	kfree(lookup->dev_id);
+	kfree(lookup);
+
+	spec_gn412x->gpiod_table = NULL;
+}
+
+/**
+ * Configure bootsel GPIOs
+ *
+ * Note: Because of a BUG in RedHat kernel 3.10 we re-set direction
+ */
+static int spec_gpio_init_bootsel(struct spec_gn412x *spec_gn412x)
+{
+	struct gpio_desc *gpiod;
+	int err;
+
 	gpiod = gpiod_get_index(&spec_gn412x->pdev->dev, "bootsel", 0,
 				GPIOD_OUT_HIGH);
 	if (IS_ERR(gpiod)) {
 		err = PTR_ERR(gpiod);
 		goto err_sel0;
+	}
+	err = gpiod_direction_output(gpiod, 1);
+	if (err) {
+		gpiod_put(gpiod);
+		goto err_out0;
 	}
 	spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0] = gpiod;
 
@@ -308,74 +339,115 @@ static int spec_gpio_init(struct spec_gn412x *spec_gn412x)
 		err = PTR_ERR(gpiod);
 		goto err_sel1;
 	}
+	err = gpiod_direction_output(gpiod, 1);
+	if (err) {
+		gpiod_put(gpiod);
+		goto err_out1;
+	}
 	spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL1] = gpiod;
 
-	/* Because of a BUG in RedHat kernel 3.10 we re-set direction */
-	err = gpiod_direction_output(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0],
-				     1);
-	if (err)
-		goto err_out0;
-	err = gpiod_direction_output(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL1],
-				     1);
-	if (err)
-		goto err_out1;
+	return 0;
 
+err_out1:
+err_sel1:
+	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0]);
+	spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0] = NULL;
+err_out0:
+err_sel0:
+	return err;
+}
+
+static void spec_gpio_exit_bootsel(struct spec_gn412x *spec_gn412x)
+{
+	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL1]);
+	spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL1] = NULL;
+	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0]);
+	spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0] = NULL;
+}
+
+
+/**
+ * Configure IRQ GPIOs
+ *
+ * Note: Because of a BUG in RedHat kernel 3.10 we re-set direction
+ */
+static int spec_gpio_init_irq(struct spec_gn412x *spec_gn412x)
+{
+	struct gpio_desc *gpiod;
+	int err;
 
 	gpiod = gpiod_get_index(&spec_gn412x->pdev->dev, "irq", 0, GPIOD_IN);
 	if (IS_ERR(gpiod)) {
 		err = PTR_ERR(gpiod);
-		goto err_irq0;
+		goto err_sel0;
+	}
+	err = gpiod_direction_input(gpiod);
+	if (err) {
+		gpiod_put(gpiod);
+		goto err_out0;
 	}
 	spec_gn412x->gpiod[GN4124_GPIO_IRQ0] = gpiod;
 
 	gpiod = gpiod_get_index(&spec_gn412x->pdev->dev, "irq", 1, GPIOD_IN);
 	if (IS_ERR(gpiod)) {
 		err = PTR_ERR(gpiod);
-		goto err_irq1;
+		goto err_sel1;
+	}
+	err = gpiod_direction_input(gpiod);
+	if (err) {
+		gpiod_put(gpiod);
+		goto err_out1;
 	}
 	spec_gn412x->gpiod[GN4124_GPIO_IRQ1] = gpiod;
 
-	/* Because of a BUG in RedHat kernel 3.10 we re-set direction */
-	err = gpiod_direction_input(spec_gn412x->gpiod[GN4124_GPIO_IRQ0]);
+	return 0;
+
+err_out1:
+err_sel1:
+	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_IRQ0]);
+	spec_gn412x->gpiod[GN4124_GPIO_IRQ0] = NULL;
+err_out0:
+err_sel0:
+	return err;
+}
+
+static void spec_gpio_exit_irq(struct spec_gn412x *spec_gn412x)
+{
+	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_IRQ1]);
+	spec_gn412x->gpiod[GN4124_GPIO_IRQ1] = NULL;
+	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_IRQ0]);
+	spec_gn412x->gpiod[GN4124_GPIO_IRQ0] = NULL;
+}
+
+static int spec_gpio_init(struct spec_gn412x *spec_gn412x)
+{
+	int err;
+
+	err = spec_gpio_init_table(spec_gn412x);
 	if (err)
-		goto err_in0;
-	err = gpiod_direction_input(spec_gn412x->gpiod[GN4124_GPIO_IRQ1]);
+		return err;
+	err = spec_gpio_init_bootsel(spec_gn412x);
 	if (err)
-		goto err_in1;
+		goto err_bootsel;
+	err = spec_gpio_init_irq(spec_gn412x);
+	if (err)
+		goto err_irq;
 
 	return 0;
 
-err_in1:
-err_in0:
-	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_IRQ1]);
-err_irq1:
-	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_IRQ0]);
-err_irq0:
-err_out1:
-err_out0:
-	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL1]);
-err_sel1:
-	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0]);
-err_sel0:
-	gpiod_remove_lookup_table(spec_gn412x->gpiod_table);
-err_lookup:
-	kfree(lookup->dev_id);
-err_dup:
-	devm_kfree(&spec_gn412x->pdev->dev, lookup);
-	spec_gn412x->gpiod_table = NULL;
-err_alloc:
+err_irq:
+	spec_gpio_exit_bootsel(spec_gn412x);
+err_bootsel:
+	spec_gpio_exit_table(spec_gn412x);
 
 	return err;
 }
 
 static void spec_gpio_exit(struct spec_gn412x *spec_gn412x)
 {
-	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_IRQ1]);
-	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_IRQ0]);
-	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL1]);
-	gpiod_put(spec_gn412x->gpiod[GN4124_GPIO_BOOTSEL0]);
-	gpiod_remove_lookup_table(spec_gn412x->gpiod_table);
-	kfree(spec_gn412x->gpiod_table->dev_id);
+	spec_gpio_exit_irq(spec_gn412x);
+	spec_gpio_exit_bootsel(spec_gn412x);
+	spec_gpio_exit_table(spec_gn412x);
 }
 
 /* SPEC sub-devices */
@@ -581,7 +653,7 @@ static int spec_probe(struct pci_dev *pdev,
 		      const struct pci_device_id *id)
 {
 	struct spec_gn412x *spec_gn412x;
-	int err;
+	int err = 0;
 
 	spec_gn412x = kzalloc(sizeof(*spec_gn412x), GFP_KERNEL);
 	if (!spec_gn412x)
