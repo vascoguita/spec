@@ -381,9 +381,11 @@ static dma_cookie_t gn412x_dma_tx_submit(struct dma_async_tx_descriptor *tx)
 	return cookie;
 }
 
-static void gn412x_dma_prep_fixup_next(struct gn412x_dma_tx_hw *tx_hw,
-				       dma_addr_t next_addr)
+static void gn412x_dma_prep_fixup(struct gn412x_dma_tx_hw *tx_hw,
+				  dma_addr_t next_addr)
 {
+	if (!tx_hw || !next_addr)
+		return;
 	tx_hw->next_addr_l = ((next_addr >> 0)  & 0xFFFFFFFF);
 	tx_hw->next_addr_h = ((next_addr >> 32) & 0xFFFFFFFF);
 }
@@ -414,6 +416,8 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 	struct dma_slave_config *sconfig = &to_gn412x_dma_chan(chan)->sconfig;
 	struct gn412x_dma_tx *gn412x_dma_tx;
 	struct scatterlist *sg;
+	struct gn412x_dma_tx_hw *tx_hw = NULL;
+	dma_addr_t phys = 0;
 	int i;
 
 	if (unlikely(direction != DMA_DEV_TO_MEM)) {
@@ -443,18 +447,13 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 	if (!gn412x_dma_tx->sgl_hw)
 		goto err_alloc_sglhw;
 
-	for_each_sg(sgl, sg, sg_len, i) {
-		struct gn412x_dma_tx_hw *tx_hw;
-		dma_addr_t phys;
 
-		/* Allocate a descriptor for the next transfer */
+	src_addr = sconfig->src_addr;
+	for_each_sg(sgl, sg, sg_len, i) {
+		gn412x_dma_prep_fixup(tx_hw, phys);
 		tx_hw = dma_pool_alloc(gn412x_dma->pool, GFP_NOWAIT, &phys);
 		if (!tx_hw)
 			goto err_alloc_pool;
-		if (i > 0) {
-			gn412x_dma_prep_fixup_next(gn412x_dma_tx->sgl_hw[i - 1],
-						   phys);
-		}
 		gn412x_dma_prep(tx_hw, sg, sconfig->src_addr);
 
 		gn412x_dma_tx->sgl_hw[i] = tx_hw;
