@@ -418,6 +418,7 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 	struct scatterlist *sg;
 	struct gn412x_dma_tx_hw *tx_hw = NULL;
 	dma_addr_t phys = 0;
+	dma_addr_t src_addr;
 	int i;
 
 	if (unlikely(direction != DMA_DEV_TO_MEM)) {
@@ -454,7 +455,8 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 		tx_hw = dma_pool_alloc(gn412x_dma->pool, GFP_NOWAIT, &phys);
 		if (!tx_hw)
 			goto err_alloc_pool;
-		gn412x_dma_prep(tx_hw, sg, sconfig->src_addr);
+		gn412x_dma_prep(tx_hw, sg, src_addr);
+		src_addr += sg_dma_len(sg);
 
 		gn412x_dma_tx->sgl_hw[i] = tx_hw;
 		gn412x_dma_tx->tx.phys = phys;
