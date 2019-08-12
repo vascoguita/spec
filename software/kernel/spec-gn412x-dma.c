@@ -94,7 +94,7 @@ static inline enum dma_status dma_cookie_status(struct dma_chan *chan,
 
 	used = chan->cookie;
 	complete = chan->completed_cookie;
-	barrier();
+
 	if (state) {
 		state->last = complete;
 		state->used = used;
@@ -352,7 +352,6 @@ static int gn412x_dma_alloc_chan_resources(struct dma_chan *dchan)
 	struct gn412x_dma_chan *chan = to_gn412x_dma_chan(dchan);
 
 	memset(&chan->sconfig, 0, sizeof(struct dma_slave_config));
-	barrier();
 
 	return 0;
 }
