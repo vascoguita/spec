@@ -398,6 +398,8 @@ static void gn412x_dma_prep(struct gn412x_dma_tx_hw *tx_hw,
 	tx_hw->dma_addr_h = ((uint64_t)sg_dma_address(sg) >> 32);
 	tx_hw->dma_addr_h &= 0xFFFFFFFF;
 	tx_hw->dma_len = sg_dma_len(sg);
+	tx_hw->next_addr_l = 0x00000000;
+	tx_hw->next_addr_h = 0x00000000;
 	tx_hw->attribute = 0x0;
 	if (!sg_is_last(sg))
 		tx_hw->attribute = GN412X_DMA_ATTR_MORE;
