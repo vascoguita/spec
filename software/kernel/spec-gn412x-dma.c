@@ -585,7 +585,8 @@ static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 	switch (state) {
 	case GN412X_DMA_STAT_IDLE:
 		dma_cookie_complete(&tx->tx);
-		tx->tx.callback(tx->tx.callback_param);
+		if (tx->tx.callback)
+			tx->tx.callback(tx->tx.callback_param);
 		break;
 	case GN412X_DMA_STAT_ERROR:
 		dev_err(&gn412x_dma->pdev->dev,
