@@ -352,6 +352,7 @@ static int gn412x_dma_alloc_chan_resources(struct dma_chan *dchan)
 	struct gn412x_dma_chan *chan = to_gn412x_dma_chan(dchan);
 
 	memset(&chan->sconfig, 0, sizeof(struct dma_slave_config));
+	chan->sconfig.direction = DMA_DEV_TO_MEM;
 
 	return 0;
 }
@@ -424,6 +425,12 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 	if (unlikely(direction != DMA_DEV_TO_MEM)) {
 		dev_err(&chan->dev->device,
 			"Support only DEV -> MEM transfers\n");
+		goto err;
+	}
+
+	if (unlikely(sconfig->direction != direction)) {
+		dev_err(&chan->dev->device,
+			"Transfer and slave configuration disagree on DMA direction\n");
 		goto err;
 	}
 
