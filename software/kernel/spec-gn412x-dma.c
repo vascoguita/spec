@@ -183,7 +183,7 @@ struct gn412x_dma_tx_hw {
  * @pending_list: list of pending transfers
  * @tx_curr: current transfer
  * @task: tasklet for DMA start
- * @lock: protects the pending_list and tx_curr from concurrent changes
+ * @lock: protects: pending_list, tx_curr, sconfig
  * @sconfig: channel configuration to be used
  * @error: number of errors detected
  */
@@ -539,30 +539,45 @@ static enum dma_status gn412x_dma_tx_status(struct dma_chan *chan,
 	return DMA_ERROR;
 }
 
+static int gn412x_dma_slave_config(struct dma_chan *chan,
+				   struct dma_slave_config *sconfig)
+{
+	struct gn412x_dma_chan *gn412x_dma_chan = to_gn412x_dma_chan(chan);
+	unsigned long flags;
+
+	spin_lock_irqsave(&gn412x_dma_chan->lock, flags);
+	memcpy(&gn412x_dma_chan->sconfig, sconfig,
+	       sizeof(struct dma_slave_config));
+	spin_unlock_irqrestore(&gn412x_dma_chan->lock, flags);
+
+	return 0;
+}
+
+static int gn412x_dma_terminate_all(struct dma_chan *chan)
+{
+	struct gn412x_dma_device *gn412x_dma = to_gn412x_dma_device(chan->device);
+
+	gn412x_dma_ctrl_abort(gn412x_dma);
+	/* FIXME remove all pending */
+	if (!gn412x_dma_is_abort(gn412x_dma)) {
+		dev_err(&gn412x_dma->pdev->dev,
+			"Failed to abort DMA transfer\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int gn412x_dma_device_control(struct dma_chan *chan,
 				enum dma_ctrl_cmd cmd,
 				unsigned long arg)
 {
-	struct gn412x_dma_device *gn412x_dma = to_gn412x_dma_device(chan->device);
-
 	switch (cmd) {
-	case DMA_SLAVE_CONFIG: {
-		struct gn412x_dma_chan *gn412x_dma_chan = to_gn412x_dma_chan(chan);
-		struct dma_slave_config *sconfig = (struct dma_slave_config *)arg;
-
-		memcpy(&gn412x_dma_chan->sconfig, sconfig,
-		       sizeof(struct dma_slave_config));
-		break;
-	}
+	case DMA_SLAVE_CONFIG:
+		return gn412x_dma_slave_config(chan,
+					       (struct dma_slave_config *)arg);
 	case DMA_TERMINATE_ALL:
-		gn412x_dma_ctrl_abort(gn412x_dma);
-		/* FIXME remove all pending */
-		if (!gn412x_dma_is_abort(gn412x_dma)) {
-			dev_err(&gn412x_dma->pdev->dev,
-				"Failed to abort DMA transfer\n");
-			return -EINVAL;
-		}
-		break;
+		return gn412x_dma_terminate_all(chan);
 	case DMA_PAUSE:
 		break;
 	case DMA_RESUME:
