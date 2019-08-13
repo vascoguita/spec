@@ -467,6 +467,33 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 
 		gn412x_dma_tx->sgl_hw[i] = tx_hw;
 		gn412x_dma_tx->tx.phys = phys;
+		dev_dbg(&chan->dev->device,
+			"%s segment: %d addr: 0x%llx phy: 0x%llx len: %u last: %lu\n",
+			__func__, i,
+			sg_dma_address(sg), phys,
+			sg_dma_len(sg), sg_is_last(sg));
+	}
+
+	for_each_sg(sgl, sg, sg_len, i) {
+		tx_hw = gn412x_dma_tx->sgl_hw[i];
+		dev_dbg(&chan->dev->device,
+			"%s\n"
+			"\tsegment: %d\n"
+			"\tstart_addr: 0x%x\n"
+			"\tdma_addr_l: 0x%x\n"
+			"\tdma_addr_h: 0x%x\n"
+			"\tdma_len: 0x%x\n"
+			"\tnext_addr_l: 0x%x\n"
+			"\tnext_addr_h: 0x%x\n"
+			"\tattribute: 0x%x\n",
+			__func__, i,
+			tx_hw->start_addr,
+			tx_hw->dma_addr_l,
+			tx_hw->dma_addr_h,
+			tx_hw->dma_len,
+			tx_hw->next_addr_l,
+			tx_hw->next_addr_h,
+			tx_hw->attribute);
 	}
 
 	dev_dbg(&chan->dev->device, "%s prepared %p\n", __func__, &gn412x_dma_tx->tx);
