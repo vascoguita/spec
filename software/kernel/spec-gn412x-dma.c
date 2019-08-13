@@ -623,7 +623,7 @@ static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 	struct gn412x_dma_tx *tx;
 	unsigned long flags;
 	unsigned int i;
-	uint32_t state;
+	enum gn412x_dma_state state;
 
 	/* FIXME check for spurious - need HDL fix */
 	gn412x_dma_irq_ack(gn412x_dma);
