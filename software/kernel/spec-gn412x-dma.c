@@ -130,8 +130,8 @@ enum gn412x_dma_ctrl_swapping {
 	GN412X_DMA_CTRL_SWAPPING_32,
 };
 
-#define GN412X_DMA_ATTR_DIR_MEM_TO_DEV (1 << 1)
-#define GN412X_DMA_ATTR_MORE (1 << 0)
+#define GN412X_DMA_ATTR_DIR_MEM_TO_DEV (1 << 0)
+#define GN412X_DMA_ATTR_CHAIN (1 << 1)
 struct gn412x_dma_tx;
 
 /**
@@ -405,7 +405,7 @@ static void gn412x_dma_prep(struct gn412x_dma_tx_hw *tx_hw,
 	tx_hw->next_addr_h = 0x00000000;
 	tx_hw->attribute = 0x0;
 	if (!sg_is_last(sg))
-		tx_hw->attribute = GN412X_DMA_ATTR_MORE;
+		tx_hw->attribute = GN412X_DMA_ATTR_CHAIN;
 }
 
 static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
