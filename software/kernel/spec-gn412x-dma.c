@@ -458,6 +458,12 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 
 	src_addr = sconfig->src_addr;
 	for_each_sg(sgl, sg, sg_len, i) {
+		if (sg_dma_len(sg) > dma_get_max_seg_size(chan->dev->device)) {
+			dev_err(&chan->dev->device,
+				"Maximum transfer size %d, got %d on transfer %d\n",
+				0x3FFF, sg_dma_len(sg), i);
+			goto err_alloc_pool;
+		}
 		gn412x_dma_prep_fixup(tx_hw, phys);
 		tx_hw = dma_pool_alloc(gn412x_dma->pool, GFP_NOWAIT, &phys);
 		if (!tx_hw)
@@ -743,6 +749,8 @@ static int gn412x_dma_engine_init(struct gn412x_dma_device *gn412x_dma,
 	spin_lock_init(&gn412x_dma->chan.lock);
 	tasklet_init(&gn412x_dma->chan.task, gn412x_dma_start_task,
 		     (unsigned long)&gn412x_dma->chan);
+
+	dma_set_max_seg_size(dma->dev, 0x3FFF);
 
 	gn412x_dma->pool = dma_pool_create(dev_name(dma->dev), dma->dev,
 					   sizeof(struct gn412x_dma_tx_hw),
