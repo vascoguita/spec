@@ -166,14 +166,14 @@ enum gn412x_dma_state {
  *       within the DMA pool
  */
 struct gn412x_dma_tx_hw {
-	uint32_t start_addr;	/* 0x00 */
-	uint32_t dma_addr_l;	/* 0x04 */
-	uint32_t dma_addr_h;	/* 0x08 */
-	uint32_t dma_len;	/* 0x0C */
-	uint32_t next_addr_l;	/* 0x10 */
-	uint32_t next_addr_h;	/* 0x14 */
-	uint32_t attribute;	/* 0x18 */
-	uint32_t reserved;	/* ouch */
+	uint32_t start_addr;
+	uint32_t dma_addr_l;
+	uint32_t dma_addr_h;
+	uint32_t dma_len;
+	uint32_t next_addr_l;
+	uint32_t next_addr_h;
+	uint32_t attribute;
+	uint32_t reserved; /* alignement */
 };
 
 
