@@ -750,7 +750,7 @@ static int gn412x_dma_engine_init(struct gn412x_dma_device *gn412x_dma,
 	tasklet_init(&gn412x_dma->chan.task, gn412x_dma_start_task,
 		     (unsigned long)&gn412x_dma->chan);
 
-	dma_set_max_seg_size(dma->dev, 0x3FFF);
+	dma_set_max_seg_size(dma->dev, 0x7FFF);
 
 	gn412x_dma->pool = dma_pool_create(dev_name(dma->dev), dma->dev,
 					   sizeof(struct gn412x_dma_tx_hw),
