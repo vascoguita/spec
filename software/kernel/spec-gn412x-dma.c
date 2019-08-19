@@ -415,8 +415,6 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 	struct dma_slave_config *sconfig = &to_gn412x_dma_chan(chan)->sconfig;
 	struct gn412x_dma_tx *gn412x_dma_tx;
 	struct scatterlist *sg;
-	struct gn412x_dma_tx_hw *tx_hw = NULL;
-	dma_addr_t phys = 0;
 	dma_addr_t src_addr;
 	int i;
 
@@ -456,30 +454,38 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 
 	src_addr = sconfig->src_addr;
 	for_each_sg(sgl, sg, sg_len, i) {
-		if (sg_dma_len(sg) > dma_get_max_seg_size(chan->dev->device)) {
+		dma_addr_t phys;
+
+		if (sg_dma_len(sg) > dma_get_max_seg_size(chan->device->dev)) {
 			dev_err(&chan->dev->device,
 				"Maximum transfer size %d, got %d on transfer %d\n",
 				0x3FFF, sg_dma_len(sg), i);
 			goto err_alloc_pool;
 		}
-		gn412x_dma_prep_fixup(tx_hw, phys);
-		tx_hw = dma_pool_alloc(gn412x_dma->pool, GFP_NOWAIT, &phys);
-		if (!tx_hw)
+		gn412x_dma_tx->sgl_hw[i] = dma_pool_alloc(gn412x_dma->pool,
+							  GFP_DMA,
+							  &phys);
+		if (!gn412x_dma_tx->sgl_hw[i])
 			goto err_alloc_pool;
-		gn412x_dma_prep(tx_hw, sg, src_addr);
-		src_addr += sg_dma_len(sg);
 
-		gn412x_dma_tx->sgl_hw[i] = tx_hw;
-		gn412x_dma_tx->tx.phys = phys;
-		dev_dbg(&chan->dev->device,
-			"%s segment: %d addr: 0x%llx phy: 0x%llx len: %u last: %lu\n",
-			__func__, i,
-			sg_dma_address(sg), phys,
-			sg_dma_len(sg), sg_is_last(sg));
+		if (i > 0) {
+			/*
+			 * To build the chained transfer the previous
+			 * descriptor (sgl_hw[i - 1]) must point to
+			 * the physical address of current one (phys)
+			 */
+			gn412x_dma_prep_fixup(gn412x_dma_tx->sgl_hw[i - 1],
+					      phys);
+		} else {
+			gn412x_dma_tx->tx.phys = phys;
+		}
+		gn412x_dma_prep(gn412x_dma_tx->sgl_hw[i], sg, src_addr);
+		src_addr += sg_dma_len(sg);
 	}
 
 	for_each_sg(sgl, sg, sg_len, i) {
-		tx_hw = gn412x_dma_tx->sgl_hw[i];
+		struct gn412x_dma_tx_hw *tx_hw = gn412x_dma_tx->sgl_hw[i];
+
 		dev_dbg(&chan->dev->device,
 			"%s\n"
 			"\tsegment: %d\n"
