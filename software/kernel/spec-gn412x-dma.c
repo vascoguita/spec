@@ -336,15 +336,13 @@ static void gn412x_dma_irq_ack(struct gn412x_dma_device *gn412x_dma)
 static void gn412x_dma_config(struct gn412x_dma_device *gn412x_dma,
 			      struct gn412x_dma_tx_hw *tx_hw)
 {
-	int i;
-
-	for (i = 0; i < (sizeof(struct gn412x_dma_tx_hw) / 4) - 1; ++i) {
-		uint32_t *tx = (uint32_t *)tx_hw;
-		void __iomem *addr_base;
-
-		addr_base = gn412x_dma->addr + GN412X_DMA_ADDR_MEM + (0x4 * i);
-		iowrite32(tx[i], addr_base);
-	}
+	iowrite32(tx_hw->start_addr, gn412x_dma->addr + GN412X_DMA_ADDR_MEM);
+	iowrite32(tx_hw->dma_addr_l, gn412x_dma->addr + GN412X_DMA_ADDR_L);
+	iowrite32(tx_hw->dma_addr_h, gn412x_dma->addr + GN412X_DMA_ADDR_H);
+	iowrite32(tx_hw->dma_len, gn412x_dma->addr + GN412X_DMA_LEN);
+	iowrite32(tx_hw->next_addr_l, gn412x_dma->addr + GN412X_DMA_NEXT_L);
+	iowrite32(tx_hw->next_addr_h, gn412x_dma->addr + GN412X_DMA_NEXT_H);
+	iowrite32(tx_hw->attribute, gn412x_dma->addr + GN412X_DMA_ATTR);
 }
 
 static int gn412x_dma_alloc_chan_resources(struct dma_chan *dchan)
