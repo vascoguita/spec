@@ -3,6 +3,8 @@
  * Copyright (C) 2019 CERN (www.cern.ch)
  * Author: Federico Vaga <federico.vaga@cern.ch>
  */
+#ifndef __SPEC_COMPAT_H__
+#define __SPEC_COMPAT_H__
 #include <linux/fpga/fpga-mgr.h>
 #include <linux/types.h>
 #include <linux/version.h>
@@ -76,3 +78,5 @@ extern int compat_gpiod_add_lookup_table(struct gpiod_lookup_table *table);
 #if KERNEL_VERSION(4, 3, 0) > LINUX_VERSION_CODE
 extern void gpiod_remove_lookup_table(struct gpiod_lookup_table *table);
 #endif
+
+#endif /* __SPEC_COMPAT_H__ */
