@@ -22,7 +22,8 @@ static int gn412x_fcl_write_complete(struct fpga_manager *mgr,
 
 
 
-int compat_get_fpga_last_word_size(struct fpga_image_info *info, size_t count)
+static int compat_get_fpga_last_word_size(struct fpga_image_info *info,
+					  size_t count)
 {
 #if KERNEL_VERSION(4, 16, 0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
 	return count;
@@ -58,10 +59,10 @@ static int compat_gn412x_fcl_write_complete(struct fpga_manager *mgr,
 #endif
 
 #if KERNEL_VERSION(4, 18, 0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
-struct fpga_manager *compat_fpga_mgr_create(struct device *dev,
-					    const char *name,
-					    const struct fpga_manager_ops *mops,
-					    void *priv)
+static struct fpga_manager *compat_fpga_mgr_create(struct device *dev,
+						   const char *name,
+						   const struct fpga_manager_ops *mops,
+						   void *priv)
 {
 	int err;
 
@@ -71,40 +72,40 @@ struct fpga_manager *compat_fpga_mgr_create(struct device *dev,
 	return (struct fpga_manager *)dev;
 }
 
-void compat_fpga_mgr_free(struct fpga_manager *mgr)
+static void compat_fpga_mgr_free(struct fpga_manager *mgr)
 {
 	fpga_mgr_unregister((struct device *)mgr);
 }
 
-int compat_fpga_mgr_register(struct fpga_manager *mgr)
+static int compat_fpga_mgr_register(struct fpga_manager *mgr)
 {
 	return mgr ? 0 : 1;
 }
 
-void compat_fpga_mgr_unregister(struct fpga_manager *mgr)
+static void compat_fpga_mgr_unregister(struct fpga_manager *mgr)
 {
 	return mgr ? 0 : 1;
 }
 #else
-struct fpga_manager *compat_fpga_mgr_create(struct device *dev,
-					    const char *name,
-					    const struct fpga_manager_ops *mops,
-					    void *priv)
+static struct fpga_manager *compat_fpga_mgr_create(struct device *dev,
+						   const char *name,
+						   const struct fpga_manager_ops *mops,
+						   void *priv)
 {
 	return fpga_mgr_create(dev, name, mops, priv);
 }
 
-void compat_fpga_mgr_free(struct fpga_manager *mgr)
+static void compat_fpga_mgr_free(struct fpga_manager *mgr)
 {
 	fpga_mgr_free(mgr);
 }
 
-int compat_fpga_mgr_register(struct fpga_manager *mgr)
+static int compat_fpga_mgr_register(struct fpga_manager *mgr)
 {
 	return fpga_mgr_register(mgr);
 }
 
-void compat_fpga_mgr_unregister(struct fpga_manager *mgr)
+static void compat_fpga_mgr_unregister(struct fpga_manager *mgr)
 {
 	fpga_mgr_unregister(mgr);
 }

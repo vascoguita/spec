@@ -32,25 +32,6 @@
 struct fpga_image_info;
 #endif
 
-int spec_fpga_write_init(struct fpga_manager *mgr,
-			 struct fpga_image_info *info,
-			 const char *buf, size_t count);
-int spec_fpga_write_complete(struct fpga_manager *mgr,
-			     struct fpga_image_info *info);
-
-#if KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
-int compat_spec_fpga_write_init(struct fpga_manager *mgr, u32 flags,
-				const char *buf, size_t count);
-int compat_spec_fpga_write_complete(struct fpga_manager *mgr, u32 flags);
-#else
-int compat_spec_fpga_write_init(struct fpga_manager *mgr,
-				struct fpga_image_info *info,
-				const char *buf, size_t count);
-int compat_spec_fpga_write_complete(struct fpga_manager *mgr,
-				    struct fpga_image_info *info);
-#endif
-int compat_get_fpga_last_word_size(struct fpga_image_info *info,
-				   size_t count);
 int compat_spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name);
 
 #if KERNEL_VERSION(3, 11, 0) > LINUX_VERSION_CODE
