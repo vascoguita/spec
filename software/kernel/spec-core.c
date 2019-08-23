@@ -71,6 +71,11 @@ static ssize_t spec_dbg_fw_write(struct file *file,
 	struct spec_gn412x *spec_gn412x = file->private_data;
 	int err;
 
+	if (!buf || !count) {
+		dev_err(&spec_gn412x->pdev->dev, "Invalid input\n");
+		return -EINVAL;
+	}
+
 	err = spec_fw_load(spec_gn412x, buf);
 	if (err)
 		return err;
