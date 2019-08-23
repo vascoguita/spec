@@ -546,6 +546,7 @@ static int spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name)
 	enum spec_fpga_select sel;
 	int err;
 
+	dev_dbg(&spec_gn412x->pdev->dev, "Writing firmware '%s'\n", name);
 	err = spec_fpga_exit(spec_gn412x);
 	if (err) {
 		dev_err(&spec_gn412x->pdev->dev,
