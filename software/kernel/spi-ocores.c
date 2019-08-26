@@ -253,6 +253,9 @@ static void spi_ocores_hw_xfer_rx_push8(struct spi_ocores *sp)
 {
 	uint32_t data;
 
+	if (!sp->cur_rx_buf)
+		return;
+
 	data = spi_ocores_rx_get(sp, 0) & 0x000000FF;
 	*((uint8_t *)sp->cur_rx_buf) = data;
 	sp->cur_rx_buf += 1;
@@ -262,6 +265,9 @@ static void spi_ocores_hw_xfer_rx_push8(struct spi_ocores *sp)
 static void spi_ocores_hw_xfer_rx_push16(struct spi_ocores *sp)
 {
 	uint32_t data;
+
+	if (!sp->cur_rx_buf)
+		return;
 
 	data = spi_ocores_rx_get(sp, 0) & 0x0000FFFF;
 	*((uint16_t *)sp->cur_rx_buf) = data;
@@ -273,6 +279,9 @@ static void spi_ocores_hw_xfer_rx_push32(struct spi_ocores *sp)
 {
 	uint32_t data;
 
+	if (!sp->cur_rx_buf)
+		return;
+
 	data = spi_ocores_rx_get(sp, 0) & 0xFFFFFFFF;
 	*((uint32_t *)sp->cur_rx_buf) = data;
 	sp->cur_rx_buf += 4;
@@ -282,6 +291,9 @@ static void spi_ocores_hw_xfer_rx_push32(struct spi_ocores *sp)
 static void spi_ocores_hw_xfer_rx_push64(struct spi_ocores *sp)
 {
 	int i;
+
+	if (!sp->cur_rx_buf)
+		return;
 
 	for (i = 0; i < 2; ++i) {
 		uint32_t data;
@@ -296,6 +308,9 @@ static void spi_ocores_hw_xfer_rx_push64(struct spi_ocores *sp)
 static void spi_ocores_hw_xfer_rx_push128(struct spi_ocores *sp)
 {
 	int i;
+
+	if (!sp->cur_rx_buf)
+		return;
 
 	for (i = 0; i < 4; ++i) {
 		uint32_t data;
