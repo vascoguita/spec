@@ -80,11 +80,11 @@ entity spec_template_wr is
     clk_125m_pllref_n_i : in std_logic;
 
     -- 20MHz VCXO clock (for WR)
-    clk_20m_vcxo_i : in std_logic;
+    clk_20m_vcxo_i : in std_logic  := '0';
 
     -- 125 MHz GTP reference
-    clk_125m_gtp_n_i : in std_logic;
-    clk_125m_gtp_p_i : in std_logic;
+    clk_125m_gtp_n_i : in std_logic := '0';
+    clk_125m_gtp_p_i : in std_logic := '0';
 
     ---------------------------------------------------------------------------
     -- GN4124 PCIe bridge signals
@@ -158,13 +158,13 @@ entity spec_template_wr is
     -- Green LED next to the SFP: indicates if the link is up.
     led_link_o  : out std_logic;
 
-    button1_i   : in  std_logic;
+    button1_i   : in  std_logic := '1';
 
     ---------------------------------------------------------------------------
     -- UART
     ---------------------------------------------------------------------------
 
-    uart_rxd_i : in  std_logic;
+    uart_rxd_i : in  std_logic := '1';
     uart_txd_o : out std_logic;
 
     ---------------------------------------------------------------------------
@@ -182,15 +182,15 @@ entity spec_template_wr is
 
     sfp_txp_o         : out   std_logic;
     sfp_txn_o         : out   std_logic;
-    sfp_rxp_i         : in    std_logic;
-    sfp_rxn_i         : in    std_logic;
-    sfp_mod_def0_i    : in    std_logic;          -- sfp detect
+    sfp_rxp_i         : in    std_logic := '0';
+    sfp_rxn_i         : in    std_logic := '0';
+    sfp_mod_def0_i    : in    std_logic := '0';   -- sfp detect
     sfp_mod_def1_b    : inout std_logic;          -- scl
     sfp_mod_def2_b    : inout std_logic;          -- sda
     sfp_rate_select_o : out   std_logic;
-    sfp_tx_fault_i    : in    std_logic;
+    sfp_tx_fault_i    : in    std_logic := '0';
     sfp_tx_disable_o  : out   std_logic;
-    sfp_los_i         : in    std_logic;
+    sfp_los_i         : in    std_logic := '0';
 
     ------------------------------------------
     -- DDR (bank 3)
@@ -495,7 +495,7 @@ begin  -- architecture top
       master_o (0) => carrier_wb_in,
       master_o (1) => app_wb_o
     );
-  
+
   inst_devs: entity work.spec_template_regs
     port map (
       rst_n_i    => rst_sys_62m5_n,
@@ -561,7 +561,7 @@ begin  -- architecture top
 
   fmc_presence (0) <= not fmc0_prsnt_m2c_n_i;
   fmc_presence (31 downto 1) <= (others => '0');
-  
+
   --  Metadata
   p_metadata: process (clk_sys_62m5) is
   begin
@@ -739,19 +739,19 @@ begin  -- architecture top
         clk_125m_gtp_n_i    => clk_125m_gtp_n_i,
         clk_125m_gtp_p_i    => clk_125m_gtp_p_i,
         clk_10m_ext_i       => clk_ext_10m,
-  
+
         clk_sys_62m5_o      => clk_sys_62m5,
         clk_ref_125m_o      => clk_ref_125m,
         clk_pll_aux_o       => clk_pll_aux,
         rst_sys_62m5_n_o    => rst_sys_62m5_n,
         rst_ref_125m_n_o    => rst_ref_125m_n,
         rst_pll_aux_n_o     => rst_pll_aux_n,
-  
+
         plldac_sclk_o       => plldac_sclk_o,
         plldac_din_o        => plldac_din_o,
         pll25dac_cs_n_o     => pll25dac_cs_n_o,
         pll20dac_cs_n_o     => pll20dac_cs_n_o,
-  
+
         sfp_txp_o           => sfp_txp_o,
         sfp_txn_o           => sfp_txn_o,
         sfp_rxp_i           => sfp_rxp_i,
@@ -765,12 +765,12 @@ begin  -- architecture top
         sfp_tx_fault_i      => sfp_tx_fault_i,
         sfp_tx_disable_o    => sfp_tx_disable_o,
         sfp_los_i           => sfp_los_i,
-  
+
         eeprom_sda_i        => eeprom_sda_in,
         eeprom_sda_o        => eeprom_sda_out,
         eeprom_scl_i        => eeprom_scl_in,
         eeprom_scl_o        => eeprom_scl_out,
-  
+
         onewire_i           => onewire_data,
         onewire_oen_o       => onewire_oe,
         -- Uart
@@ -781,10 +781,10 @@ begin  -- architecture top
         flash_ncs_o         => spi_ncs_o,
         flash_mosi_o        => spi_mosi_o,
         flash_miso_i        => spi_miso_i,
-  
+
         wb_slave_o          => wrc_in,
         wb_slave_i          => wrc_out_sh,
-  
+
         wrf_src_o           => wrf_src_o,
         wrf_src_i           => wrf_src_i,
         wrf_snk_o           => wrf_snk_o,
@@ -803,15 +803,15 @@ begin  -- architecture top
         wrs_rx_cfg_i        => wrs_rx_cfg_i,
         wb_eth_master_o     => wb_eth_master_o,
         wb_eth_master_i     => wb_eth_master_i,
-  
+
         abscal_txts_o       => wrc_abscal_txts_out,
         abscal_rxts_o       => wrc_abscal_rxts_out,
-  
+
         tm_link_up_o        => tm_link_up_o,
         tm_time_valid_o     => tm_time_valid_o,
         tm_tai_o            => tm_tai_o,
         tm_cycles_o         => tm_cycles_o,
-  
+
         pps_p_o             => pps_p_o,
         pps_led_o           => pps_led_o,
         link_ok_o           => link_ok_o,
@@ -896,7 +896,7 @@ begin  -- architecture top
         RST      => '0',
         CLKFBIN  => pllout_clk_fb_pllref,
         CLKIN    => clk_125m_pllref);
-    
+
     cmp_clk_62m5_buf : BUFG
       port map (
         O => clk_sys_62m5,
@@ -911,7 +911,7 @@ begin  -- architecture top
       port map (
         O => clk_ddr_333m,
         I => pllout_clk_333m);
-    
+
       -- logic AND of all async reset sources (active high)
     rstlogic_arst <= (not pllout_locked) and (not gn_rst_n_i);
 
@@ -941,10 +941,10 @@ begin  -- architecture top
       port map (
         clk_i => clk_sys_62m5,
         rst_n_i => rst_gbl_n,
-    
+
         wb_i => therm_id_out,
         wb_o => therm_id_in,
-    
+
         pps_p_i => '0',
         onewire_b => onewire_b
       );
