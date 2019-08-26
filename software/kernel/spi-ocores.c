@@ -57,7 +57,7 @@ struct spi_ocores {
 
 	/* Register Access functions */
 	uint32_t (*read)(struct spi_ocores *sp, unsigned int reg);
-	void (*write)(struct spi_ocores *sp, unsigned int reg, uint32_t val);
+	void (*write)(struct spi_ocores *sp, uint32_t val, unsigned int reg);
 };
 
 enum spi_ocores_type {
@@ -71,7 +71,7 @@ static inline uint32_t spi_ocores_ioread32(struct spi_ocores *sp,
 }
 
 static inline void spi_ocores_iowrite32(struct spi_ocores *sp,
-				       unsigned int reg, uint32_t val)
+					uint32_t val, unsigned int reg)
 {
 	iowrite32(val, sp->mem + reg);
 }
@@ -83,7 +83,7 @@ static inline uint32_t spi_ocores_ioread32be(struct spi_ocores *sp,
 }
 
 static inline void spi_ocores_iowrite32be(struct spi_ocores *sp,
-					  unsigned int reg, uint32_t val)
+					  uint32_t val, unsigned int reg)
 {
 	iowrite32be(val, sp->mem + reg);
 }
