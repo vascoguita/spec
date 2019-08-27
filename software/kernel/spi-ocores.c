@@ -514,10 +514,8 @@ static int spi_ocores_sw_xfer_next_start(struct spi_ocores *sp)
 	int err;
 
 	err = spi_ocores_sw_xfer_next_init(sp);
-	if (err) {
-		spi_finalize_current_message(sp->master);
+	if (err)
 		return err;
-	}
 	spi_ocores_hw_xfer_tx_push(sp);
 	spi_ocores_hw_xfer_start(sp);
 
@@ -553,8 +551,12 @@ static int spi_ocores_process(struct spi_ocores *sp)
 		spi_ocores_hw_xfer_tx_push(sp);
 		spi_ocores_hw_xfer_start(sp);
 	} else {
+		int err;
+
 		spi_ocores_sw_xfer_finish(sp);
-		spi_ocores_sw_xfer_next_start(sp);
+		err = spi_ocores_sw_xfer_next_start(sp);
+		if (err)
+			spi_finalize_current_message(sp->master);
 	}
 
 	return 0;
