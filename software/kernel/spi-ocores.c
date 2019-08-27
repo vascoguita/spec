@@ -195,6 +195,9 @@ static void spi_ocores_hw_xfer_tx_push8(struct spi_ocores *sp)
 {
 	uint32_t data;
 
+	if (!sp->cur_tx_buf)
+		return;
+
 	data = *((uint8_t *)sp->cur_tx_buf);
 	sp->cur_tx_buf += 1;
 	spi_ocores_tx_set(sp, 0, data);
@@ -204,6 +207,9 @@ static void spi_ocores_hw_xfer_tx_push8(struct spi_ocores *sp)
 static void spi_ocores_hw_xfer_tx_push16(struct spi_ocores *sp)
 {
 	uint32_t data;
+
+	if (!sp->cur_tx_buf)
+		return;
 
 	data = *((uint16_t *)sp->cur_tx_buf);
 	sp->cur_tx_buf += 2;
@@ -215,6 +221,9 @@ static void spi_ocores_hw_xfer_tx_push32(struct spi_ocores *sp)
 {
 	uint32_t data;
 
+	if (!sp->cur_tx_buf)
+		return;
+
 	data = *((uint32_t *)sp->cur_tx_buf);
 	sp->cur_tx_buf += 4;
 	spi_ocores_tx_set(sp, 0, data);
@@ -224,6 +233,9 @@ static void spi_ocores_hw_xfer_tx_push32(struct spi_ocores *sp)
 static void spi_ocores_hw_xfer_tx_push64(struct spi_ocores *sp)
 {
 	int i;
+
+	if (!sp->cur_tx_buf)
+		return;
 
 	for (i = 0; i < 2; ++i) {
 		uint32_t data;
@@ -238,6 +250,9 @@ static void spi_ocores_hw_xfer_tx_push64(struct spi_ocores *sp)
 static void spi_ocores_hw_xfer_tx_push128(struct spi_ocores *sp)
 {
 	int i;
+
+	if (!sp->cur_tx_buf)
+		return;
 
 	for (i = 0; i < 4; ++i) {
 		uint32_t data;
