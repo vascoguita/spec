@@ -366,6 +366,10 @@ static void spi_ocores_hw_xfer_rx_pop(struct spi_ocores *sp)
 		spi_ocores_hw_xfer_rx_pop64(sp);
 	else if (nbits >= 128)
 		spi_ocores_hw_xfer_rx_pop128(sp);
+	/*
+	 * When we read is because a complete HW transfer is over, so we
+	 * can safely decrease the counter of pending bytes
+	 */
 	sp->cur_len -= (nbits / 8); /* FIXME not working for !pow2 */
 }
 
