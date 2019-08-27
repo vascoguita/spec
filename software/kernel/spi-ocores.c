@@ -479,8 +479,10 @@ static int spi_ocores_sw_xfer_next_init(struct spi_ocores *sp)
 		if (!sp->cur_xfer)
 			return -ENODATA;
 	} else {
-		if (list_is_last(&sp->cur_xfer->transfer_list, head))
+		if (list_is_last(&sp->cur_xfer->transfer_list, head)) {
+			sp->master->cur_msg->status = 0;
 			return -ENODATA;
+		}
 
 		sp->cur_xfer = list_next_entry(sp->cur_xfer, transfer_list);
 	}
