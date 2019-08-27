@@ -51,9 +51,8 @@ struct spi_ocores {
 	uint32_t cur_ctrl;
 	uint32_t cur_divider;
 	const void *cur_tx_buf;
-	unsigned int cur_tx_len;
 	void *cur_rx_buf;
-	unsigned int cur_rx_len;
+	unsigned int cur_len;
 
 	/* Register Access functions */
 	uint32_t (*read)(struct spi_ocores *sp, unsigned int reg);
@@ -201,7 +200,6 @@ static void spi_ocores_hw_xfer_tx_push8(struct spi_ocores *sp)
 	data = *((uint8_t *)sp->cur_tx_buf);
 	sp->cur_tx_buf += 1;
 	spi_ocores_tx_set(sp, 0, data);
-	sp->cur_tx_len -= 1;
 }
 
 static void spi_ocores_hw_xfer_tx_push16(struct spi_ocores *sp)
@@ -214,7 +212,6 @@ static void spi_ocores_hw_xfer_tx_push16(struct spi_ocores *sp)
 	data = *((uint16_t *)sp->cur_tx_buf);
 	sp->cur_tx_buf += 2;
 	spi_ocores_tx_set(sp, 0, data);
-	sp->cur_tx_len -= 2;
 }
 
 static void spi_ocores_hw_xfer_tx_push32(struct spi_ocores *sp)
@@ -227,7 +224,6 @@ static void spi_ocores_hw_xfer_tx_push32(struct spi_ocores *sp)
 	data = *((uint32_t *)sp->cur_tx_buf);
 	sp->cur_tx_buf += 4;
 	spi_ocores_tx_set(sp, 0, data);
-	sp->cur_tx_len -= 4;
 }
 
 static void spi_ocores_hw_xfer_tx_push64(struct spi_ocores *sp)
@@ -243,7 +239,6 @@ static void spi_ocores_hw_xfer_tx_push64(struct spi_ocores *sp)
 		data = *((uint32_t *)sp->cur_tx_buf);
 		sp->cur_tx_buf += 4;
 		spi_ocores_tx_set(sp, i, data);
-		sp->cur_tx_len -= 4;
 	}
 }
 
@@ -260,7 +255,6 @@ static void spi_ocores_hw_xfer_tx_push128(struct spi_ocores *sp)
 		data = *((uint32_t *)sp->cur_tx_buf);
 		sp->cur_tx_buf += 4;
 		spi_ocores_tx_set(sp, i, data);
-		sp->cur_tx_len -= 4;
 	}
 }
 
@@ -274,7 +268,6 @@ static void spi_ocores_hw_xfer_rx_push8(struct spi_ocores *sp)
 	data = spi_ocores_rx_get(sp, 0) & 0x000000FF;
 	*((uint8_t *)sp->cur_rx_buf) = data;
 	sp->cur_rx_buf += 1;
-	sp->cur_rx_len -= 1;
 }
 
 static void spi_ocores_hw_xfer_rx_push16(struct spi_ocores *sp)
@@ -287,7 +280,6 @@ static void spi_ocores_hw_xfer_rx_push16(struct spi_ocores *sp)
 	data = spi_ocores_rx_get(sp, 0) & 0x0000FFFF;
 	*((uint16_t *)sp->cur_rx_buf) = data;
 	sp->cur_rx_buf += 2;
-	sp->cur_rx_len -= 2;
 }
 
 static void spi_ocores_hw_xfer_rx_push32(struct spi_ocores *sp)
@@ -300,7 +292,6 @@ static void spi_ocores_hw_xfer_rx_push32(struct spi_ocores *sp)
 	data = spi_ocores_rx_get(sp, 0) & 0xFFFFFFFF;
 	*((uint32_t *)sp->cur_rx_buf) = data;
 	sp->cur_rx_buf += 4;
-	sp->cur_rx_len -= 4;
 }
 
 static void spi_ocores_hw_xfer_rx_push64(struct spi_ocores *sp)
@@ -316,7 +307,6 @@ static void spi_ocores_hw_xfer_rx_push64(struct spi_ocores *sp)
 		data = spi_ocores_rx_get(sp, i) & 0xFFFFFFFF;
 		*((uint32_t *)sp->cur_rx_buf) = data;
 		sp->cur_rx_buf += 4;
-		sp->cur_rx_len -= 4;
 	}
 }
 
@@ -333,7 +323,6 @@ static void spi_ocores_hw_xfer_rx_push128(struct spi_ocores *sp)
 		data = spi_ocores_rx_get(sp, i) & 0xFFFFFFFF;
 		*((uint32_t *)sp->cur_rx_buf) = data;
 		sp->cur_rx_buf += 4;
-		sp->cur_rx_len -= 4;
 	}
 }
 
@@ -377,6 +366,7 @@ static void spi_ocores_hw_xfer_rx_pop(struct spi_ocores *sp)
 		spi_ocores_hw_xfer_rx_push64(sp);
 	else if (nbits >= 128)
 		spi_ocores_hw_xfer_rx_push128(sp);
+	sp->cur_len -= (nbits / 8); /* FIXME not working for !pow2 */
 }
 
 static void spi_ocores_hw_xfer_start(struct spi_ocores *sp)
@@ -458,9 +448,8 @@ static int spi_ocores_sw_xfer_finish(struct spi_ocores *sp)
 	spi_ocores_hw_xfer_config(sp, 0, 0);
 
 	sp->cur_tx_buf = NULL;
-	sp->cur_tx_len = 0;
 	sp->cur_rx_buf = NULL;
-	sp->cur_rx_len = 0;
+	sp->cur_len = 0;
 
 	return 0;
 }
@@ -504,10 +493,10 @@ static int spi_ocores_sw_xfer_next_init(struct spi_ocores *sp)
 		hz = sp->master->cur_msg->spi->max_speed_hz;
 	sp->cur_ctrl |= (sp->cur_xfer->len * 8) & SPI_OCORES_CTRL_CHAR_LEN;
 	sp->cur_divider = 1 + (sp->clock_hz / (hz * 2));
+
 	sp->cur_tx_buf = sp->cur_xfer->tx_buf;
-	sp->cur_tx_len = sp->cur_xfer->len;
 	sp->cur_rx_buf = sp->cur_xfer->rx_buf;
-	sp->cur_rx_len = sp->cur_xfer->len;
+	sp->cur_len = sp->cur_xfer->len;
 
 	return 0;
 }
@@ -538,10 +527,11 @@ static int spi_ocores_sw_xfer_next_start(struct spi_ocores *sp)
  * @sp: SPI OCORE controller
  * Return: True is there are still pending data in the current transfer
  */
-static bool spi_ocores_sw_xfer_tx_pending(struct spi_ocores *sp)
+static bool spi_ocores_sw_xfer_pending(struct spi_ocores *sp)
 {
-	return sp->cur_tx_len;
+	return sp->cur_len;
 }
+
 
 /**
  * Process an SPI transfer
@@ -557,7 +547,7 @@ static int spi_ocores_process(struct spi_ocores *sp)
 		return -ENODATA;
 
 	spi_ocores_hw_xfer_rx_pop(sp);
-	if (spi_ocores_sw_xfer_tx_pending(sp)) {
+	if (spi_ocores_sw_xfer_pending(sp)) {
 		spi_ocores_hw_xfer_tx_push(sp);
 		spi_ocores_hw_xfer_start(sp);
 	} else {
