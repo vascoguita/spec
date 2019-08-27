@@ -159,6 +159,8 @@ static void spi_ocores_tx_set(struct spi_ocores *sp,
 		return;
 
 	sp->write(sp, val, SPI_OCORES_TX(idx));
+	dev_dbg(&sp->master->dev, "%s {index: %d data: 0x%x}\n",
+		__func__, idx, val);
 }
 
 /**
@@ -166,11 +168,17 @@ static void spi_ocores_tx_set(struct spi_ocores *sp,
  */
 static uint32_t spi_ocores_rx_get(struct spi_ocores *sp, unsigned int idx)
 {
+	uint32_t val;
+
 	if (WARN(idx > 3, "Invalid RX register index %d (min:0, max: 3)\n",
 		 idx))
 		return 0;
 
-	return sp->read(sp, SPI_OCORES_RX(idx));
+	val = sp->read(sp, SPI_OCORES_RX(idx));
+	dev_dbg(&sp->master->dev, "%s {index: %d data: 0x%x}\n",
+		__func__, idx, val);
+
+	return val;
 }
 
 /**
