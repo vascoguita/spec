@@ -624,7 +624,6 @@ static int spi_ocores_probe(struct platform_device *pdev)
 	int irq;
 	int i;
 
-	pr_info("%s:%d\n", __func__, __LINE__);
 	master = spi_alloc_master(&pdev->dev, sizeof(*sp));
 	if (!master) {
 		dev_err(&pdev->dev, "failed to allocate spi master\n");
