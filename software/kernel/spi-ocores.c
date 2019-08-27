@@ -258,7 +258,7 @@ static void spi_ocores_hw_xfer_tx_push128(struct spi_ocores *sp)
 	}
 }
 
-static void spi_ocores_hw_xfer_rx_push8(struct spi_ocores *sp)
+static void spi_ocores_hw_xfer_rx_pop8(struct spi_ocores *sp)
 {
 	uint32_t data;
 
@@ -270,7 +270,7 @@ static void spi_ocores_hw_xfer_rx_push8(struct spi_ocores *sp)
 	sp->cur_rx_buf += 1;
 }
 
-static void spi_ocores_hw_xfer_rx_push16(struct spi_ocores *sp)
+static void spi_ocores_hw_xfer_rx_pop16(struct spi_ocores *sp)
 {
 	uint32_t data;
 
@@ -282,7 +282,7 @@ static void spi_ocores_hw_xfer_rx_push16(struct spi_ocores *sp)
 	sp->cur_rx_buf += 2;
 }
 
-static void spi_ocores_hw_xfer_rx_push32(struct spi_ocores *sp)
+static void spi_ocores_hw_xfer_rx_pop32(struct spi_ocores *sp)
 {
 	uint32_t data;
 
@@ -294,7 +294,7 @@ static void spi_ocores_hw_xfer_rx_push32(struct spi_ocores *sp)
 	sp->cur_rx_buf += 4;
 }
 
-static void spi_ocores_hw_xfer_rx_push64(struct spi_ocores *sp)
+static void spi_ocores_hw_xfer_rx_pop64(struct spi_ocores *sp)
 {
 	int i;
 
@@ -310,7 +310,7 @@ static void spi_ocores_hw_xfer_rx_push64(struct spi_ocores *sp)
 	}
 }
 
-static void spi_ocores_hw_xfer_rx_push128(struct spi_ocores *sp)
+static void spi_ocores_hw_xfer_rx_pop128(struct spi_ocores *sp)
 {
 	int i;
 
@@ -357,15 +357,15 @@ static void spi_ocores_hw_xfer_rx_pop(struct spi_ocores *sp)
 
 	nbits = spi_ocores_hw_xfer_bits_per_word(sp);
 	if (nbits >= 8)
-		spi_ocores_hw_xfer_rx_push8(sp);
+		spi_ocores_hw_xfer_rx_pop8(sp);
 	else if (nbits >= 16)
-		spi_ocores_hw_xfer_rx_push16(sp);
+		spi_ocores_hw_xfer_rx_pop16(sp);
 	else if (nbits >= 32)
-		spi_ocores_hw_xfer_rx_push32(sp);
+		spi_ocores_hw_xfer_rx_pop32(sp);
 	else if (nbits >= 64)
-		spi_ocores_hw_xfer_rx_push64(sp);
+		spi_ocores_hw_xfer_rx_pop64(sp);
 	else if (nbits >= 128)
-		spi_ocores_hw_xfer_rx_push128(sp);
+		spi_ocores_hw_xfer_rx_pop128(sp);
 	sp->cur_len -= (nbits / 8); /* FIXME not working for !pow2 */
 }
 
