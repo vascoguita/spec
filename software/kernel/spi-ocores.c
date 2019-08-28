@@ -432,11 +432,11 @@ static int spi_ocores_sw_xfer_finish(struct spi_ocores *sp)
 static int spi_ocores_sw_xfer_next_init(struct spi_ocores *sp)
 {
 	struct list_head *head = &sp->master->cur_msg->transfers;
-	uint8_t bits_per_word;
+	uint8_t nbits;
 	uint32_t hz;
 
-	bits_per_word = spi_ocores_hw_xfer_bits_per_word(sp);
-	if (bits_per_word > 128)
+	nbits = spi_ocores_hw_xfer_bits_per_word(sp);
+	if (nbits > 128)
 		return -EINVAL;
 
 	if (!sp->cur_xfer) {
@@ -455,12 +455,11 @@ static int spi_ocores_sw_xfer_next_init(struct spi_ocores *sp)
 	}
 
 	sp->cur_ctrl = sp->ctrl_base;
-	sp->cur_ctrl |= bits_per_word;
+	sp->cur_ctrl |= (nbits & SPI_OCORES_CTRL_CHAR_LEN);
 	if (sp->cur_xfer->speed_hz)
 		hz = sp->cur_xfer->speed_hz;
 	else
 		hz = sp->master->cur_msg->spi->max_speed_hz;
-	sp->cur_ctrl |= (sp->cur_xfer->len * 8) & SPI_OCORES_CTRL_CHAR_LEN;
 	sp->cur_divider = 1 + (sp->clock_hz / (hz * 2));
 
 	sp->cur_tx_buf = sp->cur_xfer->tx_buf;
