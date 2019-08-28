@@ -122,7 +122,74 @@ struct gn412x_fcl_dev {
 	void __iomem *mem;
 
 	struct fpga_manager *mgr;
+	struct dentry *dbg_dir;
+#define GN412X_DBG_REG_NAME "regs"
+	struct dentry *dbg_reg;
+	struct debugfs_regset32 dbg_reg32;
 };
+
+#define REG32(_name, _offset) {.name = _name, .offset = _offset}
+static const struct debugfs_reg32 gn412x_debugfs_reg32[] = {
+	REG32("FCL_CTRL", FCL_CTRL),
+	REG32("FCL_STATUS", FCL_STATUS),
+	REG32("FCL_IODATA_IN", FCL_IODATA_IN),
+	REG32("FCL_IODATA_OUT", FCL_IODATA_OUT),
+	REG32("FCL_EN", FCL_EN),
+	REG32("FCL_TIMER0", FCL_TIMER_0),
+	REG32("FCL_TIMER1", FCL_TIMER_1),
+	REG32("FCL_CLK_DIV", FCL_CLK_DIV),
+	REG32("FCL_IRQ", FCL_IRQ),
+	REG32("FCL_TIMER_CTRL", FCL_TIMER_CTRL),
+	REG32("FCL_IM", FCL_IM),
+	REG32("FCL_TIMER2_0", FCL_TIMER2_0),
+	REG32("FCL_TIMER2_1", FCL_TIMER2_1),
+	REG32("FCL_DBG_STS", FCL_DBG_STS),
+};
+
+static int gn4124_dbg_init(struct platform_device *pdev)
+{
+	struct gn412x_fcl_dev *gn412x = platform_get_drvdata(pdev);
+	struct dentry *dir, *file;
+	int err;
+
+	dir = debugfs_create_dir(dev_name(&pdev->dev), NULL);
+	if (IS_ERR_OR_NULL(dir)) {
+		err = PTR_ERR(dir);
+		dev_warn(&pdev->dev,
+			"Cannot create debugfs directory \"%s\" (%d)\n",
+			dev_name(&pdev->dev), err);
+		goto err_dir;
+	}
+
+	gn412x->dbg_reg32.regs = gn412x_debugfs_reg32;
+	gn412x->dbg_reg32.nregs = ARRAY_SIZE(gn412x_debugfs_reg32);
+	gn412x->dbg_reg32.base = gn412x->mem;
+	file = debugfs_create_regset32(GN412X_DBG_REG_NAME, 0200,
+				       dir, &gn412x->dbg_reg32);
+	if (IS_ERR_OR_NULL(file)) {
+		err = PTR_ERR(file);
+		dev_warn(&pdev->dev,
+			 "Cannot create debugfs file \"%s\" (%d)\n",
+			 GN412X_DBG_REG_NAME, err);
+		goto err_reg32;
+	}
+
+	gn412x->dbg_dir = dir;
+	gn412x->dbg_reg = file;
+	return 0;
+
+err_reg32:
+	debugfs_remove_recursive(dir);
+err_dir:
+	return err;
+}
+
+static void gn4124_dbg_exit(struct platform_device *pdev)
+{
+	struct gn412x_fcl_dev *gn412x = platform_get_drvdata(pdev);
+
+	debugfs_remove_recursive(gn412x->dbg_dir);
+}
 
 static uint32_t gn412x_ioread32(struct gn412x_fcl_dev *gn412x,
 				int reg)
@@ -430,6 +497,8 @@ static int gn412x_fcl_probe(struct platform_device *pdev)
 
 	gn4124_fcl_reset(gn412x);
 
+	gn4124_dbg_init(pdev);
+
 	gn412x->mgr = compat_fpga_mgr_create(&pdev->dev,
 					     dev_name(&pdev->dev),
 					     &gn412x_fcl_ops, gn412x);
@@ -447,6 +516,7 @@ static int gn412x_fcl_probe(struct platform_device *pdev)
 err_fpga_reg:
 	compat_fpga_mgr_free(gn412x->mgr);
 err_fpga_create:
+	gn4124_dbg_exit(pdev);
 	devm_iounmap(&pdev->dev, gn412x->mem);
 err_map:
 err_res_mem:
@@ -457,6 +527,8 @@ err_res_mem:
 static int gn412x_fcl_remove(struct platform_device *pdev)
 {
 	struct gn412x_fcl_dev *gn412x = platform_get_drvdata(pdev);
+
+	gn4124_dbg_exit(pdev);
 
 	if (!gn412x->mgr)
 		return -ENODEV;
