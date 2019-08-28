@@ -53,6 +53,8 @@ struct spi_ocores {
 	const void *cur_tx_buf;
 	void *cur_rx_buf;
 	unsigned int cur_len;
+	void (*cur_tx_push)(struct spi_ocores *sp);
+	void (*cur_rx_pop)(struct spi_ocores *sp);
 
 	/* Register Access functions */
 	uint32_t (*read)(struct spi_ocores *sp, unsigned int reg);
@@ -334,53 +336,6 @@ static void spi_ocores_hw_xfer_rx_pop128(struct spi_ocores *sp)
 	}
 }
 
-/**
- * Write pending data in RX registers
- * @sp: SPI OCORE controller
- */
-static void spi_ocores_hw_xfer_tx_push(struct spi_ocores *sp)
-{
-	uint8_t nbits;
-
-	nbits = spi_ocores_hw_xfer_bits_per_word(sp);
-	if (nbits >= 8)
-		spi_ocores_hw_xfer_tx_push8(sp);
-	else if (nbits >= 16)
-		spi_ocores_hw_xfer_tx_push16(sp);
-	else if (nbits >= 32)
-		spi_ocores_hw_xfer_tx_push32(sp);
-	else if (nbits >= 64)
-		spi_ocores_hw_xfer_tx_push64(sp);
-	else if (nbits >= 128)
-		spi_ocores_hw_xfer_tx_push128(sp);
-}
-
-/**
- * Read received data from TX registers
- * @sp: SPI OCORE controller
- */
-static void spi_ocores_hw_xfer_rx_pop(struct spi_ocores *sp)
-{
-	uint8_t nbits;
-
-	nbits = spi_ocores_hw_xfer_bits_per_word(sp);
-	if (nbits >= 8)
-		spi_ocores_hw_xfer_rx_pop8(sp);
-	else if (nbits >= 16)
-		spi_ocores_hw_xfer_rx_pop16(sp);
-	else if (nbits >= 32)
-		spi_ocores_hw_xfer_rx_pop32(sp);
-	else if (nbits >= 64)
-		spi_ocores_hw_xfer_rx_pop64(sp);
-	else if (nbits >= 128)
-		spi_ocores_hw_xfer_rx_pop128(sp);
-	/*
-	 * When we read is because a complete HW transfer is over, so we
-	 * can safely decrease the counter of pending bytes
-	 */
-	sp->cur_len -= (nbits / 8); /* FIXME not working for !pow2 */
-}
-
 static void spi_ocores_hw_xfer_start(struct spi_ocores *sp)
 {
 	unsigned int cs = sp->master->cur_msg->spi->chip_select;
@@ -512,6 +467,24 @@ static int spi_ocores_sw_xfer_next_init(struct spi_ocores *sp)
 	sp->cur_rx_buf = sp->cur_xfer->rx_buf;
 	sp->cur_len = sp->cur_xfer->len;
 
+	/* set operations */
+	if (nbits >= 8) {
+		sp->cur_tx_push = spi_ocores_hw_xfer_tx_push8;
+		sp->cur_rx_pop = spi_ocores_hw_xfer_rx_pop8;
+	} else if (nbits >= 16) {
+		sp->cur_tx_push = spi_ocores_hw_xfer_tx_push16;
+		sp->cur_rx_pop = spi_ocores_hw_xfer_rx_pop16;
+	} else if (nbits >= 32) {
+		sp->cur_tx_push = spi_ocores_hw_xfer_tx_push32;
+		sp->cur_rx_pop = spi_ocores_hw_xfer_rx_pop32;
+	} else if (nbits >= 64) {
+		sp->cur_tx_push = spi_ocores_hw_xfer_tx_push64;
+		sp->cur_rx_pop = spi_ocores_hw_xfer_rx_pop64;
+	} else if (nbits >= 128) {
+		sp->cur_tx_push = spi_ocores_hw_xfer_tx_push128;
+		sp->cur_rx_pop = spi_ocores_hw_xfer_rx_pop128;
+	}
+
 	return 0;
 }
 
@@ -528,7 +501,7 @@ static int spi_ocores_sw_xfer_next_start(struct spi_ocores *sp)
 	err = spi_ocores_sw_xfer_next_init(sp);
 	if (err)
 		return err;
-	spi_ocores_hw_xfer_tx_push(sp);
+	sp->cur_tx_push(sp);
 	spi_ocores_hw_xfer_start(sp);
 
 	return 0;
@@ -554,13 +527,21 @@ static bool spi_ocores_sw_xfer_pending(struct spi_ocores *sp)
 static int spi_ocores_process(struct spi_ocores *sp)
 {
 	uint32_t ctrl = sp->read(sp, SPI_OCORES_CTRL);
+	uint8_t nbits;
 
 	if (ctrl & SPI_OCORES_CTRL_BUSY)
 		return -ENODATA;
 
-	spi_ocores_hw_xfer_rx_pop(sp);
+	sp->cur_rx_pop(sp);
+	/*
+	 * When we read is because a complete HW transfer is over, so we
+	 * can safely decrease the counter of pending bytes
+	 */
+	nbits = spi_ocores_hw_xfer_bits_per_word(sp);
+	sp->cur_len -= (nbits / 8); /* FIXME not working for !pow2 */
+
 	if (spi_ocores_sw_xfer_pending(sp)) {
-		spi_ocores_hw_xfer_tx_push(sp);
+		sp->cur_tx_push(sp);
 		spi_ocores_hw_xfer_start(sp);
 	} else {
 		int err;
