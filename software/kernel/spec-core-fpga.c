@@ -358,7 +358,7 @@ struct flash_platform_data spec_flash_pdata = {
 static struct spi_board_info spec_fpga_spi_devices_info[] = {
 	{
 		.modalias = "m25p32",
-		.max_speed_hz = SPEC_FPGA_WB_CLK_HZ / 2,
+		.max_speed_hz = SPEC_FPGA_WB_CLK_HZ / 128,
 		.chip_select = 0,
 		.platform_data = &spec_flash_pdata,
 	}
