@@ -460,7 +460,7 @@ static int spi_ocores_sw_xfer_next_init(struct spi_ocores *sp)
 		hz = sp->cur_xfer->speed_hz;
 	else
 		hz = sp->master->cur_msg->spi->max_speed_hz;
-	sp->cur_divider = 1 + (sp->clock_hz / (hz * 2));
+	sp->cur_divider = (sp->clock_hz / (hz * 2)) - 1;
 
 	sp->cur_tx_buf = sp->cur_xfer->tx_buf;
 	sp->cur_rx_buf = sp->cur_xfer->rx_buf;
