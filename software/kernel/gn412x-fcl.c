@@ -363,6 +363,12 @@ static int gn412x_fcl_write(struct fpga_manager *mgr,
 }
 
 
+static void gn4124_fcl_reset(struct gn412x_fcl_dev *gn412x)
+{
+	gn412x_iowrite32(gn412x, 0x00, FCL_CTRL);
+	gn412x_iowrite32(gn412x, 0x00, FCL_EN);
+}
+
 static int gn412x_fcl_write_complete(struct fpga_manager *mgr,
 				     struct fpga_image_info *info)
 {
@@ -375,6 +381,7 @@ static int gn412x_fcl_write_complete(struct fpga_manager *mgr,
 	if (err < 0)
 		return err;
 
+	gn4124_fcl_reset(gn412x);
 	gn4124_fpga_reset(gn412x);
 
 	return 0;
@@ -421,6 +428,7 @@ static int gn412x_fcl_probe(struct platform_device *pdev)
 		goto err_map;
 	}
 
+	gn4124_fcl_reset(gn412x);
 
 	gn412x->mgr = compat_fpga_mgr_create(&pdev->dev,
 					     dev_name(&pdev->dev),
