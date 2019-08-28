@@ -13,6 +13,33 @@
 #include "spec-compat.h"
 #include "gn412x.h"
 
+#define FCL_CTRL_START_FSM BIT(0)
+#define FCL_CTRL_SPRI_EN BIT(1)
+#define FCL_CTRL_FSM_EN BIT(2)
+#define FCL_CTRL_SEND_CFG_DATA BIT(3)
+#define FCL_CTRL_LAST_BYTE_CNT_1 (0x3 << 4)
+#define FCL_CTRL_LAST_BYTE_CNT_2 (0x2 << 4)
+#define FCL_CTRL_LAST_BYTE_CNT_3 (0x1 << 4)
+#define FCL_CTRL_LAST_BYTE_CNT_4 (0x0 << 4)
+#define FCL_CTRL_RESET BIT(6)
+#define FCL_CTRL_DATA_PUSH_COMP BIT(7)
+#define FCL_CTRL_SPRI_CLK_STOP_EN BIT(8)
+
+#define FCL_SPRI_CLKOUT BIT(0)
+#define FCL_SPRI_DATAOUT BIT(1)
+#define FCL_SPRI_CONFIG BIT(2)
+#define FCL_SPRI_DONE BIT(3)
+#define FCL_SPRI_XI_SWAP BIT(4)
+#define FCL_SPRI_STATUS BIT(5)
+
+#define FCL_IRQ_SPRI_STATUS BIT(0)
+#define FCL_IRQ_TIMER BIT(1)
+#define FCL_IRQ_CONFIG_ERROR BIT(2)
+#define FCL_IRQ_CONFIG_DONE BIT(3)
+#define FCL_IRQ_FIFO_UNDRFL BIT(4)
+#define FCL_IRQ_FIFO_HALFFULL BIT(5)
+
+
 /* Compatibility layer */
 static int gn412x_fcl_write_init(struct fpga_manager *mgr,
 				 struct fpga_image_info *info,
@@ -249,7 +276,6 @@ static void gn4124_fpga_reset(struct gn412x_fcl_dev *gn412x)
 			 GNPCI_SYS_CFG_SYSTEM);
 }
 
-
 /**
  * Initialize the gennum
  * @gn412x: gn412x device instance
@@ -260,31 +286,35 @@ static void gn4124_fpga_reset(struct gn412x_fcl_dev *gn412x)
 static int gn4124_fpga_fcl_init(struct gn412x_fcl_dev *gn412x,
 				int last_word_size)
 {
-	uint32_t ctrl;
+	uint32_t ctrl, en;
 	int i;
 
 	gn412x_iowrite32(gn412x, 0x00, FCL_CLK_DIV);
-	gn412x_iowrite32(gn412x, 0x40, FCL_CTRL); /* Reset */
+	gn412x_iowrite32(gn412x, FCL_CTRL_RESET, FCL_CTRL);
 	i = gn412x_ioread32(gn412x, FCL_CTRL);
-	if (i != 0x40) {
+	if (i != FCL_CTRL_RESET) {
 		pr_err("%s: %i: error\n", __func__, __LINE__);
 		return -EIO;
 	}
 	gn412x_iowrite32(gn412x, 0x00, FCL_CTRL);
 	gn412x_iowrite32(gn412x, 0x00, FCL_IRQ); /* clear pending irq */
 
+	ctrl = 0;
+	ctrl |= FCL_CTRL_SPRI_EN;
+	ctrl |= FCL_CTRL_FSM_EN;
+	ctrl |= FCL_CTRL_SPRI_CLK_STOP_EN;
 	switch (last_word_size) {
 	case 3:
-		ctrl = 0x116;
+		ctrl |= FCL_CTRL_LAST_BYTE_CNT_3;
 		break;
 	case 2:
-		ctrl = 0x126;
+		ctrl |= FCL_CTRL_LAST_BYTE_CNT_2;
 		break;
 	case 1:
-		ctrl = 0x136;
+		ctrl |= FCL_CTRL_LAST_BYTE_CNT_1;
 		break;
 	case 0:
-		ctrl = 0x106;
+		ctrl |= FCL_CTRL_LAST_BYTE_CNT_4;
 		break;
 	default: return -EINVAL;
 	}
@@ -300,9 +330,14 @@ static int gn4124_fpga_fcl_init(struct gn412x_fcl_dev *gn412x,
 	 */
 	gn412x_iowrite32(gn412x, 0x08, FCL_TIMER2_0);
 	gn412x_iowrite32(gn412x, 0x00, FCL_TIMER2_1);
-	gn412x_iowrite32(gn412x, 0x17, FCL_EN);
+	en = 0;
+	en |= FCL_SPRI_CLKOUT;
+	en |= FCL_SPRI_DATAOUT;
+	en |= FCL_SPRI_CONFIG;
+	en |= FCL_SPRI_XI_SWAP;
+	gn412x_iowrite32(gn412x, en, FCL_EN);
 
-	ctrl |= 0x01; /* "start FSM configuration" */
+	ctrl |= FCL_CTRL_START_FSM;
 	gn412x_iowrite32(gn412x, ctrl, FCL_CTRL);
 
 	return 0;
@@ -359,12 +394,12 @@ static int gn4124_fpga_load(struct gn412x_fcl_dev *gn412x,
 		/* Check to see if FPGA configuation has error */
 		int i = gn412x_ioread32(gn412x, FCL_IRQ);
 
-		if ((i & 8) && wrote) {
+		if ((i & FCL_IRQ_CONFIG_DONE) && wrote) {
 			done = 1;
 			pr_err("%s: %i: done after %i%i\n",
 			       __func__, __LINE__,
 			       wrote, ((len + 3) >> 2));
-		} else if ((i & 0x4) && !done) {
+		} else if ((i & FCL_IRQ_CONFIG_ERROR) && !done) {
 			pr_err("%s: %i: error after %i/%i\n",
 			       __func__, __LINE__,
 				wrote, ((len + 3) >> 2));
@@ -372,7 +407,7 @@ static int gn4124_fpga_load(struct gn412x_fcl_dev *gn412x,
 		}
 
 		/* Wait until at least 1/2 of the fifo is empty */
-		while (gn412x_ioread32(gn412x, FCL_IRQ)  & (1<<5))
+		while (gn412x_ioread32(gn412x, FCL_IRQ) & FCL_IRQ_FIFO_HALFFULL)
 			;
 
 		/* Write a few dwords into FIFO at a time. */
@@ -393,7 +428,13 @@ static int gn4124_fpga_load(struct gn412x_fcl_dev *gn412x,
  */
 static void gn4124_fpga_fcl_complete(struct gn412x_fcl_dev *gn412x)
 {
-	gn412x_iowrite32(gn412x, 0x186, FCL_CTRL); /* "last data written" */
+	uint32_t ctrl = 0;
+
+	ctrl |= FCL_CTRL_SPRI_EN;
+	ctrl |= FCL_CTRL_FSM_EN;
+	ctrl |= FCL_CTRL_DATA_PUSH_COMP;
+	ctrl |= FCL_CTRL_SPRI_CLK_STOP_EN;
+	gn412x_iowrite32(gn412x, ctrl, FCL_CTRL);
 }
 
 
