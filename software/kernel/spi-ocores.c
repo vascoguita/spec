@@ -439,16 +439,15 @@ static int spi_ocores_sw_xfer_next_init(struct spi_ocores *sp)
 		sp->cur_xfer = list_first_entry_or_null(head,
 							struct spi_transfer,
 							transfer_list);
-		if (!sp->cur_xfer)
-			return -ENODATA;
 	} else {
-		if (list_is_last(&sp->cur_xfer->transfer_list, head)) {
-			sp->master->cur_msg->status = 0;
+		if (list_is_last(&sp->cur_xfer->transfer_list, head))
 			return -ENODATA;
-		}
 
 		sp->cur_xfer = list_next_entry(sp->cur_xfer, transfer_list);
 	}
+
+	if (WARN(!sp->cur_xfer, "Invalid SPI transfer"))
+		return -EINVAL;
 
 	sp->cur_ctrl = sp->ctrl_base;
 	sp->cur_ctrl |= (nbits & SPI_OCORES_CTRL_CHAR_LEN);
@@ -543,8 +542,12 @@ static int spi_ocores_process(struct spi_ocores *sp)
 
 		spi_ocores_sw_xfer_finish(sp);
 		err = spi_ocores_sw_xfer_next_start(sp);
-		if (err)
+		if (err) {
+			/* Error or no more transfers */
+			sp->cur_xfer = NULL;
+			sp->master->cur_msg->status = 0;
 			spi_finalize_current_message(sp->master);
+		}
 	}
 
 	return 0;
