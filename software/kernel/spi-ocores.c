@@ -431,10 +431,6 @@ static int spi_ocores_sw_xfer_next_init(struct spi_ocores *sp)
 	uint8_t nbits;
 	uint32_t hz;
 
-	nbits = spi_ocores_hw_xfer_bits_per_word(sp);
-	if (nbits & (~SPI_OCORES_CTRL_CHAR_LEN))
-		return -EINVAL;
-
 	if (!sp->cur_xfer) {
 		sp->cur_xfer = list_first_entry_or_null(head,
 							struct spi_transfer,
@@ -447,6 +443,10 @@ static int spi_ocores_sw_xfer_next_init(struct spi_ocores *sp)
 	}
 
 	if (WARN(!sp->cur_xfer, "Invalid SPI transfer"))
+		return -EINVAL;
+
+	nbits = spi_ocores_hw_xfer_bits_per_word(sp);
+	if (nbits & (~SPI_OCORES_CTRL_CHAR_LEN))
 		return -EINVAL;
 
 	sp->cur_ctrl = sp->ctrl_base;
