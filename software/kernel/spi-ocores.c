@@ -468,19 +468,19 @@ static int spi_ocores_sw_xfer_next_init(struct spi_ocores *sp)
 	sp->cur_len = sp->cur_xfer->len;
 
 	/* set operations */
-	if (nbits >= 8) {
+	if (nbits <= 8) {
 		sp->cur_tx_push = spi_ocores_hw_xfer_tx_push8;
 		sp->cur_rx_pop = spi_ocores_hw_xfer_rx_pop8;
-	} else if (nbits >= 16) {
+	} else if (nbits <= 16) {
 		sp->cur_tx_push = spi_ocores_hw_xfer_tx_push16;
 		sp->cur_rx_pop = spi_ocores_hw_xfer_rx_pop16;
-	} else if (nbits >= 32) {
+	} else if (nbits <= 32) {
 		sp->cur_tx_push = spi_ocores_hw_xfer_tx_push32;
 		sp->cur_rx_pop = spi_ocores_hw_xfer_rx_pop32;
-	} else if (nbits >= 64) {
+	} else if (nbits <= 64) {
 		sp->cur_tx_push = spi_ocores_hw_xfer_tx_push64;
 		sp->cur_rx_pop = spi_ocores_hw_xfer_rx_pop64;
-	} else if (nbits >= 128) {
+	} else if (nbits <= 128) {
 		sp->cur_tx_push = spi_ocores_hw_xfer_tx_push128;
 		sp->cur_rx_pop = spi_ocores_hw_xfer_rx_pop128;
 	}
