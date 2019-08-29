@@ -450,7 +450,11 @@ static int spi_ocores_sw_xfer_next_init(struct spi_ocores *sp)
 		return -EINVAL;
 
 	sp->cur_ctrl = sp->ctrl_base;
-	if(sp->master->cur_msg->spi->mode & SPI_LSB_FIRST)
+	if (sp->master->cur_msg->spi->mode & SPI_CPHA) {
+		sp->cur_ctrl |= SPI_OCORES_CTRL_Tx_NEG;
+		sp->cur_ctrl |= SPI_OCORES_CTRL_Rx_NEG;
+	}
+	if (sp->master->cur_msg->spi->mode & SPI_LSB_FIRST)
 		sp->cur_ctrl |= SPI_OCORES_CTRL_LSB;
 	sp->cur_ctrl |= (nbits & SPI_OCORES_CTRL_CHAR_LEN);
 	if (sp->cur_xfer->speed_hz)
@@ -641,7 +645,7 @@ static int spi_ocores_probe(struct platform_device *pdev)
 	master->transfer_one_message = spi_ocores_transfer_one_message;
 	master->num_chipselect = SPI_OCORES_CS_MAX_N;
 	master->bits_per_word_mask = BIT(32 - 1);
-	master->mode_bits = SPI_LSB_FIRST;
+	master->mode_bits = SPI_LSB_FIRST | SPI_CPHA;
 	if (pdata->big_endian) {
 		sp->read = spi_ocores_ioread32be;
 		sp->write = spi_ocores_iowrite32be;
