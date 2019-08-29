@@ -710,16 +710,13 @@ static int spi_ocores_probe(struct platform_device *pdev)
 	return 0;
 
 err_reg_spi:
-	pr_info("%s:%d\n", __func__, __LINE__);
 	if (!(sp->flags & SPI_OCORES_FLAG_POLL))
 		free_irq(irq, sp);
 err_irq:
 err_get_irq:
-	pr_info("%s:%d\n", __func__, __LINE__);
 	devm_iounmap(&pdev->dev, sp->mem);
 err_get_mem:
 err_get_pdata:
-	pr_info("%s:%d\n", __func__, __LINE__);
 	spi_master_put(master);
 	return err;
 }
