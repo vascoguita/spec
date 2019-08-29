@@ -517,6 +517,20 @@ static bool spi_ocores_sw_xfer_pending(struct spi_ocores *sp)
 	return sp->cur_len;
 }
 
+/**
+ * Finalize message transmission
+ * @sp: SPI OCORE controller
+ */
+static void spi_ocores_finalize_current_message(struct spi_ocores *sp)
+{
+	unsigned int cs = sp->master->cur_msg->spi->chip_select;
+
+	spi_ocores_hw_xfer_cs(sp, cs, 0);
+	sp->cur_xfer = NULL;
+	sp->master->cur_msg->status = 0;
+	spi_finalize_current_message(sp->master);
+
+}
 
 /**
  * Process an SPI transfer
@@ -550,9 +564,7 @@ static int spi_ocores_process(struct spi_ocores *sp)
 		err = spi_ocores_sw_xfer_next_start(sp);
 		if (err) {
 			/* Error or no more transfers */
-			sp->cur_xfer = NULL;
-			sp->master->cur_msg->status = 0;
-			spi_finalize_current_message(sp->master);
+			spi_ocores_finalize_current_message(sp);
 		}
 	}
 
