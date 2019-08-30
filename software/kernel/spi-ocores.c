@@ -468,8 +468,15 @@ static int spi_ocores_sw_xfer_next_init(struct spi_ocores *sp)
 		return -EINVAL;
 
 	nbits = spi_ocores_hw_xfer_bits_per_word(sp);
-	if (nbits & (~SPI_OCORES_CTRL_CHAR_LEN))
+	if ((nbits - 1) & (~SPI_OCORES_CTRL_CHAR_LEN))
 		return -EINVAL;
+
+	if ((sp->cur_xfer->len << 3) < nbits) {
+		dev_err(&sp->master->dev,
+			"Invalid transfer length %d (bits_per_word %d)\n",
+			sp->cur_xfer->len, nbits);
+		return -EINVAL;
+	}
 
 	sp->cur_ctrl = sp->ctrl_base;
 	if (sp->master->cur_msg->spi->mode & SPI_CPHA) {
