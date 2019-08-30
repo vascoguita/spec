@@ -652,6 +652,20 @@ static int spi_ocores_transfer_one_message(struct spi_master *master,
 	return 0;
 }
 
+/**
+ * Unprepare hardware
+ *
+ * Mainly it disables interrupts
+ */
+static int spi_ocores_unprepare_transfer_hardware(struct spi_master *master)
+{
+	struct spi_ocores *sp = spi_master_get_devdata(master);
+
+	spi_ocores_hw_xfer_config(sp, 0, 0);
+
+	return 0;
+}
+
 static int spi_ocores_probe(struct platform_device *pdev)
 {
 	struct spi_master *master;
@@ -684,6 +698,7 @@ static int spi_ocores_probe(struct platform_device *pdev)
 	master->setup = spi_ocores_setup;
 	master->cleanup = spi_ocores_cleanup;
 	master->transfer_one_message = spi_ocores_transfer_one_message;
+	master->unprepare_transfer_hardware = spi_ocores_unprepare_transfer_hardware;
 	master->num_chipselect = SPI_OCORES_CS_MAX_N;
 	master->mode_bits = SPI_LSB_FIRST | SPI_CPHA;
 	if (pdata->big_endian) {
