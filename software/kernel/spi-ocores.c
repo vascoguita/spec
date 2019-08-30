@@ -349,7 +349,15 @@ static void spi_ocores_hw_xfer_rx_pop128(struct spi_ocores *sp)
 
 static void spi_ocores_hw_xfer_rx_pop(struct spi_ocores *sp)
 {
+	uint8_t nbits;
+
 	sp->cur_rx_pop(sp);
+	/*
+	 * When we read is because a complete HW transfer is over, so we
+	 * can safely decrease the counter of pending bytes
+	 */
+	nbits = spi_ocores_hw_xfer_bits_per_word(sp);
+	sp->cur_len -= (nbits / 8); /* FIXME not working for !pow2 */
 }
 
 static void spi_ocores_hw_xfer_start(struct spi_ocores *sp)
@@ -567,19 +575,11 @@ static void spi_ocores_finalize_current_message(struct spi_ocores *sp)
 static int spi_ocores_process(struct spi_ocores *sp)
 {
 	uint32_t ctrl = sp->read(sp, SPI_OCORES_CTRL);
-	uint8_t nbits;
 
 	if (ctrl & SPI_OCORES_CTRL_BUSY)
 		return -ENODATA;
 
 	spi_ocores_hw_xfer_rx_pop(sp);
-	/*
-	 * When we read is because a complete HW transfer is over, so we
-	 * can safely decrease the counter of pending bytes
-	 */
-	nbits = spi_ocores_hw_xfer_bits_per_word(sp);
-	sp->cur_len -= (nbits / 8); /* FIXME not working for !pow2 */
-
 	if (spi_ocores_sw_xfer_pending(sp)) {
 		spi_ocores_hw_xfer_tx_push(sp);
 		spi_ocores_hw_xfer_start(sp);
