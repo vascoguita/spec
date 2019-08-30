@@ -432,8 +432,6 @@ static int spi_ocores_sw_xfer_finish(struct spi_ocores *sp)
 		spi_ocores_hw_xfer_cs(sp, cs, 0);
 	}
 
-	spi_ocores_hw_xfer_config(sp, 0, 0);
-
 	sp->cur_tx_buf = NULL;
 	sp->cur_rx_buf = NULL;
 	sp->cur_len = 0;
