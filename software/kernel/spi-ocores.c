@@ -467,18 +467,23 @@ static int spi_ocores_sw_xfer_next_init(struct spi_ocores *sp)
 		sp->cur_xfer = list_next_entry(sp->cur_xfer, transfer_list);
 	}
 
-	if (WARN(!sp->cur_xfer, "Invalid SPI transfer"))
-		return -EINVAL;
+	if (WARN(!sp->cur_xfer, "Invalid SPI transfer")) {
+		sp->master->cur_msg->status = -EINVAL;
+		return sp->master->cur_msg->status;
+	}
 
 	nbits = spi_ocores_hw_xfer_bits_per_word(sp);
-	if ((nbits - 1) & (~SPI_OCORES_CTRL_CHAR_LEN))
-		return -EINVAL;
+	if ((nbits - 1) & (~SPI_OCORES_CTRL_CHAR_LEN)) {
+		sp->master->cur_msg->status = -EINVAL;
+		return sp->master->cur_msg->status;
+	}
 
 	if ((sp->cur_xfer->len << 3) < nbits) {
 		dev_err(&sp->master->dev,
 			"Invalid transfer length %d (bits_per_word %d)\n",
 			sp->cur_xfer->len, nbits);
-		return -EINVAL;
+		sp->master->cur_msg->status = -EINVAL;
+		return sp->master->cur_msg->status;
 	}
 
 	ctrl = sp->ctrl_base;
