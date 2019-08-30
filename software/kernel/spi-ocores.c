@@ -51,8 +51,8 @@ struct spi_ocores {
 	const void *cur_tx_buf;
 	void *cur_rx_buf;
 	unsigned int cur_len;
-	void (*cur_tx_push)(struct spi_ocores *sp);
-	void (*cur_rx_pop)(struct spi_ocores *sp);
+	size_t (*cur_tx_push)(struct spi_ocores *sp);
+	size_t (*cur_rx_pop)(struct spi_ocores *sp);
 
 	/* Register Access functions */
 	uint32_t (*read)(struct spi_ocores *sp, unsigned int reg);
@@ -194,66 +194,51 @@ static uint8_t spi_ocores_hw_xfer_bits_per_word(struct spi_ocores *sp)
 	return nbits;
 }
 
-static void spi_ocores_hw_xfer_tx_push8(struct spi_ocores *sp)
+static size_t spi_ocores_hw_xfer_tx_push8(struct spi_ocores *sp)
 {
 	uint8_t data;
-
-	if (!sp->cur_tx_buf)
-		return;
 
 	data = ((uint8_t *)sp->cur_tx_buf)[0];
 	spi_ocores_tx_set(sp, 0, data);
 
-	sp->cur_tx_buf += 1;
+	return sizeof(data);
 }
 
-static void spi_ocores_hw_xfer_tx_push16(struct spi_ocores *sp)
+static size_t spi_ocores_hw_xfer_tx_push16(struct spi_ocores *sp)
 {
 	uint16_t data;
-
-	if (!sp->cur_tx_buf)
-		return;
 
 	data = ((uint16_t *)sp->cur_tx_buf)[0];
 	spi_ocores_tx_set(sp, 0, __cpu_to_be16(data));
 
-	sp->cur_tx_buf += 2;
+	return sizeof(data);
 }
 
-static void spi_ocores_hw_xfer_tx_push32(struct spi_ocores *sp)
+static size_t spi_ocores_hw_xfer_tx_push32(struct spi_ocores *sp)
 {
 	uint32_t data;
-
-	if (!sp->cur_tx_buf)
-		return;
 
 	data = ((uint32_t *)sp->cur_tx_buf)[0];
 	spi_ocores_tx_set(sp, 0, __cpu_to_be32(data));
 
-	sp->cur_tx_buf += 4;
+	return sizeof(data);
 }
 
-static void spi_ocores_hw_xfer_tx_push64(struct spi_ocores *sp)
+static size_t spi_ocores_hw_xfer_tx_push64(struct spi_ocores *sp)
 {
 	uint64_t data;
-
-	if (!sp->cur_tx_buf)
-		return;
 
 	data = __cpu_to_be64(*((uint64_t *)sp->cur_tx_buf));
 	spi_ocores_tx_set(sp, 0, data & 0xFFFFFFFF);
 	data >>= 32;
 	spi_ocores_tx_set(sp, 1, data & 0xFFFFFFFF);
 
-	sp->cur_tx_buf += 8;
+	return sizeof(data);
 }
 
-static void spi_ocores_hw_xfer_tx_push128(struct spi_ocores *sp)
+static size_t spi_ocores_hw_xfer_tx_push128(struct spi_ocores *sp)
 {
 	uint64_t data;
-
-	if (!sp->cur_tx_buf)
-		return;
 
 	data = __cpu_to_be64(((uint64_t *)sp->cur_tx_buf)[0]);
 	spi_ocores_tx_set(sp, 2, data & 0xFFFFFFFF);
@@ -265,74 +250,65 @@ static void spi_ocores_hw_xfer_tx_push128(struct spi_ocores *sp)
 	data >>= 32;
 	spi_ocores_tx_set(sp, 1, data & 0xFFFFFFFF);
 
-	sp->cur_tx_buf += 16;
+	return sizeof(data) * 2;
 }
 
-static void spi_ocores_hw_xfer_tx_push(struct spi_ocores *sp)
+static size_t spi_ocores_hw_xfer_tx_push(struct spi_ocores *sp)
 {
-	sp->cur_tx_push(sp);
+	size_t len = 0;
+
+	if (sp->cur_tx_buf)
+		len = sp->cur_tx_push(sp);
+	sp->cur_tx_buf += len;
+
+	return len;
 }
 
-static void spi_ocores_hw_xfer_rx_pop8(struct spi_ocores *sp)
+static size_t spi_ocores_hw_xfer_rx_pop8(struct spi_ocores *sp)
 {
 	uint8_t data;
-
-	if (!sp->cur_rx_buf)
-		return;
 
 	data = spi_ocores_rx_get(sp, 0) & 0x000000FF;
 	((uint8_t *)sp->cur_rx_buf)[0] = data;
 
-	sp->cur_rx_buf += 1;
+	return sizeof(data);
 }
 
-static void spi_ocores_hw_xfer_rx_pop16(struct spi_ocores *sp)
+static size_t spi_ocores_hw_xfer_rx_pop16(struct spi_ocores *sp)
 {
 	uint16_t data;
-
-	if (!sp->cur_rx_buf)
-		return;
 
 	data = spi_ocores_rx_get(sp, 0) & 0x0000FFFF;
 	((uint16_t *)sp->cur_rx_buf)[0] = __be16_to_cpu(data);
 
-	sp->cur_rx_buf += 2;
+	return sizeof(data);
 }
 
-static void spi_ocores_hw_xfer_rx_pop32(struct spi_ocores *sp)
+static size_t spi_ocores_hw_xfer_rx_pop32(struct spi_ocores *sp)
 {
 	uint32_t data;
-
-	if (!sp->cur_rx_buf)
-		return;
 
 	data = spi_ocores_rx_get(sp, 0) & 0xFFFFFFFF;
 	((uint32_t *)sp->cur_rx_buf)[0] = __be32_to_cpu(data);
 
-	sp->cur_rx_buf += 4;
+	return sizeof(data);
 }
 
-static void spi_ocores_hw_xfer_rx_pop64(struct spi_ocores *sp)
+static size_t spi_ocores_hw_xfer_rx_pop64(struct spi_ocores *sp)
 {
 	uint64_t data;
-
-	if (!sp->cur_rx_buf)
-		return;
 
 	data = spi_ocores_rx_get(sp, 1) & 0xFFFFFFFF;
 	data <<= 32;
 	data |= spi_ocores_rx_get(sp, 0) & 0xFFFFFFFF;
 	((uint64_t *)sp->cur_rx_buf)[0] = __be64_to_cpu(data);
 
-	sp->cur_rx_buf += 8;
+	return sizeof(data);
 }
 
-static void spi_ocores_hw_xfer_rx_pop128(struct spi_ocores *sp)
+static size_t spi_ocores_hw_xfer_rx_pop128(struct spi_ocores *sp)
 {
 	uint64_t data;
-
-	if (!sp->cur_rx_buf)
-		return;
 
 	data = spi_ocores_rx_get(sp, 3) & 0xFFFFFFFF;
 	data <<= 32;
@@ -344,20 +320,26 @@ static void spi_ocores_hw_xfer_rx_pop128(struct spi_ocores *sp)
 	data |= spi_ocores_rx_get(sp, 0) & 0xFFFFFFFF;
 	((uint64_t *)sp->cur_rx_buf)[0] = __be64_to_cpu(data);
 
-	sp->cur_rx_buf += 16;
+	return sizeof(data) * 2;
 }
 
-static void spi_ocores_hw_xfer_rx_pop(struct spi_ocores *sp)
+static size_t spi_ocores_hw_xfer_rx_pop(struct spi_ocores *sp)
 {
+	size_t len = 0;
 	uint8_t nbits;
 
-	sp->cur_rx_pop(sp);
 	/*
 	 * When we read is because a complete HW transfer is over, so we
 	 * can safely decrease the counter of pending bytes
 	 */
 	nbits = spi_ocores_hw_xfer_bits_per_word(sp);
 	sp->cur_len -= (nbits / 8); /* FIXME not working for !pow2 */
+
+	if (sp->cur_rx_buf)
+		len = sp->cur_rx_pop(sp);
+	sp->cur_rx_buf += len;
+
+	return len;
 }
 
 static void spi_ocores_hw_xfer_start(struct spi_ocores *sp)
