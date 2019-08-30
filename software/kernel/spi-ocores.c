@@ -48,8 +48,6 @@ struct spi_ocores {
 
 	/* Current transfer */
 	struct spi_transfer *cur_xfer;
-	uint32_t cur_ctrl;
-	uint32_t cur_divider;
 	const void *cur_tx_buf;
 	void *cur_rx_buf;
 	unsigned int cur_len;
@@ -358,10 +356,6 @@ static void spi_ocores_hw_xfer_start(struct spi_ocores *sp)
 {
 	unsigned int cs = sp->master->cur_msg->spi->chip_select;
 
-	/* Optimize:
-	 * Probably we can avoid to write CTRL DIVIDER and CS everytime
-	 */
-	spi_ocores_hw_xfer_config(sp, sp->cur_ctrl, sp->cur_divider);
 	spi_ocores_hw_xfer_cs(sp, cs, 1);
 	spi_ocores_hw_xfer_go(sp);
 }
@@ -451,7 +445,8 @@ static int spi_ocores_sw_xfer_next_init(struct spi_ocores *sp)
 {
 	struct list_head *head = &sp->master->cur_msg->transfers;
 	uint8_t nbits;
-	uint32_t hz;
+	uint16_t divider;
+	uint32_t hz, ctrl;
 
 	if (!sp->cur_xfer) {
 		sp->cur_xfer = list_first_entry_or_null(head,
@@ -478,19 +473,21 @@ static int spi_ocores_sw_xfer_next_init(struct spi_ocores *sp)
 		return -EINVAL;
 	}
 
-	sp->cur_ctrl = sp->ctrl_base;
+	ctrl = sp->ctrl_base;
 	if (sp->master->cur_msg->spi->mode & SPI_CPHA) {
-		sp->cur_ctrl |= SPI_OCORES_CTRL_Tx_NEG;
-		sp->cur_ctrl |= SPI_OCORES_CTRL_Rx_NEG;
+		ctrl |= SPI_OCORES_CTRL_Tx_NEG;
+		ctrl |= SPI_OCORES_CTRL_Rx_NEG;
 	}
 	if (sp->master->cur_msg->spi->mode & SPI_LSB_FIRST)
-		sp->cur_ctrl |= SPI_OCORES_CTRL_LSB;
-	sp->cur_ctrl |= nbits;
+		ctrl |= SPI_OCORES_CTRL_LSB;
+	ctrl |= nbits;
 	if (sp->cur_xfer->speed_hz)
 		hz = sp->cur_xfer->speed_hz;
 	else
 		hz = sp->master->cur_msg->spi->max_speed_hz;
-	sp->cur_divider = (sp->clock_hz / (hz * 2)) - 1;
+	divider = (sp->clock_hz / (hz * 2)) - 1;
+	spi_ocores_hw_xfer_config(sp, ctrl, divider);
+
 
 	sp->cur_tx_buf = sp->cur_xfer->tx_buf;
 	sp->cur_rx_buf = sp->cur_xfer->rx_buf;
