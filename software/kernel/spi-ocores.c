@@ -198,26 +198,28 @@ static uint8_t spi_ocores_hw_xfer_bits_per_word(struct spi_ocores *sp)
 
 static void spi_ocores_hw_xfer_tx_push8(struct spi_ocores *sp)
 {
-	uint32_t data;
+	uint8_t data;
 
 	if (!sp->cur_tx_buf)
 		return;
 
-	data = *((uint8_t *)sp->cur_tx_buf);
-	sp->cur_tx_buf += 1;
+	data = ((uint8_t *)sp->cur_tx_buf)[0];
 	spi_ocores_tx_set(sp, 0, data);
+
+	sp->cur_tx_buf += 1;
 }
 
 static void spi_ocores_hw_xfer_tx_push16(struct spi_ocores *sp)
 {
-	uint32_t data;
+	uint16_t data;
 
 	if (!sp->cur_tx_buf)
 		return;
 
-	data = *((uint16_t *)sp->cur_tx_buf);
+	data = ((uint16_t *)sp->cur_tx_buf)[0];
+	spi_ocores_tx_set(sp, 0, __cpu_to_be16(data));
+
 	sp->cur_tx_buf += 2;
-	spi_ocores_tx_set(sp, 0, data);
 }
 
 static void spi_ocores_hw_xfer_tx_push32(struct spi_ocores *sp)
@@ -227,41 +229,45 @@ static void spi_ocores_hw_xfer_tx_push32(struct spi_ocores *sp)
 	if (!sp->cur_tx_buf)
 		return;
 
-	data = *((uint32_t *)sp->cur_tx_buf);
+	data = ((uint32_t *)sp->cur_tx_buf)[0];
+	spi_ocores_tx_set(sp, 0, __cpu_to_be32(data));
+
 	sp->cur_tx_buf += 4;
-	spi_ocores_tx_set(sp, 0, data);
 }
 
 static void spi_ocores_hw_xfer_tx_push64(struct spi_ocores *sp)
 {
-	int i;
+	uint64_t data;
 
 	if (!sp->cur_tx_buf)
 		return;
 
-	for (i = 0; i < 2; ++i) {
-		uint32_t data;
+	data = __cpu_to_be64(*((uint64_t *)sp->cur_tx_buf));
+	spi_ocores_tx_set(sp, 0, data & 0xFFFFFFFF);
+	data >>= 32;
+	spi_ocores_tx_set(sp, 1, data & 0xFFFFFFFF);
 
-		data = *((uint32_t *)sp->cur_tx_buf);
-		sp->cur_tx_buf += 4;
-		spi_ocores_tx_set(sp, i, data);
-	}
+	sp->cur_tx_buf += 8;
 }
 
 static void spi_ocores_hw_xfer_tx_push128(struct spi_ocores *sp)
 {
-	int i;
+	uint64_t data;
 
 	if (!sp->cur_tx_buf)
 		return;
 
-	for (i = 0; i < 4; ++i) {
-		uint32_t data;
+	data = __cpu_to_be64(((uint64_t *)sp->cur_tx_buf)[0]);
+	spi_ocores_tx_set(sp, 2, data & 0xFFFFFFFF);
+	data >>= 32;
+	spi_ocores_tx_set(sp, 3, data & 0xFFFFFFFF);
 
-		data = *((uint32_t *)sp->cur_tx_buf);
-		sp->cur_tx_buf += 4;
-		spi_ocores_tx_set(sp, i, data);
-	}
+	data = __cpu_to_be64(((uint64_t *)sp->cur_tx_buf)[1]);
+	spi_ocores_tx_set(sp, 0, data & 0xFFFFFFFF);
+	data >>= 32;
+	spi_ocores_tx_set(sp, 1, data & 0xFFFFFFFF);
+
+	sp->cur_tx_buf += 16;
 }
 
 static void spi_ocores_hw_xfer_tx_push(struct spi_ocores *sp)
@@ -271,25 +277,27 @@ static void spi_ocores_hw_xfer_tx_push(struct spi_ocores *sp)
 
 static void spi_ocores_hw_xfer_rx_pop8(struct spi_ocores *sp)
 {
-	uint32_t data;
+	uint8_t data;
 
 	if (!sp->cur_rx_buf)
 		return;
 
 	data = spi_ocores_rx_get(sp, 0) & 0x000000FF;
-	*((uint8_t *)sp->cur_rx_buf) = data;
+	((uint8_t *)sp->cur_rx_buf)[0] = data;
+
 	sp->cur_rx_buf += 1;
 }
 
 static void spi_ocores_hw_xfer_rx_pop16(struct spi_ocores *sp)
 {
-	uint32_t data;
+	uint16_t data;
 
 	if (!sp->cur_rx_buf)
 		return;
 
 	data = spi_ocores_rx_get(sp, 0) & 0x0000FFFF;
-	*((uint16_t *)sp->cur_rx_buf) = data;
+	((uint16_t *)sp->cur_rx_buf)[0] = __be16_to_cpu(data);
+
 	sp->cur_rx_buf += 2;
 }
 
@@ -301,40 +309,44 @@ static void spi_ocores_hw_xfer_rx_pop32(struct spi_ocores *sp)
 		return;
 
 	data = spi_ocores_rx_get(sp, 0) & 0xFFFFFFFF;
-	*((uint32_t *)sp->cur_rx_buf) = data;
+	((uint32_t *)sp->cur_rx_buf)[0] = __be32_to_cpu(data);
+
 	sp->cur_rx_buf += 4;
 }
 
 static void spi_ocores_hw_xfer_rx_pop64(struct spi_ocores *sp)
 {
-	int i;
+	uint64_t data;
 
 	if (!sp->cur_rx_buf)
 		return;
 
-	for (i = 0; i < 2; ++i) {
-		uint32_t data;
+	data = spi_ocores_rx_get(sp, 1) & 0xFFFFFFFF;
+	data <<= 32;
+	data |= spi_ocores_rx_get(sp, 0) & 0xFFFFFFFF;
+	((uint64_t *)sp->cur_rx_buf)[0] = __be64_to_cpu(data);
 
-		data = spi_ocores_rx_get(sp, i) & 0xFFFFFFFF;
-		*((uint32_t *)sp->cur_rx_buf) = data;
-		sp->cur_rx_buf += 4;
-	}
+	sp->cur_rx_buf += 8;
 }
 
 static void spi_ocores_hw_xfer_rx_pop128(struct spi_ocores *sp)
 {
-	int i;
+	uint64_t data;
 
 	if (!sp->cur_rx_buf)
 		return;
 
-	for (i = 0; i < 4; ++i) {
-		uint32_t data;
+	data = spi_ocores_rx_get(sp, 3) & 0xFFFFFFFF;
+	data <<= 32;
+	data |= spi_ocores_rx_get(sp, 2) & 0xFFFFFFFF;
+	((uint64_t *)sp->cur_rx_buf)[1] = __be64_to_cpu(data);
 
-		data = spi_ocores_rx_get(sp, i) & 0xFFFFFFFF;
-		*((uint32_t *)sp->cur_rx_buf) = data;
-		sp->cur_rx_buf += 4;
-	}
+	data = spi_ocores_rx_get(sp, 1) & 0xFFFFFFFF;
+	data <<= 32;
+	data |= spi_ocores_rx_get(sp, 0) & 0xFFFFFFFF;
+	((uint64_t *)sp->cur_rx_buf)[0] = __be64_to_cpu(data);
+
+	sp->cur_rx_buf += 16;
 }
 
 static void spi_ocores_hw_xfer_rx_pop(struct spi_ocores *sp)
