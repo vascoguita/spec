@@ -569,6 +569,13 @@ static void spi_ocores_finalize_current_message(struct spi_ocores *sp)
 
 }
 
+static bool spi_ocores_is_busy(struct spi_ocores *sp)
+{
+	uint32_t ctrl = sp->read(sp, SPI_OCORES_CTRL);
+
+	return (ctrl & SPI_OCORES_CTRL_BUSY);
+}
+
 /**
  * Process an SPI transfer
  * @sp: SPI OCORE controller
@@ -577,9 +584,7 @@ static void spi_ocores_finalize_current_message(struct spi_ocores *sp)
  */
 static int spi_ocores_process(struct spi_ocores *sp)
 {
-	uint32_t ctrl = sp->read(sp, SPI_OCORES_CTRL);
-
-	if (ctrl & SPI_OCORES_CTRL_BUSY)
+	if (spi_ocores_is_busy(sp))
 		return -ENODATA;
 
 	spi_ocores_hw_xfer_rx_pop(sp);
