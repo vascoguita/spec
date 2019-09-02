@@ -559,6 +559,24 @@ static bool spi_ocores_is_busy(struct spi_ocores *sp)
 }
 
 /**
+ * Pop RX word and push next TX from current transfer
+ * @sp: SPI OCORE controller
+ *
+ * Return: 0 on success, -ENODATA when there is nothing to process
+ */
+static int spi_ocores_hw_xfer_rxtx(struct spi_ocores *sp)
+{
+	spi_ocores_hw_xfer_rx_pop(sp);
+	if (spi_ocores_sw_xfer_has_pending(sp))
+		return -ENODATA;
+
+	spi_ocores_hw_xfer_tx_push(sp);
+	spi_ocores_hw_xfer_start(sp);
+
+	return 0;
+}
+
+/**
  * Process an SPI transfer
  * @sp: SPI OCORE controller
  *
@@ -566,22 +584,17 @@ static bool spi_ocores_is_busy(struct spi_ocores *sp)
  */
 static int spi_ocores_process(struct spi_ocores *sp)
 {
+	int err;
+
 	if (spi_ocores_is_busy(sp))
 		return -EBUSY;
 
-	spi_ocores_hw_xfer_rx_pop(sp);
-	if (spi_ocores_sw_xfer_has_pending(sp)) {
-		spi_ocores_hw_xfer_tx_push(sp);
-		spi_ocores_hw_xfer_start(sp);
-	} else {
-		int err;
-
+	err = spi_ocores_hw_xfer_rxtx(sp);
+	if (err == -ENODATA) {
 		spi_ocores_sw_xfer_finish(sp);
 		err = spi_ocores_sw_xfer_next_start(sp);
-		if (err) {
-			/* Error or no more transfers */
+		if (err)
 			spi_ocores_finalize_current_message(sp);
-		}
 	}
 
 	return 0;
@@ -614,7 +627,7 @@ static irqreturn_t spi_ocores_irq_handler(int irq, void *arg)
 	int err;
 
 	err = spi_ocores_process(sp);
-	if (err)
+	if (err && err != -ENODATA)
 		return IRQ_NONE;
 
 	return IRQ_HANDLED;
