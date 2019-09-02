@@ -323,10 +323,12 @@ static struct resource spec_fpga_fmc_i2c_res[] = {
 	},
 };
 
+#define SPEC_FPGA_WB_CLK_HZ 62500000
+#define SPEC_FPGA_WB_CLK_KHZ (SPEC_FPGA_WB_CLK_HZ / 1000)
 static struct ocores_i2c_platform_data spec_fpga_fmc_i2c_pdata = {
 	.reg_shift = 2, /* 32bit aligned */
 	.reg_io_width = 4,
-	.clock_khz = 62500,
+	.clock_khz = SPEC_FPGA_WB_CLK_KHZ,
 	.big_endian = 0,
 	.num_devices = 0,
 	.devices = NULL,
@@ -356,7 +358,7 @@ struct flash_platform_data spec_flash_pdata = {
 static struct spi_board_info spec_fpga_spi_devices_info[] = {
 	{
 		.modalias = "m25p32",
-		.max_speed_hz = 75000000,
+		.max_speed_hz = SPEC_FPGA_WB_CLK_HZ / 128,
 		.chip_select = 0,
 		.platform_data = &spec_flash_pdata,
 	}
@@ -364,7 +366,7 @@ static struct spi_board_info spec_fpga_spi_devices_info[] = {
 
 static struct spi_ocores_platform_data spec_fpga_spi_pdata = {
 	.big_endian = 0,
-	.clock_hz = 65200000,
+	.clock_hz = SPEC_FPGA_WB_CLK_HZ,
 	.num_devices = ARRAY_SIZE(spec_fpga_spi_devices_info),
 	.devices = spec_fpga_spi_devices_info,
 };
