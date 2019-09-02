@@ -531,9 +531,9 @@ static int spi_ocores_sw_xfer_next_start(struct spi_ocores *sp)
  * @sp: SPI OCORE controller
  * Return: True is there are still pending data in the current transfer
  */
-static bool spi_ocores_sw_xfer_pending(struct spi_ocores *sp)
+static bool spi_ocores_sw_xfer_has_pending(struct spi_ocores *sp)
 {
-	return sp->cur_len;
+	return sp->cur_len > 0;
 }
 
 /**
@@ -570,7 +570,7 @@ static int spi_ocores_process(struct spi_ocores *sp)
 		return -ENODATA;
 
 	spi_ocores_hw_xfer_rx_pop(sp);
-	if (spi_ocores_sw_xfer_pending(sp)) {
+	if (spi_ocores_sw_xfer_has_pending(sp)) {
 		spi_ocores_hw_xfer_tx_push(sp);
 		spi_ocores_hw_xfer_start(sp);
 	} else {
