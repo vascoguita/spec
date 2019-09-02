@@ -567,7 +567,7 @@ static bool spi_ocores_is_busy(struct spi_ocores *sp)
 static int spi_ocores_process(struct spi_ocores *sp)
 {
 	if (spi_ocores_is_busy(sp))
-		return -ENODATA;
+		return -EBUSY;
 
 	spi_ocores_hw_xfer_rx_pop(sp);
 	if (spi_ocores_sw_xfer_has_pending(sp)) {
