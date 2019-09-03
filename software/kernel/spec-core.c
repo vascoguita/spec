@@ -308,7 +308,7 @@ static void spec_gpio_exit_table(struct spec_gn412x *spec_gn412x)
 {
 	struct gpiod_lookup_table *lookup = spec_gn412x->gpiod_table;
 
-	gpiod_remove_lookup_table(spec_gn412x->gpiod_table);
+	gpiod_remove_lookup_table(lookup);
 	kfree(lookup->dev_id);
 	kfree(lookup);
 
