@@ -75,7 +75,7 @@ TIMESPEC TS_clk_125m_gtp = PERIOD "clk_125m_gtp" 8 ns HIGH 50%;
 NET "clk_20m_vcxo_i"    TNM_NET = "clk_20m_vcxo";
 TIMESPEC TS_clk_20m_vcxo = PERIOD "clk_20m_vcxo" 50 ns HIGH 50%;
 
-NET "inst_spec_template/gen_wr.cmp_xwrc_board_spec/cmp_xwrc_platform/gen_phy_spartan6.cmp_gtp/ch1_gtp_clkout_int[1]" TNM_NET = wrc_gtp_clk;
+NET "inst_spec_base/gen_wr.cmp_xwrc_board_spec/cmp_xwrc_platform/gen_phy_spartan6.cmp_gtp/ch1_gtp_clkout_int[1]" TNM_NET = wrc_gtp_clk;
 TIMESPEC TS_wrc_gtp_clk = PERIOD "wrc_gtp_clk" 8 ns HIGH 50%;
 
 #-------------------------------------------------------------
