@@ -27,12 +27,12 @@ enum spec_fpga_irq_lines {
 };
 
 enum spec_fpga_csr_offsets {
-	SPEC_FPGA_CSR_APP_OFF = SPEC_TEMPLATE_REGS_CSR + 0x00,
-	SPEC_FPGA_CSR_RESETS = SPEC_TEMPLATE_REGS_CSR + 0x04,
-	SPEC_FPGA_CSR_FMC_PRESENT = SPEC_TEMPLATE_REGS_CSR + 0x08,
-	SPEC_FPGA_CSR_GN4124_STATUS = SPEC_TEMPLATE_REGS_CSR + 0x0C,
-	SPEC_FPGA_CSR_DDR_STATUS = SPEC_TEMPLATE_REGS_CSR + 0x10,
-	SPEC_FPGA_CSR_PCB_REV = SPEC_TEMPLATE_REGS_CSR + 0x14,
+	SPEC_FPGA_CSR_APP_OFF = SPEC_BASE_REGS_CSR + 0x00,
+	SPEC_FPGA_CSR_RESETS = SPEC_BASE_REGS_CSR + 0x04,
+	SPEC_FPGA_CSR_FMC_PRESENT = SPEC_BASE_REGS_CSR + 0x08,
+	SPEC_FPGA_CSR_GN4124_STATUS = SPEC_BASE_REGS_CSR + 0x0C,
+	SPEC_FPGA_CSR_DDR_STATUS = SPEC_BASE_REGS_CSR + 0x10,
+	SPEC_FPGA_CSR_PCB_REV = SPEC_BASE_REGS_CSR + 0x14,
 };
 
 enum spec_fpga_csr_fields {
@@ -40,9 +40,9 @@ enum spec_fpga_csr_fields {
 };
 
 enum spec_fpga_therm_offsets {
-	SPEC_FPGA_THERM_SERID_MSB = SPEC_TEMPLATE_REGS_THERM_ID + 0x0,
-	SPEC_FPGA_THERM_SERID_LSB = SPEC_TEMPLATE_REGS_THERM_ID + 0x4,
-	SPEC_FPGA_THERM_TEMP = SPEC_TEMPLATE_REGS_THERM_ID + 0x8,
+	SPEC_FPGA_THERM_SERID_MSB = SPEC_BASE_REGS_THERM_ID + 0x0,
+	SPEC_FPGA_THERM_SERID_LSB = SPEC_BASE_REGS_THERM_ID + 0x4,
+	SPEC_FPGA_THERM_TEMP = SPEC_BASE_REGS_THERM_ID + 0x8,
 };
 
 enum spec_fpga_meta_cap_mask {
@@ -92,8 +92,8 @@ static int spec_fpga_dbg_bld_info(struct seq_file *s, void *offset)
 		return 0;
 	}
 
-	for (off = SPEC_TEMPLATE_REGS_BUILDINFO;
-	     off < SPEC_TEMPLATE_REGS_BUILDINFO + SPEC_TEMPLATE_REGS_BUILDINFO_SIZE -1;
+	for (off = SPEC_BASE_REGS_BUILDINFO;
+	     off < SPEC_BASE_REGS_BUILDINFO + SPEC_BASE_REGS_BUILDINFO_SIZE -1;
 	     off++) {
 		char tmp = ioread8(spec_fpga->fpga + off);
 
@@ -189,8 +189,8 @@ static struct resource spec_fpga_vic_res[] = {
 	{
 		.name = "htvic-mem",
 		.flags = IORESOURCE_MEM,
-		.start = SPEC_TEMPLATE_REGS_VIC,
-		.end = SPEC_TEMPLATE_REGS_VIC + SPEC_TEMPLATE_REGS_VIC_SIZE -1,
+		.start = SPEC_BASE_REGS_VIC,
+		.end = SPEC_BASE_REGS_VIC + SPEC_BASE_REGS_VIC_SIZE -1,
 	}, {
 		.name = "htvic-irq",
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
@@ -242,8 +242,8 @@ static struct resource spec_fpga_dma_res[] = {
 	{
 		.name = "spec-gn412x-dma-mem",
 		.flags = IORESOURCE_MEM,
-		.start = SPEC_TEMPLATE_REGS_DMA,
-		.end = SPEC_TEMPLATE_REGS_DMA + SPEC_TEMPLATE_REGS_DMA_SIZE - 1,
+		.start = SPEC_BASE_REGS_DMA,
+		.end = SPEC_BASE_REGS_DMA + SPEC_BASE_REGS_DMA_SIZE - 1,
 	}, {
 		.name = "spec-gn412x-dma-irq-done",
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
@@ -313,8 +313,8 @@ static struct resource spec_fpga_fmc_i2c_res[] = {
 	{
 		.name = "i2c-ocores-mem",
 		.flags = IORESOURCE_MEM,
-		.start = SPEC_TEMPLATE_REGS_FMC_I2C,
-		.end = SPEC_TEMPLATE_REGS_FMC_I2C + SPEC_TEMPLATE_REGS_FMC_I2C_SIZE -1,
+		.start = SPEC_BASE_REGS_FMC_I2C,
+		.end = SPEC_BASE_REGS_FMC_I2C + SPEC_BASE_REGS_FMC_I2C_SIZE -1,
 	}, {
 		.name = "i2c-ocores-irq",
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
@@ -338,8 +338,8 @@ static struct resource spec_fpga_spi_res[] = {
 	{
 		.name = "spi-ocores-mem",
 		.flags = IORESOURCE_MEM,
-		.start = SPEC_TEMPLATE_REGS_FLASH_SPI,
-		.end = SPEC_TEMPLATE_REGS_FLASH_SPI + SPEC_TEMPLATE_REGS_FLASH_SPI_SIZE - 1,
+		.start = SPEC_BASE_REGS_FLASH_SPI,
+		.end = SPEC_BASE_REGS_FLASH_SPI + SPEC_BASE_REGS_FLASH_SPI_SIZE - 1,
 	}, {
 		.name = "spi-ocores-irq",
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,

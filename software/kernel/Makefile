@@ -23,7 +23,7 @@ all: modules
 .PHONY: all modules clean help install modules_install spec-core-fpga.h
 
 spec-core-fpga.h:
-	$(CHEBY) --gen-c -i $(HDL_DIR)/rtl/spec_template_regs.cheby > $@
+	$(CHEBY) --gen-c -i $(HDL_DIR)/rtl/spec_base_regs.cheby > $@
 
 modules help install modules_install: spec-core-fpga.h
 	$(MAKE) -C $(LINUX) M=$(shell pwd) VERSION=$(VERSION) CONFIG_FPGA_MGR_BACKPORT_PATH_ABS=$(CONFIG_FPGA_MGR_BACKPORT_PATH_ABS) CONFIG_FPGA_MGR_BACKPORT=$(CONFIG_FPGA_MGR_BACKPORT) FMC_ABS=$(FMC_ABS) I2C_ABS=$(I2C_ABS) $@
