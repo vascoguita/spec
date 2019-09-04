@@ -97,7 +97,7 @@ architecture rtl of spec_golden is
   signal gn_wb_out         : t_wishbone_master_out;
   signal gn_wb_in          : t_wishbone_master_in;
 begin
-  inst_spec_template: entity work.spec_template_wr
+  inst_spec_base: entity work.spec_base_wr
     generic map (
       g_WITH_VIC     => True,
       g_WITH_ONEWIRE => True,

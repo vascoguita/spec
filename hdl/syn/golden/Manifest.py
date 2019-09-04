@@ -13,7 +13,7 @@ syn_project = "spec_golden.xise"
 syn_tool = "ise"
 syn_top = "spec_golden"
 
-spec_template_ucf = ['onewire', 'spi']
+spec_base_ucf = ['onewire', 'spi']
 board = "spec"
 ctrls = ["bank3_64b_32b" ]
 

@@ -152,8 +152,8 @@ NET "*/gc_reset_async_in" TIG;
 
 # Declaration of domains
 
-NET "inst_spec_template/clk_62m5_sys"              TNM_NET = sys_clk;
-NET "inst_spec_template/clk_125m_ref"              TNM_NET = ref_clk;
+NET "inst_spec_base/clk_62m5_sys"              TNM_NET = sys_clk;
+NET "inst_spec_base/clk_125m_ref"              TNM_NET = ref_clk;
 NET "*/cmp_gn4124_core/cmp_wrapped_gn4124/sys_clk" TNM_NET = pci_clk;
 NET "*/cmp_gn4124_core/cmp_wrapped_gn4124/io_clk"  TNM_NET = pci_clk;
 
@@ -179,12 +179,3 @@ TIMEGRP "pci_sync_reg" = "sync_reg" EXCEPT "pci_clk";
 TIMESPEC TS_ref_sync_reg = FROM ref_clk TO "sys_sync_reg"  8ns  DATAPATHONLY;
 TIMESPEC TS_sys_sync_reg = FROM sys_clk TO "sys_sync_reg"  16ns DATAPATHONLY;
 TIMESPEC TS_pci_sync_reg = FROM pci_clk TO "pci_sync_reg"  5ns  DATAPATHONLY;
-
-# Exceptions for crossings via gc_sync_word_* (3x multicycle)
-
-NET "*/gc_sync_word_data[*]" TNM = FFS "sync_word";
-
-TIMESPEC TS_sys_sync_word = FROM sync_word TO sys_clk 48ns DATAPATHONLY;
-TIMESPEC TS_ref_sync_word = FROM sync_word TO ref_clk 24ns DATAPATHONLY;
-# no gc_sync_word used in GN4124
-#TIMESPEC TS_pci_sync_word = FROM sync_word TO pci_clk 15ns DATAPATHONLY;

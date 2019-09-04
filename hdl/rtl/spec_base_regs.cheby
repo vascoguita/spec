@@ -1,5 +1,5 @@
 memory-map:
-  name: spec_template_regs
+  name: spec_base_regs
   bus: wb-32-be
   size: 0x2000
   children:

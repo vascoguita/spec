@@ -4,9 +4,9 @@
 -- https://ohwr.org/projects/spec
 --------------------------------------------------------------------------------
 --
--- unit name:   spec_template_wr
+-- unit name:   spec_base_wr
 --
--- description: SPEC carrier template, with WR.
+-- description: SPEC carrier base.
 --
 --------------------------------------------------------------------------------
 -- Copyright CERN 2019
@@ -40,7 +40,7 @@ use work.streamers_pkg.all;
 library unisim;
 use unisim.vcomponents.all;
 
-entity spec_template_wr is
+entity spec_base_wr is
   generic (
     --  If true, instantiate a VIC/ONEWIRE/SPI/WR/DDRAM+DMA.
     g_WITH_VIC      : boolean := True;
@@ -291,9 +291,9 @@ entity spec_template_wr is
     app_wb_o           : out t_wishbone_master_out;
     app_wb_i           : in  t_wishbone_master_in
   );
-end entity spec_template_wr;
+end entity spec_base_wr;
 
-architecture top of spec_template_wr is
+architecture top of spec_base_wr is
   -- WRPC Xilinx platform auxiliary clock configuration, used for DDR clock
   constant c_WRPC_PLL_CONFIG : t_auxpll_cfg_array := (
     0      => (enabled => TRUE, bufg_en => TRUE, divide => 3),
@@ -507,7 +507,7 @@ begin  -- architecture top
       master_o (1) => app_wb_o
     );
 
-  inst_devs: entity work.spec_template_regs
+  inst_devs: entity work.spec_base_regs
     port map (
       rst_n_i    => rst_62m5_sys_n,
       clk_i      => clk_62m5_sys,
