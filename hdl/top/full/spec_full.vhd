@@ -34,7 +34,7 @@ entity spec_full is
     -- Simulation-mode enable parameter. Set by default (synthesis) to 0, and
     -- changed to non-zero in the instantiation of the top level DUT in the testbench.
     -- Its purpose is to reduce some internal counters/timeouts to speed up simulations.
-    g_SIMULATION : integer := 0
+    g_SIMULATION : boolean := False
   );
   port (
     ---------------------------------------------------------------------------
@@ -48,34 +48,34 @@ entity spec_full is
     -- GN4124 PCIe bridge signals
     ---------------------------------------------------------------------------
     -- From GN4124 Local bus
-    gn_rst_n : in std_logic; -- Reset from GN4124 (RSTOUT18_N)
+    gn_rst_n_i      : in std_logic; -- Reset from GN4124 (RSTOUT18_N)
     -- PCIe to Local [Inbound Data] - RX
-    gn_p2l_clk_n  : in  std_logic;       -- Receiver Source Synchronous Clock-
-    gn_p2l_clk_p  : in  std_logic;       -- Receiver Source Synchronous Clock+
-    gn_p2l_rdy    : out std_logic;       -- Rx Buffer Full Flag
-    gn_p2l_dframe : in  std_logic;       -- Receive Frame
-    gn_p2l_valid  : in  std_logic;       -- Receive Data Valid
-    gn_p2l_data   : in  std_logic_vector(15 downto 0);  -- Parallel receive data
+    gn_p2l_clk_n_i  : in  std_logic;       -- Receiver Source Synchronous Clock-
+    gn_p2l_clk_p_i  : in  std_logic;       -- Receiver Source Synchronous Clock+
+    gn_p2l_rdy_o    : out std_logic;       -- Rx Buffer Full Flag
+    gn_p2l_dframe_i : in  std_logic;       -- Receive Frame
+    gn_p2l_valid_i  : in  std_logic;       -- Receive Data Valid
+    gn_p2l_data_i   : in  std_logic_vector(15 downto 0);  -- Parallel receive data
     -- Inbound Buffer Request/Status
-    gn_p_wr_req   : in  std_logic_vector(1 downto 0);  -- PCIe Write Request
-    gn_p_wr_rdy   : out std_logic_vector(1 downto 0);  -- PCIe Write Ready
-    gn_rx_error   : out std_logic;                     -- Receive Error
+    gn_p_wr_req_i   : in  std_logic_vector(1 downto 0);  -- PCIe Write Request
+    gn_p_wr_rdy_o   : out std_logic_vector(1 downto 0);  -- PCIe Write Ready
+    gn_rx_error_o   : out std_logic;                     -- Receive Error
     -- Local to Parallel [Outbound Data] - TX
-    gn_l2p_clk_n  : out std_logic;       -- Transmitter Source Synchronous Clock-
-    gn_l2p_clk_p  : out std_logic;       -- Transmitter Source Synchronous Clock+
-    gn_l2p_dframe : out std_logic;       -- Transmit Data Frame
-    gn_l2p_valid  : out std_logic;       -- Transmit Data Valid
-    gn_l2p_edb    : out std_logic;       -- Packet termination and discard
-    gn_l2p_data   : out std_logic_vector(15 downto 0);  -- Parallel transmit data
+    gn_l2p_clk_n_o  : out std_logic;       -- Transmitter Source Synchronous Clock-
+    gn_l2p_clk_p_o  : out std_logic;       -- Transmitter Source Synchronous Clock+
+    gn_l2p_dframe_o : out std_logic;       -- Transmit Data Frame
+    gn_l2p_valid_o  : out std_logic;       -- Transmit Data Valid
+    gn_l2p_edb_o    : out std_logic;       -- Packet termination and discard
+    gn_l2p_data_o   : out std_logic_vector(15 downto 0);  -- Parallel transmit data
     -- Outbound Buffer Status
-    gn_l2p_rdy    : in std_logic;                     -- Tx Buffer Full Flag
-    gn_l_wr_rdy   : in std_logic_vector(1 downto 0);  -- Local-to-PCIe Write
-    gn_p_rd_d_rdy : in std_logic_vector(1 downto 0);  -- PCIe-to-Local Read Response Data Ready
-    gn_tx_error   : in std_logic;                     -- Transmit Error
-    gn_vc_rdy     : in std_logic_vector(1 downto 0);  -- Channel ready
+    gn_l2p_rdy_i    : in std_logic;                     -- Tx Buffer Full Flag
+    gn_l_wr_rdy_i   : in std_logic_vector(1 downto 0);  -- Local-to-PCIe Write
+    gn_p_rd_d_rdy_i : in std_logic_vector(1 downto 0);  -- PCIe-to-Local Read Response Data Ready
+    gn_tx_error_i   : in std_logic;                     -- Transmit Error
+    gn_vc_rdy_i     : in std_logic_vector(1 downto 0);  -- Channel ready
     -- General Purpose Interface
-    gn_gpio : inout std_logic_vector(1 downto 0);  -- gn_gpio[0] -> GN4124 GPIO8
-                                                   -- gn_gpio[1] -> GN4124 GPIO9
+    gn_gpio_b       : inout std_logic_vector(1 downto 0);  -- gn_gpio[0] -> GN4124 GPIO8
+                                                           -- gn_gpio[1] -> GN4124 GPIO9
 
     -- I2C interface for accessing FMC EEPROM.
     fmc0_scl_b : inout std_logic;
@@ -112,7 +112,7 @@ entity spec_full is
     -- Green LED next to the SFP: indicates if the link is up.
     led_link_o : out std_logic;
 
-    button1_i   : in  std_logic;
+    button1_n_i   : in  std_logic;
 
     ---------------------------------------------------------------------------
     -- UART
@@ -181,7 +181,7 @@ architecture top of spec_full is
   signal gn_wb_out         : t_wishbone_master_out;
   signal gn_wb_in          : t_wishbone_master_in;
 begin
-  inst_template: entity work.spec_template_wr
+  inst_spec_base: entity work.spec_base_wr
     generic map (
       g_with_vic => True,
       g_with_onewire => False,
@@ -193,28 +193,28 @@ begin
     port map (
       clk_125m_pllref_p_i => clk_125m_pllref_p_i,
       clk_125m_pllref_n_i => clk_125m_pllref_n_i,
-      gn_rst_n_i => gn_rst_n,
-      gn_p2l_clk_n_i => gn_p2l_clk_n,
-      gn_p2l_clk_p_i => gn_p2l_clk_p,
-      gn_p2l_rdy_o => gn_p2l_rdy,
-      gn_p2l_dframe_i => gn_p2l_dframe,
-      gn_p2l_valid_i => gn_p2l_valid,
-      gn_p2l_data_i => gn_p2l_data,
-      gn_p_wr_req_i => gn_p_wr_req,
-      gn_p_wr_rdy_o => gn_p_wr_rdy,
-      gn_rx_error_o => gn_rx_error,
-      gn_l2p_clk_n_o => gn_l2p_clk_n,
-      gn_l2p_clk_p_o => gn_l2p_clk_p,
-      gn_l2p_dframe_o => gn_l2p_dframe,
-      gn_l2p_valid_o => gn_l2p_valid,
-      gn_l2p_edb_o => gn_l2p_edb,
-      gn_l2p_data_o => gn_l2p_data,
-      gn_l2p_rdy_i => gn_l2p_rdy,
-      gn_l_wr_rdy_i => gn_l_wr_rdy,
-      gn_p_rd_d_rdy_i => gn_p_rd_d_rdy,
-      gn_tx_error_i => gn_tx_error,
-      gn_vc_rdy_i => gn_vc_rdy,
-      gn_gpio_b => gn_gpio,
+      gn_rst_n_i => gn_rst_n_i,
+      gn_p2l_clk_n_i => gn_p2l_clk_n_i,
+      gn_p2l_clk_p_i => gn_p2l_clk_p_i,
+      gn_p2l_rdy_o => gn_p2l_rdy_o,
+      gn_p2l_dframe_i => gn_p2l_dframe_i,
+      gn_p2l_valid_i => gn_p2l_valid_i,
+      gn_p2l_data_i => gn_p2l_data_i,
+      gn_p_wr_req_i => gn_p_wr_req_i,
+      gn_p_wr_rdy_o => gn_p_wr_rdy_o,
+      gn_rx_error_o => gn_rx_error_o,
+      gn_l2p_clk_n_o => gn_l2p_clk_n_o,
+      gn_l2p_clk_p_o => gn_l2p_clk_p_o,
+      gn_l2p_dframe_o => gn_l2p_dframe_o,
+      gn_l2p_valid_o => gn_l2p_valid_o,
+      gn_l2p_edb_o => gn_l2p_edb_o,
+      gn_l2p_data_o => gn_l2p_data_o,
+      gn_l2p_rdy_i => gn_l2p_rdy_i,
+      gn_l_wr_rdy_i => gn_l_wr_rdy_i,
+      gn_p_rd_d_rdy_i => gn_p_rd_d_rdy_i,
+      gn_tx_error_i => gn_tx_error_i,
+      gn_vc_rdy_i => gn_vc_rdy_i,
+      gn_gpio_b => gn_gpio_b,
       fmc0_scl_b => fmc0_scl_b,
       fmc0_sda_b => fmc0_sda_b,
       fmc0_prsnt_m2c_n_i => fmc0_prsnt_m2c_n_i,
@@ -226,7 +226,7 @@ begin
       pcbrev_i => pcbrev_i,
       led_act_o => led_act_o,
       led_link_o => led_link_o,
-      button1_i => button1_i,
+      button1_n_i => button1_n_i,
       uart_rxd_i => uart_rxd_i,
       uart_txd_o => uart_txd_o,
       clk_20m_vcxo_i => clk_20m_vcxo_i,
@@ -276,8 +276,8 @@ begin
       ddr_dma_wb_i.dat => x"0000_0000_0000_0000",
       ddr_dma_wb_o    => open,
 
-      clk_sys_62m5_o    => clk_sys_62m5,
-      rst_sys_62m5_n_o  => rst_sys_62m5_n,
+      clk_62m5_sys_o    => clk_sys_62m5,
+      rst_62m5_sys_n_o  => rst_sys_62m5_n,
 
       --  Everything is handled by the carrier.
       app_wb_o         => gn_wb_out,

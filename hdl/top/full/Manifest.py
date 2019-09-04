@@ -1,2 +1,2 @@
-files = ["spec_full.vhd", "spec_full.ucf"]
+files = ["spec_full.vhd"]
 modules = {'local': ["../../rtl"]}

@@ -94,7 +94,7 @@ TIMESPEC TS_ddr_rst_tig = FROM FFS THRU ddr_rst TIG;
 # Cross-clock domain sync
 #----------------------------------------
 
-NET "inst_spec_base/clk_ddr_333m" TNM_NET = ddr_clk;
+NET "inst_spec_base/clk_333m_ddr" TNM_NET = ddr_clk;
 
 NET "inst_spec_base/*cmp_ddr_ctrl_bank3/*/memc3_infrastructure_inst/mcb_drp_clk_bufg_in" TNM_NET = ddr_clk;
 NET "inst_spec_base/*cmp_ddr_ctrl_bank3/*/memc3_mcb_raw_wrapper_inst/ioi_drp_clk"        TNM_NET = ddr_clk;
@@ -110,3 +110,20 @@ NET "inst_spec_base/*cmp_ddr_ctrl_bank3/*/memc3_mcb_raw_wrapper_inst/ioi_drp_clk
 #TIMESPEC TS_ddr_sync_reg = FROM ddr_clk TO "ddr_sync_reg" 3ns DATAPATHONLY;
 
 #TIMESPEC TS_ddr_sync_word = FROM sync_word TO ddr_clk  9ns DATAPATHONLY;
+
+#---------------------------------------
+# DMA
+#---------------------------------------
+
+NET "inst_spec_base/cmp_gn4124_core/cmp_wrapped_gn4124/gen_with_dma.cmp_dma_controller/dma_async_*" TNM = FFS "dma_ffs";
+
+TIMESPEC TS_dma_async_ffs = FROM dma_ffs TO pci_clk  15ns  DATAPATHONLY;
+
+# Exceptions for crossings via gc_sync_word_* (3x multicycle)
+
+NET "*/gc_sync_word_data[*]" TNM = FFS "sync_word";
+
+TIMESPEC TS_sys_sync_word = FROM sync_word TO sys_clk 48ns DATAPATHONLY;
+TIMESPEC TS_ref_sync_word = FROM sync_word TO ref_clk 24ns DATAPATHONLY;
+# no gc_sync_word used in GN4124
+#TIMESPEC TS_pci_sync_word = FROM sync_word TO pci_clk 15ns DATAPATHONLY;
