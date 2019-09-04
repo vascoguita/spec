@@ -163,7 +163,7 @@ entity spec_template_wr is
     -- Green LED next to the SFP: indicates if the link is up.
     led_link_o  : out std_logic;
 
-    button1_i   : in  std_logic := '1';
+    button1_n_i : in  std_logic := '1';
 
     ---------------------------------------------------------------------------
     -- UART
@@ -743,7 +743,7 @@ begin  -- architecture top
         g_RX_STREAMER_PARAMS        => g_RX_STREAMER_PARAMS,
         g_FABRIC_IFACE              => g_FABRIC_IFACE)
       port map (
-        areset_n_i          => button1_i,
+        areset_n_i          => button1_n_i,
         areset_edge_n_i     => gn_rst_n_i,
         clk_20m_vcxo_i      => clk_20m_vcxo_i,
         clk_125m_pllref_p_i => clk_125m_pllref_p_i,
