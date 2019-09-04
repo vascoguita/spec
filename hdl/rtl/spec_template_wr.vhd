@@ -54,6 +54,8 @@ entity spec_template_wr is
     g_NUM_USER_IRQ  : natural := 1;
     --  WR PTP firmware.
     g_DPRAM_INITF   : string := "../../../../wr-cores/bin/wrpc/wrc_phy8.bram";
+    -- Number of aux clocks syntonized by WRPC to WR timebase
+    g_AUX_CLKS : integer := 0;
     -- Fabric interface selection for WR Core:
     -- plain     = expose WRC fabric interface
     -- streamers = attach WRC streamers to fabric interface
@@ -66,7 +68,7 @@ entity spec_template_wr is
     -- Simulation-mode enable parameter. Set by default (synthesis) to 0, and
     -- changed to non-zero in the instantiation of the top level DUT in the testbench.
     -- Its purpose is to reduce some internal counters/timeouts to speed up simulations.
-    g_SIMULATION : integer := 0;
+    g_SIMULATION : boolean := False;
     -- Increase information messages during simulation
     g_VERBOSE    : boolean := False
   );
@@ -85,6 +87,9 @@ entity spec_template_wr is
     -- 125 MHz GTP reference
     clk_125m_gtp_n_i : in std_logic := '0';
     clk_125m_gtp_p_i : in std_logic := '0';
+
+    -- Aux clocks, which can be disciplined by the WR Core
+    clk_aux_i : in  std_logic_vector(g_AUX_CLKS-1 downto 0) := (others => '0');
 
     ---------------------------------------------------------------------------
     -- GN4124 PCIe bridge signals
@@ -229,10 +234,10 @@ entity spec_template_wr is
     ddr_wr_fifo_empty_o : out std_logic;
 
     --  Clocks and reset.
-    clk_sys_62m5_o    : out std_logic;
-    rst_sys_62m5_n_o  : out std_logic;
-    clk_ref_125m_o    : out std_logic;
-    rst_ref_125m_n_o  : out std_logic;
+    clk_62m5_sys_o    : out std_logic;
+    rst_62m5_sys_n_o  : out std_logic;
+    clk_125m_ref_o    : out std_logic;
+    rst_125m_ref_n_o  : out std_logic;
 
     --  Interrupts
     irq_user_i : in std_logic_vector(g_NUM_USER_IRQ + 5 downto 6) := (others => '0');
@@ -267,6 +272,12 @@ entity spec_template_wr is
     tm_tai_o        : out std_logic_vector(39 downto 0);
     tm_cycles_o     : out std_logic_vector(27 downto 0);
 
+    -- Aux clocks control
+    tm_dac_value_o       : out std_logic_vector(23 downto 0);
+    tm_dac_wr_o          : out std_logic_vector(g_AUX_CLKS-1 downto 0);
+    tm_clk_aux_lock_en_i : in  std_logic_vector(g_AUX_CLKS-1 downto 0) := (others => '0');
+    tm_clk_aux_locked_o  : out std_logic_vector(g_AUX_CLKS-1 downto 0);
+    
     -- PPS output
     pps_p_o    : out std_logic;
     pps_led_o  : out std_logic;
@@ -288,17 +299,17 @@ architecture top of spec_template_wr is
     0      => (enabled => TRUE, bufg_en => TRUE, divide => 3),
     others => c_AUXPLL_CFG_DEFAULT);
 
-  signal clk_sys_62m5    : std_logic;  -- 62.5Mhz
+  signal clk_62m5_sys    : std_logic;  -- 62.5Mhz
 
   signal clk_pll_aux     : std_logic_vector(3 downto 0);
   signal rst_pll_aux_n   : std_logic_vector(3 downto 0) := (others => '0');
 
   --  DDR
-  signal clk_ddr_333m       : std_logic;
-  signal rst_ddr_333m_n  : std_logic := '0';
+  signal clk_333m_ddr    : std_logic;
+  signal rst_333m_ddr_n  : std_logic := '0';
   signal ddr_rst         : std_logic := '1';
-  signal ddr_status     : std_logic_vector(31 downto 0);
-  signal ddr_calib_done : std_logic;
+  signal ddr_status      : std_logic_vector(31 downto 0);
+  signal ddr_calib_done  : std_logic;
 
   -- GN4124 core DMA port to DDR wishbone bus
   signal gn_wb_ddr_in  : t_wishbone_master_in;
@@ -362,10 +373,10 @@ architecture top of spec_template_wr is
   signal irqs : std_logic_vector(num_interrupts - 1 downto 0);
 
   -- clock and reset
-  signal rst_sys_62m5_n : std_logic;
-  signal rst_ref_125m_n : std_logic;
-  signal clk_ref_125m   : std_logic;
-  signal clk_ext_10m    : std_logic;
+  signal rst_62m5_sys_n : std_logic;
+  signal rst_125m_ref_n : std_logic;
+  signal clk_125m_ref   : std_logic;
+  signal clk_10m_ext    : std_logic;
 
   -- I2C EEPROM
   signal eeprom_sda_in  : std_logic;
@@ -384,9 +395,9 @@ architecture top of spec_template_wr is
   signal wrc_abscal_rxts_out : std_logic;
 
   attribute keep                 : string;
-  attribute keep of clk_sys_62m5 : signal is "TRUE";
-  attribute keep of clk_ref_125m : signal is "TRUE";
-  attribute keep of clk_ddr_333m : signal is "TRUE";
+  attribute keep of clk_62m5_sys : signal is "TRUE";
+  attribute keep of clk_125m_ref : signal is "TRUE";
+  attribute keep of clk_333m_ddr : signal is "TRUE";
   attribute keep of ddr_rst      : signal is "TRUE";
 
 begin  -- architecture top
@@ -460,21 +471,21 @@ begin  -- architecture top
 
       ---------------------------------------------------------
       -- DMA registers wishbone interface (slave classic)
-      wb_dma_cfg_clk_i => clk_sys_62m5,
-      wb_dma_cfg_rst_n_i => rst_sys_62m5_n,
+      wb_dma_cfg_clk_i => clk_62m5_sys,
+      wb_dma_cfg_rst_n_i => rst_62m5_sys_n,
       wb_dma_cfg_i => dma_out,
       wb_dma_cfg_o => dma_in,
 
       ---------------------------------------------------------
       -- CSR wishbone interface (master pipelined)
-      wb_master_clk_i   => clk_sys_62m5,
-      wb_master_rst_n_i => rst_sys_62m5_n,
+      wb_master_clk_i   => clk_62m5_sys,
+      wb_master_rst_n_i => rst_62m5_sys_n,
       wb_master_o       => gn_wb_out,
       wb_master_i       => gn_wb_in,
 
       ---------------------------------------------------------
       -- L2P DMA Interface (Pipelined Wishbone master)
-      wb_dma_dat_clk_i   => clk_sys_62m5,
+      wb_dma_dat_clk_i   => clk_62m5_sys,
       wb_dma_dat_rst_n_i => rst_gbl_n,
       wb_dma_dat_o       => gn_wb_ddr_out,
       wb_dma_dat_i       => gn_wb_ddr_in
@@ -486,8 +497,8 @@ begin  -- architecture top
       g_mask => x"ffff_e000"
     )
     port map (
-      clk_sys_i => clk_sys_62m5,
-      rst_n_i => rst_sys_62m5_n,
+      clk_sys_i => clk_62m5_sys,
+      rst_n_i => rst_62m5_sys_n,
       slave_i => gn_wb_out,
       slave_o => gn_wb_in,
       master_i (0) => carrier_wb_out,
@@ -498,8 +509,8 @@ begin  -- architecture top
 
   inst_devs: entity work.spec_template_regs
     port map (
-      rst_n_i    => rst_sys_62m5_n,
-      clk_i      => clk_sys_62m5,
+      rst_n_i    => rst_62m5_sys_n,
+      clk_i      => clk_62m5_sys,
       wb_cyc_i   => carrier_wb_in.cyc,
       wb_stb_i   => carrier_wb_in.stb,
       wb_adr_i   => carrier_wb_in.adr (12 downto 2),  -- Bytes address from gennum
@@ -563,9 +574,9 @@ begin  -- architecture top
   fmc_presence (31 downto 1) <= (others => '0');
 
   --  Metadata
-  p_metadata: process (clk_sys_62m5) is
+  p_metadata: process (clk_62m5_sys) is
   begin
-    if rising_edge(clk_sys_62m5) then
+    if rising_edge(clk_62m5_sys) then
       case metadata_addr is
         when x"0" =>
           --  Vendor ID
@@ -609,11 +620,11 @@ begin  -- architecture top
   end process;
 
   --  Build information
-  p_buildinfo: process (clk_sys_62m5) is
+  p_buildinfo: process (clk_62m5_sys) is
     variable addr : natural;
     variable b : std_logic_vector(7 downto 0);
   begin
-    if rising_edge(clk_sys_62m5) then
+    if rising_edge(clk_62m5_sys) then
       addr := to_integer(unsigned(buildinfo_addr)) * 4;
       for i in 0 to 3 loop
         if addr + i < buildinfo'length then
@@ -627,26 +638,26 @@ begin  -- architecture top
     end if;
   end process;
 
-  rst_gbl_n <= rst_sys_62m5_n and (not csr_rst_gbl);
+  rst_gbl_n <= rst_62m5_sys_n and (not csr_rst_gbl);
 
   -- reset for DDR including soft reset.
   -- This is treated as async and will be re-synced by the DDR controller
-  ddr_rst <= not rst_ddr_333m_n or csr_rst_gbl;
+  ddr_rst <= not rst_333m_ddr_n or csr_rst_gbl;
 
   rst_csr_app_n <= not (csr_rst_gbl or csr_rst_app);
 
-  rst_sys_62m5_n_o <= rst_sys_62m5_n and rst_csr_app_n;
-  clk_sys_62m5_o <= clk_sys_62m5;
+  rst_62m5_sys_n_o <= rst_62m5_sys_n and rst_csr_app_n;
+  clk_62m5_sys_o <= clk_62m5_sys;
 
   inst_rst_csr_app_sync : gc_sync_ffs
     port map (
-      clk_i    => clk_ref_125m,
+      clk_i    => clk_125m_ref,
       rst_n_i  => '1',
       data_i   => rst_csr_app_n,
       synced_o => rst_csr_app_sync_n);
 
-  rst_ref_125m_n_o <= rst_ref_125m_n and rst_csr_app_sync_n;
-  clk_ref_125m_o   <= clk_ref_125m;
+  rst_125m_ref_n_o <= rst_125m_ref_n and rst_csr_app_sync_n;
+  clk_125m_ref_o   <= clk_125m_ref;
 
   inst_i2c: entity work.xwb_i2c_master
     generic map (
@@ -654,7 +665,7 @@ begin  -- architecture top
       g_address_granularity => BYTE,
       g_num_interfaces      => 1)
     port map (
-      clk_sys_i => clk_sys_62m5,
+      clk_sys_i => clk_62m5_sys,
       rst_n_i   => rst_gbl_n,
 
       slave_i => fmc_i2c_out,
@@ -687,7 +698,7 @@ begin  -- architecture top
         g_POLARITY => '1'
       )
       port map (
-        clk_sys_i => clk_sys_62m5,
+        clk_sys_i => clk_62m5_sys,
         rst_n_i => rst_gbl_n,
         slave_i => vic_out,
         slave_o => vic_in,
@@ -721,10 +732,11 @@ begin  -- architecture top
 
     cmp_xwrc_board_spec : xwrc_board_spec
       generic map (
-        g_simulation                => g_SIMULATION,
+        g_simulation                => boolean'pos(g_SIMULATION),
         g_VERBOSE                   => g_VERBOSE,
         g_with_external_clock_input => TRUE,
         g_dpram_initf               => g_DPRAM_INITF,
+        g_AUX_CLKS                  => g_AUX_CLKS,
         g_AUX_PLL_CFG               => c_WRPC_PLL_CONFIG,
         g_STREAMERS_OP_MODE         => g_STREAMERS_OP_MODE,
         g_TX_STREAMER_PARAMS        => g_TX_STREAMER_PARAMS,
@@ -738,13 +750,14 @@ begin  -- architecture top
         clk_125m_pllref_n_i => clk_125m_pllref_n_i,
         clk_125m_gtp_n_i    => clk_125m_gtp_n_i,
         clk_125m_gtp_p_i    => clk_125m_gtp_p_i,
-        clk_10m_ext_i       => clk_ext_10m,
-
-        clk_sys_62m5_o      => clk_sys_62m5,
-        clk_ref_125m_o      => clk_ref_125m,
+        clk_aux_i           => clk_aux_i,
+        clk_10m_ext_i       => clk_10m_ext,
+  
+        clk_sys_62m5_o      => clk_62m5_sys,
+        clk_ref_125m_o      => clk_125m_ref,
         clk_pll_aux_o       => clk_pll_aux,
-        rst_sys_62m5_n_o    => rst_sys_62m5_n,
-        rst_ref_125m_n_o    => rst_ref_125m_n,
+        rst_sys_62m5_n_o    => rst_62m5_sys_n,
+        rst_ref_125m_n_o    => rst_125m_ref_n,
         rst_pll_aux_n_o     => rst_pll_aux_n,
 
         plldac_sclk_o       => plldac_sclk_o,
@@ -811,6 +824,11 @@ begin  -- architecture top
         tm_time_valid_o     => tm_time_valid_o,
         tm_tai_o            => tm_tai_o,
         tm_cycles_o         => tm_cycles_o,
+  
+        tm_dac_value_o       => tm_dac_value_o,
+        tm_dac_wr_o          => tm_dac_wr_o,
+        tm_clk_aux_lock_en_i => tm_clk_aux_lock_en_i,
+        tm_clk_aux_locked_o  => tm_clk_aux_locked_o,
 
         pps_p_o             => pps_p_o,
         pps_led_o           => pps_led_o,
@@ -818,9 +836,9 @@ begin  -- architecture top
         led_link_o          => led_link_o,
         led_act_o           => led_act_o);
 
-    clk_ddr_333m   <= clk_pll_aux(0);
-    rst_ddr_333m_n <= rst_pll_aux_n(0);
-    clk_ext_10m <= '0';
+    clk_333m_ddr   <= clk_pll_aux(0);
+    rst_333m_ddr_n <= rst_pll_aux_n(0);
+    clk_10m_ext <= '0';
 
     -- Tristates for SFP EEPROM
     sfp_mod_def1_b <= '0' when sfp_scl_out = '0' else 'Z';
@@ -899,17 +917,17 @@ begin  -- architecture top
 
     cmp_clk_62m5_buf : BUFG
       port map (
-        O => clk_sys_62m5,
+        O => clk_62m5_sys,
         I => pllout_clk_62m5);
 
     cmp_clk_125m_buf : BUFG
       port map (
-        O => clk_ref_125m,
+        O => clk_125m_ref,
         I => pllout_clk_125m);
 
     cmp_clk_333m_buf : BUFG
       port map (
-        O => clk_ddr_333m,
+        O => clk_333m_ddr,
         I => pllout_clk_333m);
 
       -- logic AND of all async reset sources (active high)
@@ -922,12 +940,12 @@ begin  -- architecture top
         g_RST_LEN => 16)  -- 16 clock cycles
       port map (
         arst_i  => rstlogic_arst,
-        clks_i (0)  => clk_sys_62m5,
-        clks_i (1)  => clk_ref_125m,
-        clks_i (2)  => clk_ddr_333m,
-        rst_n_o (0) => rst_sys_62m5_n,
-        rst_n_o (1) => rst_ref_125m_n,
-        rst_n_o (2) => rst_ddr_333m_n);
+        clks_i (0)  => clk_62m5_sys,
+        clks_i (1)  => clk_125m_ref,
+        clks_i (2)  => clk_333m_ddr,
+        rst_n_o (0) => rst_62m5_sys_n,
+        rst_n_o (1) => rst_125m_ref_n,
+        rst_n_o (2) => rst_333m_ddr_n);
 
     --  Not used.
     wrc_in <= (ack => '1', err => '0', rty => '0', stall => '0', dat => x"00000000");
@@ -939,7 +957,7 @@ begin  -- architecture top
         g_CLOCK_FREQ_KHZ => 62_500,
         g_USE_INTERNAL_PPS => True)
       port map (
-        clk_i => clk_sys_62m5,
+        clk_i => clk_62m5_sys,
         rst_n_i => rst_gbl_n,
 
         wb_i => therm_id_out,
@@ -965,7 +983,7 @@ begin  -- architecture top
         g_num_slaves => 1
       )
       port map (
-        clk_sys_i => clk_sys_62m5,
+        clk_sys_i => clk_62m5_sys,
         rst_n_i => rst_gbl_n,
         slave_i => flash_spi_out,
         slave_o => flash_spi_in,
@@ -989,7 +1007,7 @@ begin  -- architecture top
         g_RST_ACT_LOW        => 0, -- active high reset (simpler internal logic)
         g_BANK_PORT_SELECT   => "SPEC_BANK3_64B_32B",
         g_MEMCLK_PERIOD      => 3000,
-        g_SIMULATION         => boolean'image(g_SIMULATION /= 0),
+        g_SIMULATION         => boolean'image(g_SIMULATION),
         g_CALIB_SOFT_IP      => "TRUE",
         g_P0_MASK_SIZE       => 8,
         g_P0_DATA_PORT_SIZE  => 64,
@@ -998,7 +1016,7 @@ begin  -- architecture top
         g_P1_DATA_PORT_SIZE  => 32,
         g_P1_BYTE_ADDR_WIDTH => 30)
       port map (
-        clk_i   => clk_ddr_333m,
+        clk_i   => clk_333m_ddr,
         rst_n_i => ddr_rst,
 
         status_o => ddr_status,
@@ -1048,7 +1066,7 @@ begin  -- architecture top
         p0_wr_error_o    => open,
 
         wb1_rst_n_i => rst_gbl_n,
-        wb1_clk_i   => clk_sys_62m5,
+        wb1_clk_i   => clk_62m5_sys,
         wb1_sel_i   => gn_wb_ddr_out.sel,
         wb1_cyc_i   => gn_wb_ddr_out.cyc,
         wb1_stb_i   => gn_wb_ddr_out.stb,
