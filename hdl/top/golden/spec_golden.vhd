@@ -143,13 +143,6 @@ begin
 
       ddr_dma_clk_i  => clk_sys_62m5,
       ddr_dma_rst_n_i => rst_sys_62m5_n,
-      ddr_dma_wb_i.cyc => '0',
-      ddr_dma_wb_i.stb => '0',
-      ddr_dma_wb_i.adr => x"0000_0000",
-      ddr_dma_wb_i.sel => x"00",
-      ddr_dma_wb_i.we => '0',
-      ddr_dma_wb_i.dat => x"0000_0000_0000_0000",
-      ddr_dma_wb_o    => open,
 
       clk_62m5_sys_o    => clk_sys_62m5,
       rst_62m5_sys_n_o  => rst_sys_62m5_n,

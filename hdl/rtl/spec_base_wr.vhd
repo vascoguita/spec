@@ -48,6 +48,8 @@ entity spec_base_wr is
     g_WITH_SPI      : boolean := True;
     g_WITH_WR       : boolean := True;
     g_WITH_DDR      : boolean := True;
+    --  Size of the DDR data port in bits (32 or 64)
+    g_DDR_DATA_SIZE : natural := 64;
     --  Address of the application meta-data.  0 if none.
     g_APP_OFFSET    : std_logic_vector(31 downto 0) := x"0000_0000";
     --  Number of user interrupts
@@ -225,10 +227,17 @@ entity spec_base_wr is
 
     --  Direct access to the DDR-3
     --  Classic wishbone
-    ddr_dma_clk_i   : in  std_logic;
-    ddr_dma_rst_n_i : in std_logic;
-    ddr_dma_wb_i    : in  t_wishbone_slave_data64_in;
-    ddr_dma_wb_o    : out t_wishbone_slave_data64_out;
+    ddr_dma_clk_i      : in  std_logic := '0';
+    ddr_dma_rst_n_i    : in  std_logic := '0';
+    ddr_dma_wb_cyc_i   : in  std_logic := '0';
+    ddr_dma_wb_stb_i   : in  std_logic := '0';
+    ddr_dma_wb_adr_i   : in  std_logic_vector(31 downto 0) := (others => '0');
+    ddr_dma_wb_sel_i   : in  std_logic_vector((g_DDR_DATA_SIZE / 8) - 1 downto 0) := (others => '0');
+    ddr_dma_wb_we_i    : in  std_logic := '0';
+    ddr_dma_wb_dat_i   : in  std_logic_vector(g_DDR_DATA_SIZE - 1 downto 0) := (others => '0');
+    ddr_dma_wb_ack_o   : out std_logic;
+    ddr_dma_wb_stall_o : out std_logic;
+    ddr_dma_wb_dat_o   : out std_logic_vector(g_DDR_DATA_SIZE - 1 downto 0);
 
     -- DDR FIFO empty flag
     ddr_wr_fifo_empty_o : out std_logic;
@@ -1009,8 +1018,8 @@ begin  -- architecture top
         g_MEMCLK_PERIOD      => 3000,
         g_SIMULATION         => boolean'image(g_SIMULATION),
         g_CALIB_SOFT_IP      => "TRUE",
-        g_P0_MASK_SIZE       => 8,
-        g_P0_DATA_PORT_SIZE  => 64,
+        g_P0_MASK_SIZE       => g_DDR_DATA_SIZE / 8,
+        g_P0_DATA_PORT_SIZE  => g_DDR_DATA_SIZE,
         g_P0_BYTE_ADDR_WIDTH => 30,
         g_P1_MASK_SIZE       => 4,
         g_P1_DATA_PORT_SIZE  => 32,
@@ -1042,15 +1051,15 @@ begin  -- architecture top
 
         wb0_rst_n_i => ddr_dma_rst_n_i,
         wb0_clk_i   => ddr_dma_clk_i,
-        wb0_sel_i   => ddr_dma_wb_i.sel,
-        wb0_cyc_i   => ddr_dma_wb_i.cyc,
-        wb0_stb_i   => ddr_dma_wb_i.stb,
-        wb0_we_i    => ddr_dma_wb_i.we,
-        wb0_addr_i  => ddr_dma_wb_i.adr,
-        wb0_data_i  => ddr_dma_wb_i.dat,
-        wb0_data_o  => ddr_dma_wb_o.dat,
-        wb0_ack_o   => ddr_dma_wb_o.ack,
-        wb0_stall_o => ddr_dma_wb_o.stall,
+        wb0_sel_i   => ddr_dma_wb_sel_i,
+        wb0_cyc_i   => ddr_dma_wb_cyc_i,
+        wb0_stb_i   => ddr_dma_wb_stb_i,
+        wb0_we_i    => ddr_dma_wb_we_i,
+        wb0_addr_i  => ddr_dma_wb_adr_i,
+        wb0_data_i  => ddr_dma_wb_dat_i,
+        wb0_data_o  => ddr_dma_wb_dat_o,
+        wb0_ack_o   => ddr_dma_wb_ack_o,
+        wb0_stall_o => ddr_dma_wb_stall_o,
 
         p0_cmd_empty_o   => open,
         p0_cmd_full_o    => open,
@@ -1119,12 +1128,9 @@ begin  -- architecture top
     ddr_reset_n_o       <= '0';
     ddr_we_n_o          <= '0';
     ddr_rzq_b           <= 'Z';
-    ddr_dma_wb_o.dat    <= (others => '0');
-    ddr_dma_wb_o.ack    <= '1';
-    ddr_dma_wb_o.stall  <= '0';
+    ddr_dma_wb_dat_o    <= (others => '0');
+    ddr_dma_wb_ack_o    <= '1';
+    ddr_dma_wb_stall_o  <= '0';
     ddr_wr_fifo_empty_o <= '0';
   end generate gen_without_ddr;
-
-  ddr_dma_wb_o.err <= '0';
-  ddr_dma_wb_o.rty <= '0';
 end architecture top;
