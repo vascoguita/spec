@@ -9,6 +9,26 @@ LINUX ?= /lib/modules/$(KVERSION)/build
 
 TOP_DIR ?= $(shell pwd)/../..
 HDL_DIR ?= $(TOP_DIR)/hdl
+DKMS ?= 0
+
+
+ifndef (CONFIG_FPGA_MGR_BACKPORT)
+ifeq ($(shell test $(shell uname -p) \> "4.4"), 0)
+CONFIG_FPGA_MGR_BACKPORT := n
+else
+CONFIG_FPGA_MGR_BACKPORT := y
+endif
+endif
+
+ifeq ($(DKMS), 1)
+FPGA_MGR_VERSION ?= $(shell basename $(shell ls -d $(DKMSTREE)/fpga_mgr/* | grep -E "\/[0-9]+\.[0-9]+\.[0-9]+" | sort -V | tail -n 1))
+FMC_VERSION ?= $(shell basename $(shell ls -d $(DKMSTREE)/fmc/* | grep -E "\/[0-9]+\.[0-9]+\.[0-9]+" | sort -V | tail -n 1))
+I2C_VERSION ?= $(shell basename $(shell ls -d $(DKMSTREE)/i2c-ocores/* | grep -E "\/[0-9]+\.[0-9]+\.[0-9]+" | sort -V | tail -n 1))
+
+CONFIG_FPGA_MGR_BACKPORT_PATH := $(DKMSTREE)/fpga_mgr/$(FPGA_MGR_VERSION)/source
+FMC := $(DKMSTREE)/fmc/$(FMC_VERSION)/source
+I2C := $(DKMSTREE)/i2c-ocores/$(I2C_VERSION)/source
+endif
 
 CONFIG_FPGA_MGR_BACKPORT_PATH_ABS ?= $(abspath $(CONFIG_FPGA_MGR_BACKPORT_PATH))
 FMC_ABS ?= $(abspath $(FMC))
