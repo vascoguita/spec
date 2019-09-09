@@ -13,6 +13,7 @@ syn_project = "spec_full.xise"
 syn_tool = "ise"
 syn_top = "spec_full"
 
+spec_base_ucf = ['wr', 'onewire', 'spi', 'ddr3']
 board = "spec"
 ctrls = ["bank3_64b_32b" ]
 
@@ -20,7 +21,7 @@ files = [ "buildinfo_pkg.vhd" ]
 
 modules = {
   "local" : [
-      "../../top/full",
+      "../../top/full", "../../syn/common"
       ],
   "git" : [
       "https://ohwr.org/project/wr-cores.git",
