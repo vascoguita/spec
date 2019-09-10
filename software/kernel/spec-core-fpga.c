@@ -5,6 +5,7 @@
  */
 #include <linux/types.h>
 #include <linux/platform_data/i2c-ocores.h>
+#include <linux/platform_data/spi-ocores.h>
 #include <linux/ioport.h>
 #include <linux/gpio/consumer.h>
 #include <linux/irqdomain.h>
@@ -18,7 +19,6 @@
 #include "spec.h"
 #include "spec-compat.h"
 
-#include "platform_data/spi-ocores.h"
 
 enum spec_fpga_irq_lines {
 	SPEC_FPGA_IRQ_FMC_I2C = 0,

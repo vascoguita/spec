@@ -17,6 +17,7 @@ ccflags-y += -Wall -Werror
 ccflags-$(CONFIG_FPGA_MGR_BACKPORT) += -DCONFIG_FPGA_MGR_BACKPORT
 ccflags-$(CONFIG_FPGA_MGR_BACKPORT) += $(CONFIG_FPGA_MGR_BACKPORT_INCLUDE)
 ccflags-y += -I$(FMC_ABS)/include
+ccflags-y += -I$(SPI_ABS)/include
 
 # priority to I2C, FMC headers from our sources
 LINUXINCLUDE := -I$(FMC_ABS)/include -I$(FMC_ABS)/include/linux -I$(I2C_ABS)/include -I$(I2C_ABS)/include/linux $(LINUXINCLUDE)
@@ -31,7 +32,6 @@ obj-m := spec-fmc-carrier.o
 obj-m += gn412x-gpio.o
 obj-m += gn412x-fcl.o
 obj-m += spec-gn412x-dma.o
-obj-m += spi-ocores.o
 
 spec-fmc-carrier-objs := spec-core.o
 spec-fmc-carrier-objs += spec-core-fpga.o

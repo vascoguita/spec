@@ -24,15 +24,18 @@ ifeq ($(DKMS), 1)
 FPGA_MGR_VERSION ?= $(shell basename $(shell ls -d $(DKMSTREE)/fpga_mgr/* | grep -E "\/[0-9]+\.[0-9]+\.[0-9]+" | sort -V | tail -n 1))
 FMC_VERSION ?= $(shell basename $(shell ls -d $(DKMSTREE)/fmc/* | grep -E "\/[0-9]+\.[0-9]+\.[0-9]+" | sort -V | tail -n 1))
 I2C_VERSION ?= $(shell basename $(shell ls -d $(DKMSTREE)/i2c-ocores/* | grep -E "\/[0-9]+\.[0-9]+\.[0-9]+" | sort -V | tail -n 1))
+SPI_VERSION ?= $(shell basename $(shell ls -d $(DKMSTREE)/spi-ocores/* | grep -E "\/[0-9]+\.[0-9]+\.[0-9]+" | sort -V | tail -n 1))
 
 CONFIG_FPGA_MGR_BACKPORT_PATH := $(DKMSTREE)/fpga_mgr/$(FPGA_MGR_VERSION)/source
 FMC := $(DKMSTREE)/fmc/$(FMC_VERSION)/source
 I2C := $(DKMSTREE)/i2c-ocores/$(I2C_VERSION)/source
+SPI := $(DKMSTREE)/spi-ocores/$(SPI_VERSION)/source
 endif
 
 CONFIG_FPGA_MGR_BACKPORT_PATH_ABS ?= $(abspath $(CONFIG_FPGA_MGR_BACKPORT_PATH))
 FMC_ABS ?= $(abspath $(FMC))
 I2C_ABS ?= $(abspath $(I2C))
+SPI_ABS ?= $(abspath $(SPI))
 
 VERSION = $(shell git describe --dirty --long --tags)
 
@@ -48,7 +51,7 @@ ifeq ($(DKMS), 0)
 endif
 
 modules help install modules_install: spec-core-fpga.h
-	$(MAKE) -C $(LINUX) M=$(shell pwd) VERSION=$(VERSION) CONFIG_FPGA_MGR_BACKPORT_PATH_ABS=$(CONFIG_FPGA_MGR_BACKPORT_PATH_ABS) CONFIG_FPGA_MGR_BACKPORT=$(CONFIG_FPGA_MGR_BACKPORT) FMC_ABS=$(FMC_ABS) I2C_ABS=$(I2C_ABS) $@
+	$(MAKE) -C $(LINUX) M=$(shell pwd) VERSION=$(VERSION) CONFIG_FPGA_MGR_BACKPORT_PATH_ABS=$(CONFIG_FPGA_MGR_BACKPORT_PATH_ABS) CONFIG_FPGA_MGR_BACKPORT=$(CONFIG_FPGA_MGR_BACKPORT) FMC_ABS=$(FMC_ABS) I2C_ABS=$(I2C_ABS) SPI_ABS=$(SPI_ABS) $@
 
 # be able to run the "clean" rule even if $(LINUX) is not valid
 clean:
