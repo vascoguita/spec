@@ -1,0 +1,129 @@
+## DDR-3
+NET "ddr_rzq_b"     LOC = K7;
+NET "ddr_we_n_o"    LOC = H2;
+NET "ddr_udqs_p_b"  LOC = V2;
+NET "ddr_udqs_n_b"  LOC = V1;
+NET "ddr_udm_o"     LOC = P3;
+NET "ddr_reset_n_o" LOC = E3;
+NET "ddr_ras_n_o"   LOC = M5;
+NET "ddr_odt_o"     LOC = L6;
+NET "ddr_ldqs_p_b"  LOC = N3;
+NET "ddr_ldqs_n_b"  LOC = N1;
+NET "ddr_ldm_o"     LOC = N4;
+NET "ddr_cke_o"     LOC = F2;
+NET "ddr_ck_p_o"    LOC = K4;
+NET "ddr_ck_n_o"    LOC = K3;
+NET "ddr_cas_n_o"   LOC = M4;
+NET "ddr_dq_b[15]"  LOC = Y1;
+NET "ddr_dq_b[14]"  LOC = Y2;
+NET "ddr_dq_b[13]"  LOC = W1;
+NET "ddr_dq_b[12]"  LOC = W3;
+NET "ddr_dq_b[11]"  LOC = U1;
+NET "ddr_dq_b[10]"  LOC = U3;
+NET "ddr_dq_b[9]"   LOC = T1;
+NET "ddr_dq_b[8]"   LOC = T2;
+NET "ddr_dq_b[7]"   LOC = M1;
+NET "ddr_dq_b[6]"   LOC = M2;
+NET "ddr_dq_b[5]"   LOC = L1;
+NET "ddr_dq_b[4]"   LOC = L3;
+NET "ddr_dq_b[3]"   LOC = P1;
+NET "ddr_dq_b[2]"   LOC = P2;
+NET "ddr_dq_b[1]"   LOC = R1;
+NET "ddr_dq_b[0]"   LOC = R3;
+NET "ddr_ba_o[2]"   LOC = H1;
+NET "ddr_ba_o[1]"   LOC = J1;
+NET "ddr_ba_o[0]"   LOC = J3;
+NET "ddr_a_o[13]"   LOC = J6;
+NET "ddr_a_o[12]"   LOC = F1;
+NET "ddr_a_o[11]"   LOC = E1;
+NET "ddr_a_o[10]"   LOC = J4;
+NET "ddr_a_o[9]"    LOC = G1;
+NET "ddr_a_o[8]"    LOC = G3;
+NET "ddr_a_o[7]"    LOC = K6;
+NET "ddr_a_o[6]"    LOC = L4;
+NET "ddr_a_o[5]"    LOC = M3;
+NET "ddr_a_o[4]"    LOC = H3;
+NET "ddr_a_o[3]"    LOC = M6;
+NET "ddr_a_o[2]"    LOC = K5;
+NET "ddr_a_o[1]"    LOC = K1;
+NET "ddr_a_o[0]"    LOC = K2;
+
+# DDR IO standards and terminations
+NET "ddr_udqs_p_b" IOSTANDARD = "DIFF_SSTL15_II";
+NET "ddr_udqs_n_b" IOSTANDARD = "DIFF_SSTL15_II";
+NET "ddr_ldqs_p_b" IOSTANDARD = "DIFF_SSTL15_II";
+NET "ddr_ldqs_n_b" IOSTANDARD = "DIFF_SSTL15_II";
+NET "ddr_ck_p_o"   IOSTANDARD = "DIFF_SSTL15_II";
+NET "ddr_ck_n_o"   IOSTANDARD = "DIFF_SSTL15_II";
+
+NET "ddr_rzq_b"     IOSTANDARD = "SSTL15_II";
+NET "ddr_we_n_o"    IOSTANDARD = "SSTL15_II";
+NET "ddr_udm_o"     IOSTANDARD = "SSTL15_II";
+NET "ddr_reset_n_o" IOSTANDARD = "SSTL15_II";
+NET "ddr_ras_n_o"   IOSTANDARD = "SSTL15_II";
+NET "ddr_odt_o"     IOSTANDARD = "SSTL15_II";
+NET "ddr_ldm_o"     IOSTANDARD = "SSTL15_II";
+NET "ddr_cke_o"     IOSTANDARD = "SSTL15_II";
+NET "ddr_cas_n_o"   IOSTANDARD = "SSTL15_II";
+NET "ddr_dq_b[*]"   IOSTANDARD = "SSTL15_II";
+NET "ddr_ba_o[*]"   IOSTANDARD = "SSTL15_II";
+NET "ddr_a_o[*]"    IOSTANDARD = "SSTL15_II";
+
+NET "ddr_dq_b[*]"  IN_TERM = NONE;
+NET "ddr_ldqs_p_b" IN_TERM = NONE;
+NET "ddr_ldqs_n_b" IN_TERM = NONE;
+NET "ddr_udqs_p_b" IN_TERM = NONE;
+NET "ddr_udqs_n_b" IN_TERM = NONE;
+
+#----------------------------------------
+# Xilinx MCB tweaks
+#----------------------------------------
+
+# These are suggested by the Xilinx-generated MCB.
+# More info in the UCF file found in the "user_design/par" of the generated core.
+NET "inst_spec_base/*cmp_ddr_ctrl_bank?/*/c?_pll_lock"                                     TIG;
+NET "inst_spec_base/*cmp_ddr_ctrl_bank?/*/memc?_mcb_raw_wrapper_inst/selfrefresh_mcb_mode" TIG;
+NET "inst_spec_base/*cmp_ddr_ctrl_bank?/*/mcb_soft_calibration_inst/DONE_SOFTANDHARD_CAL"  TIG;
+#NET "inst_base/*cmp_ddr_ctrl_bank?/*/mcb_soft_calibration_inst/SELFREFRESH_MCB_REQ"   TIG;
+
+# Ignore async reset to DDR controller
+NET "inst_spec_base/ddr_rst" TPTHRU = ddr_rst;
+TIMESPEC TS_ddr_rst_tig = FROM FFS THRU ddr_rst TIG;
+
+#----------------------------------------
+# Cross-clock domain sync
+#----------------------------------------
+
+NET "inst_spec_base/clk_333m_ddr" TNM_NET = ddr_clk;
+
+NET "inst_spec_base/*cmp_ddr_ctrl_bank3/*/memc3_infrastructure_inst/mcb_drp_clk_bufg_in" TNM_NET = ddr_clk;
+NET "inst_spec_base/*cmp_ddr_ctrl_bank3/*/memc3_mcb_raw_wrapper_inst/ioi_drp_clk"        TNM_NET = ddr_clk;
+
+# DDR does not use any sync modules
+
+#TIMEGRP "ddr_sync_ffs"  = "sync_ffs" EXCEPT "ddr_clk";
+
+#TIMESPEC TS_ddr_sync_ffs = FROM ddr_clk TO "ddr_sync_ffs" TIG;
+
+#TIMEGRP "ddr_sync_reg" = "sync_reg" EXCEPT "ddr_clk";
+
+#TIMESPEC TS_ddr_sync_reg = FROM ddr_clk TO "ddr_sync_reg" 3ns DATAPATHONLY;
+
+#TIMESPEC TS_ddr_sync_word = FROM sync_word TO ddr_clk  9ns DATAPATHONLY;
+
+#---------------------------------------
+# DMA
+#---------------------------------------
+
+NET "inst_spec_base/cmp_gn4124_core/cmp_wrapped_gn4124/gen_with_dma.cmp_dma_controller/dma_async_*" TNM = FFS "dma_ffs";
+
+TIMESPEC TS_dma_async_ffs = FROM dma_ffs TO pci_clk  15ns  DATAPATHONLY;
+
+# Exceptions for crossings via gc_sync_word_* (3x multicycle)
+
+NET "*/gc_sync_word_data[*]" TNM = FFS "sync_word";
+
+TIMESPEC TS_sys_sync_word = FROM sync_word TO sys_clk 48ns DATAPATHONLY;
+TIMESPEC TS_ref_sync_word = FROM sync_word TO ref_clk 24ns DATAPATHONLY;
+# no gc_sync_word used in GN4124
+#TIMESPEC TS_pci_sync_word = FROM sync_word TO pci_clk 15ns DATAPATHONLY;

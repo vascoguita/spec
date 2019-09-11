@@ -1,0 +1,181 @@
+#===============================================================================
+# IO Constraints
+#===============================================================================
+
+#----------------------------------------
+# Clocks
+#----------------------------------------
+NET "clk_125m_pllref_n_i" LOC = F10;
+NET "clk_125m_pllref_n_i" IOSTANDARD = "LVDS_25";
+NET "clk_125m_pllref_p_i" LOC = G9;
+NET "clk_125m_pllref_p_i" IOSTANDARD = "LVDS_25";
+
+#----------------------------------------
+# GN4124 PCIe bridge signals
+#----------------------------------------
+NET "gn_rst_n_i"         LOC = N20;
+NET "gn_p2l_clk_n_i"     LOC = M19;
+NET "gn_p2l_clk_p_i"     LOC = M20;
+NET "gn_p2l_rdy_o"       LOC = J16;
+NET "gn_p2l_dframe_i"    LOC = J22;
+NET "gn_p2l_valid_i"     LOC = L19;
+NET "gn_p2l_data_i[0]"   LOC = K20;
+NET "gn_p2l_data_i[1]"   LOC = H22;
+NET "gn_p2l_data_i[2]"   LOC = H21;
+NET "gn_p2l_data_i[3]"   LOC = L17;
+NET "gn_p2l_data_i[4]"   LOC = K17;
+NET "gn_p2l_data_i[5]"   LOC = G22;
+NET "gn_p2l_data_i[6]"   LOC = G20;
+NET "gn_p2l_data_i[7]"   LOC = K18;
+NET "gn_p2l_data_i[8]"   LOC = K19;
+NET "gn_p2l_data_i[9]"   LOC = H20;
+NET "gn_p2l_data_i[10]"  LOC = J19;
+NET "gn_p2l_data_i[11]"  LOC = E22;
+NET "gn_p2l_data_i[12]"  LOC = E20;
+NET "gn_p2l_data_i[13]"  LOC = F22;
+NET "gn_p2l_data_i[14]"  LOC = F21;
+NET "gn_p2l_data_i[15]"  LOC = H19;
+NET "gn_p_wr_req_i[0]"   LOC = M22;
+NET "gn_p_wr_req_i[1]"   LOC = M21;
+NET "gn_p_wr_rdy_o[0]"   LOC = L15;
+NET "gn_p_wr_rdy_o[1]"   LOC = K16;
+NET "gn_rx_error_o"      LOC = J17;
+NET "gn_l2p_clk_n_o"     LOC = K22;
+NET "gn_l2p_clk_p_o"     LOC = K21;
+NET "gn_l2p_dframe_o"    LOC = U22;
+NET "gn_l2p_valid_o"     LOC = T18;
+NET "gn_l2p_edb_o"       LOC = U20;
+NET "gn_l2p_data_o[0]"   LOC = P16;
+NET "gn_l2p_data_o[1]"   LOC = P21;
+NET "gn_l2p_data_o[2]"   LOC = P18;
+NET "gn_l2p_data_o[3]"   LOC = T20;
+NET "gn_l2p_data_o[4]"   LOC = V21;
+NET "gn_l2p_data_o[5]"   LOC = V19;
+NET "gn_l2p_data_o[6]"   LOC = W22;
+NET "gn_l2p_data_o[7]"   LOC = Y22;
+NET "gn_l2p_data_o[8]"   LOC = P22;
+NET "gn_l2p_data_o[9]"   LOC = R22;
+NET "gn_l2p_data_o[10]"  LOC = T21;
+NET "gn_l2p_data_o[11]"  LOC = T19;
+NET "gn_l2p_data_o[12]"  LOC = V22;
+NET "gn_l2p_data_o[13]"  LOC = V20;
+NET "gn_l2p_data_o[14]"  LOC = W20;
+NET "gn_l2p_data_o[15]"  LOC = Y21;
+NET "gn_l2p_rdy_i"       LOC = U19;
+NET "gn_l_wr_rdy_i[0]"   LOC = R20;
+NET "gn_l_wr_rdy_i[1]"   LOC = T22;
+NET "gn_p_rd_d_rdy_i[0]" LOC = N16;
+NET "gn_p_rd_d_rdy_i[1]" LOC = P19;
+NET "gn_tx_error_i"      LOC = M17;
+NET "gn_vc_rdy_i[0]"     LOC = B21;
+NET "gn_vc_rdy_i[1]"     LOC = B22;
+NET "gn_gpio_b[0]"       LOC = U16;  # GPIO8
+NET "gn_gpio_b[1]"       LOC = AB19; # GPIO9
+
+NET "gn_rst_n_i"         IOSTANDARD = "LVCMOS18";
+NET "gn_p2l_clk_n_i"     IOSTANDARD = "DIFF_SSTL18_I";
+NET "gn_p2l_clk_p_i"     IOSTANDARD = "DIFF_SSTL18_I";
+NET "gn_p2l_rdy_o"       IOSTANDARD = "SSTL18_I";
+NET "gn_p2l_dframe_i"    IOSTANDARD = "SSTL18_I";
+NET "gn_p2l_valid_i"     IOSTANDARD = "SSTL18_I";
+NET "gn_p2l_data_i[*]"   IOSTANDARD = "SSTL18_I";
+NET "gn_p_wr_req_i[*]"   IOSTANDARD = "SSTL18_I";
+NET "gn_p_wr_rdy_o[*]"   IOSTANDARD = "SSTL18_I";
+NET "gn_rx_error_o"      IOSTANDARD = "SSTL18_I";
+NET "gn_l2p_clk_n_o"     IOSTANDARD = "DIFF_SSTL18_I";
+NET "gn_l2p_clk_p_o"     IOSTANDARD = "DIFF_SSTL18_I";
+NET "gn_l2p_dframe_o"    IOSTANDARD = "SSTL18_I";
+NET "gn_l2p_valid_o"     IOSTANDARD = "SSTL18_I";
+NET "gn_l2p_edb_o"       IOSTANDARD = "SSTL18_I";
+NET "gn_l2p_data_o[*]"   IOSTANDARD = "SSTL18_I";
+NET "gn_l2p_rdy_i"       IOSTANDARD = "SSTL18_I";
+NET "gn_l_wr_rdy_i[*]"   IOSTANDARD = "SSTL18_I";
+NET "gn_p_rd_d_rdy_i[*]" IOSTANDARD = "SSTL18_I";
+NET "gn_tx_error_i"      IOSTANDARD = "SSTL18_I";
+NET "gn_vc_rdy_i[*]"     IOSTANDARD = "SSTL18_I";
+NET "gn_gpio_b[*]"       IOSTANDARD = "LVCMOS25";
+
+#----------------------------------------
+# Misc
+#----------------------------------------
+NET "button1_n_i" LOC = C22;
+NET "button1_n_i" IOSTANDARD = "LVCMOS18";
+
+NET "pcbrev_i[0]" LOC = P5;
+NET "pcbrev_i[1]" LOC = P4;
+NET "pcbrev_i[2]" LOC = AA2;
+NET "pcbrev_i[3]" LOC = AA1;
+
+NET "pcbrev_i[*]" IOSTANDARD = "LVCMOS15";
+
+#----------------------------------------
+# FMC slot management
+#----------------------------------------
+NET "fmc0_prsnt_m2c_n_i" LOC = AB14;
+NET "fmc0_scl_b"         LOC = F7;
+NET "fmc0_sda_b"         LOC = F8;
+
+NET "fmc0_prsnt_m2c_n_i" IOSTANDARD = "LVCMOS25";
+NET "fmc0_scl_b"         IOSTANDARD = "LVCMOS25";
+NET "fmc0_sda_b"         IOSTANDARD = "LVCMOS25";
+
+NET "pcbrev_i*" TIG;
+NET "fmc0_prsnt_m2c_n_i" TIG;
+
+#===============================================================================
+# Timing Constraints
+#===============================================================================
+
+#----------------------------------------
+# Clocks
+#----------------------------------------
+NET "gn_p2l_clk_p_i"  TNM_NET = "gn_p2l_clk";
+NET "gn_p2l_clk_n_i"  TNM_NET = "gn_p2l_clk";
+TIMESPEC TS_gn_p2l_clk = PERIOD "gn_p2l_clk" 5 ns HIGH 50%;
+
+NET "clk_125m_pllref_p_i"  TNM_NET = "clk_125m_pllref";
+NET "clk_125m_pllref_n_i"  TNM_NET = "clk_125m_pllref";
+TIMESPEC TS_clk_125m_pllref = PERIOD "clk_125m_pllref" 8 ns HIGH 50%;
+
+#----------------------------------------
+# Asynchronous resets
+#----------------------------------------
+
+NET "gn_rst_n_i" TIG;
+
+# Ignore async reset inputs to reset synchronisers
+NET "*/gc_reset_async_in" TIG;
+
+#----------------------------------------
+# Cross-clock domain sync
+#----------------------------------------
+
+# Declaration of domains
+
+NET "inst_spec_base/clk_62m5_sys"              TNM_NET = sys_clk;
+NET "inst_spec_base/clk_125m_ref"              TNM_NET = ref_clk;
+NET "*/cmp_gn4124_core/cmp_wrapped_gn4124/sys_clk" TNM_NET = pci_clk;
+NET "*/cmp_gn4124_core/cmp_wrapped_gn4124/io_clk"  TNM_NET = pci_clk;
+
+TIMEGRP "sys_grp" = "sys_clk" "ref_clk";
+
+TIMEGRP "sys_sync_ffs"  = "sync_ffs" EXCEPT "sys_grp";
+TIMEGRP "pci_sync_ffs"  = "sync_ffs" EXCEPT "pci_clk";
+
+# Exceptions for crossings via gc_sync_ffs
+
+NET "*/gc_sync_ffs_in" TNM = FFS "sync_ffs";
+
+TIMESPEC TS_sys_sync_ffs  = FROM sys_grp TO "sys_sync_ffs" TIG;
+TIMESPEC TS_pci_sync_ffs  = FROM pci_clk TO "pci_sync_ffs" TIG;
+
+# Exceptions for crossings via gc_sync_register
+
+NET "*/gc_sync_register_in[*]" TNM = FFS "sync_reg";
+
+TIMEGRP "sys_sync_reg" = "sync_reg" EXCEPT "sys_grp";
+TIMEGRP "pci_sync_reg" = "sync_reg" EXCEPT "pci_clk";
+
+TIMESPEC TS_ref_sync_reg = FROM ref_clk TO "sys_sync_reg"  8ns  DATAPATHONLY;
+TIMESPEC TS_sys_sync_reg = FROM sys_clk TO "sys_sync_reg"  16ns DATAPATHONLY;
+TIMESPEC TS_pci_sync_reg = FROM pci_clk TO "pci_sync_reg"  5ns  DATAPATHONLY;

@@ -1,0 +1,21 @@
+# Changelog
+
+## [1.4.0] 2019-09-11
+### Added
+- [hdl] spec-base IP-core to support SPEC based designs
+- [sw] Driver for GN4124 FCL using Linux FPGA manager
+- [sw] Driver for GN4124 GPIO using Linux GPIOlib
+- [sw] Driver for gn412x-core DMA using Linux DMA engine
+- [sw] Support for spec-base IP-core
+- [sw] Support for FMC
+
+## [x.x.x] 2012-12-14
+### Changed
+- HDL: GN412x-CORE upgrade
+
+## [x.x.x] 2012-12-14
+### Added
+- HDL: golden bitstream
+
+## [0.0.0]
+Start the development

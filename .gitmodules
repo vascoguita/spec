@@ -1,0 +1,12 @@
+[submodule "hdl/ip_cores/wr-cores"]
+	path = hdl/ip_cores/wr-cores
+	url = https://ohwr.org/project/wr-cores.git
+[submodule "hdl/ip_cores/general-cores"]
+	path = hdl/ip_cores/general-cores
+	url = https://ohwr.org/project/general-cores.git
+[submodule "hdl/ip_cores/gn4124-core"]
+	path = hdl/ip_cores/gn4124-core
+	url = https://ohwr.org/project/gn4124-core.git
+[submodule "hdl/ip_cores/ddr3-sp6-core"]
+	path = hdl/ip_cores/ddr3-sp6-core
+	url = https://ohwr.org/project/ddr3-sp6-core.git
