@@ -26,10 +26,10 @@ FMC_VERSION ?= $(shell basename $(shell ls -d $(DKMSTREE)/fmc/* | grep -E "\/[0-
 I2C_VERSION ?= $(shell basename $(shell ls -d $(DKMSTREE)/i2c-ocores/* | grep -E "\/[0-9]+\.[0-9]+\.[0-9]+" | sort -V | tail -n 1))
 SPI_VERSION ?= $(shell basename $(shell ls -d $(DKMSTREE)/spi-ocores/* | grep -E "\/[0-9]+\.[0-9]+\.[0-9]+" | sort -V | tail -n 1))
 
-CONFIG_FPGA_MGR_BACKPORT_PATH := $(DKMSTREE)/fpga_mgr/$(FPGA_MGR_VERSION)/source
-FMC := $(DKMSTREE)/fmc/$(FMC_VERSION)/source
-I2C := $(DKMSTREE)/i2c-ocores/$(I2C_VERSION)/source
-SPI := $(DKMSTREE)/spi-ocores/$(SPI_VERSION)/source
+CONFIG_FPGA_MGR_BACKPORT_PATH ?= $(DKMSTREE)/fpga_mgr/$(FPGA_MGR_VERSION)/source
+FMC ?= $(DKMSTREE)/fmc/$(FMC_VERSION)/source
+I2C ?= $(DKMSTREE)/i2c-ocores/$(I2C_VERSION)/source
+SPI ?= $(DKMSTREE)/spi-ocores/$(SPI_VERSION)/source
 endif
 
 CONFIG_FPGA_MGR_BACKPORT_PATH_ABS ?= $(abspath $(CONFIG_FPGA_MGR_BACKPORT_PATH))
