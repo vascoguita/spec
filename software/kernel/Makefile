@@ -56,4 +56,7 @@ modules help install modules_install: spec-core-fpga.h
 # be able to run the "clean" rule even if $(LINUX) is not valid
 clean:
 	rm -rf *.o *~  .*.cmd *.ko *.mod.c .tmp_versions Module.symvers \
-                         Module.markers modules.order spec-core-fpga.h
+                         Module.markers modules.order
+ifeq ($(DKMS), 0)
+	rm -f spec-core-fpga.h
+endif
