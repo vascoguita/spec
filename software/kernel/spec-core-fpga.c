@@ -212,7 +212,7 @@ static int spec_fpga_vic_init(struct spec_fpga *spec_fpga)
 	if (!(spec_fpga->meta->cap & SPEC_META_CAP_VIC))
 		return 0;
 
-	memcpy(&res, spec_fpga_vic_res, sizeof(spec_fpga_vic_res));
+	memcpy(&res, spec_fpga_vic_res, sizeof(res));
 	res[0].start += pci_start;
 	res[0].end += pci_start;
 	res[1].start = gpiod_to_irq(spec_gn412x->gpiod[GN4124_GPIO_IRQ1]);
@@ -280,7 +280,7 @@ static int spec_fpga_dma_init(struct spec_fpga *spec_fpga)
 		return -ENODEV;
 	}
 
-	memcpy(&res, spec_fpga_dma_res, sizeof(spec_fpga_dma_res));
+	memcpy(&res, spec_fpga_dma_res, sizeof(res));
 	res[0].start += pci_start;
 	res[0].end += pci_start;
 	res[1].start = irq_find_mapping(vic_domain, SPEC_FPGA_IRQ_DMA_DONE);
