@@ -286,7 +286,7 @@ entity spec_base_wr is
     tm_dac_wr_o          : out std_logic_vector(g_AUX_CLKS-1 downto 0);
     tm_clk_aux_lock_en_i : in  std_logic_vector(g_AUX_CLKS-1 downto 0) := (others => '0');
     tm_clk_aux_locked_o  : out std_logic_vector(g_AUX_CLKS-1 downto 0);
-    
+
     -- PPS output
     pps_p_o    : out std_logic;
     pps_led_o  : out std_logic;
@@ -761,7 +761,7 @@ begin  -- architecture top
         clk_125m_gtp_p_i    => clk_125m_gtp_p_i,
         clk_aux_i           => clk_aux_i,
         clk_10m_ext_i       => clk_10m_ext,
-  
+
         clk_sys_62m5_o      => clk_62m5_sys,
         clk_ref_125m_o      => clk_125m_ref,
         clk_pll_aux_o       => clk_pll_aux,
@@ -833,7 +833,7 @@ begin  -- architecture top
         tm_time_valid_o     => tm_time_valid_o,
         tm_tai_o            => tm_tai_o,
         tm_cycles_o         => tm_cycles_o,
-  
+
         tm_dac_value_o       => tm_dac_value_o,
         tm_dac_wr_o          => tm_dac_wr_o,
         tm_clk_aux_lock_en_i => tm_clk_aux_lock_en_i,
@@ -1011,10 +1011,21 @@ begin  -- architecture top
 
   --  DDR3 controller
   gen_with_ddr: if g_WITH_DDR generate
+    function get_ddr3_bank_port_select return string is
+    begin
+      case g_DDR_DATA_SIZE is
+        when 32 => return "SPEC_BANK3_32B_32B";
+        when 64 => return "SPEC_BANK3_64B_32B";
+        when others =>
+          assert false report "Invalid g_DDR_DATA_SIZE" severity error;
+          return "error";
+      end case;
+    end get_ddr3_bank_port_select;
+  begin
     cmp_ddr_ctrl_bank3 : entity work.ddr3_ctrl
       generic map(
         g_RST_ACT_LOW        => 0, -- active high reset (simpler internal logic)
-        g_BANK_PORT_SELECT   => "SPEC_BANK3_64B_32B",
+        g_BANK_PORT_SELECT   => get_ddr3_bank_port_select,
         g_MEMCLK_PERIOD      => 3000,
         g_SIMULATION         => boolean'image(g_SIMULATION),
         g_CALIB_SOFT_IP      => "TRUE",
