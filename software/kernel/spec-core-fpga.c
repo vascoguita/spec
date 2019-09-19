@@ -357,7 +357,12 @@ struct flash_platform_data spec_flash_pdata = {
 
 static struct spi_board_info spec_fpga_spi_devices_info[] = {
 	{
-		.modalias = "m25p32",
+		.modalias = "m25p32", /*
+				       * just informative: sometimes we have
+				       * other chips, but the m25p80 driver
+				       * takes care of identifying the correct
+				       * memory
+				       */
 		.max_speed_hz = SPEC_FPGA_WB_CLK_HZ / 128,
 		.chip_select = 0,
 		.platform_data = &spec_flash_pdata,
