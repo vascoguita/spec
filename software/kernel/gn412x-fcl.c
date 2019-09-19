@@ -562,6 +562,8 @@ err_fpga_create:
 err_map:
 err_res_mem:
 	devm_kfree(&pdev->dev, gn412x);
+	platform_set_drvdata(pdev, NULL);
+
 	return err;
 }
 
