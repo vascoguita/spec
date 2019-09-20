@@ -93,7 +93,7 @@ static int spec_fpga_dbg_bld_info(struct seq_file *s, void *offset)
 	}
 
 	for (off = SPEC_BASE_REGS_BUILDINFO;
-	     off < SPEC_BASE_REGS_BUILDINFO + SPEC_BASE_REGS_BUILDINFO_SIZE -1;
+	     off < SPEC_BASE_REGS_BUILDINFO + SPEC_BASE_REGS_BUILDINFO_SIZE - 1;
 	     off++) {
 		char tmp = ioread8(spec_fpga->fpga + off);
 
@@ -113,7 +113,7 @@ static int spec_fpga_dbg_bld_info_open(struct inode *inode,
 	return single_open(file, spec_fpga_dbg_bld_info, spec);
 }
 
-static const struct file_operations spec_fpga_dbg_bld_info_ops = {
+static const struct file_operations spec_fpga_dbg_bld_ops = {
 	.owner = THIS_MODULE,
 	.open  = spec_fpga_dbg_bld_info_open,
 	.read = seq_read,
@@ -151,12 +151,13 @@ static int spec_fpga_dbg_init(struct spec_fpga *spec_fpga)
 		goto err;
 	}
 
-	spec_fpga->dbg_bld_info = debugfs_create_file(SPEC_DBG_BLD_INFO_NAME, 0444,
-							spec_fpga->dbg_dir_fpga,
-							spec_fpga,
-							&spec_fpga_dbg_bld_info_ops);
-	if (IS_ERR_OR_NULL(spec_fpga->dbg_bld_info)) {
-		err = PTR_ERR(spec_fpga->dbg_bld_info);
+	spec_fpga->dbg_bld = debugfs_create_file(SPEC_DBG_BLD_INFO_NAME,
+						 0444,
+						 spec_fpga->dbg_dir_fpga,
+						 spec_fpga,
+						 &spec_fpga_dbg_bld_ops);
+	if (IS_ERR_OR_NULL(spec_fpga->dbg_bld)) {
+		err = PTR_ERR(spec_fpga->dbg_bld);
 		dev_err(&spec_fpga->dev,
 			"Cannot create debugfs file \"%s\" (%d)\n",
 			SPEC_DBG_BLD_INFO_NAME, err);
@@ -190,7 +191,7 @@ static struct resource spec_fpga_vic_res[] = {
 		.name = "htvic-mem",
 		.flags = IORESOURCE_MEM,
 		.start = SPEC_BASE_REGS_VIC,
-		.end = SPEC_BASE_REGS_VIC + SPEC_BASE_REGS_VIC_SIZE -1,
+		.end = SPEC_BASE_REGS_VIC + SPEC_BASE_REGS_VIC_SIZE - 1,
 	}, {
 		.name = "htvic-irq",
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
@@ -276,7 +277,7 @@ static int spec_fpga_dma_init(struct spec_fpga *spec_fpga)
 	vic_domain = irq_find_host((void *)&spec_fpga->vic_pdev->dev);
 	if (!vic_domain) {
 		dev_err(&spec_fpga->dev,
-			"Failed to load DMA engine: missing can't find VIC.\n");
+			"Failed to load DMA engine: can't find VIC\n");
 		return -ENODEV;
 	}
 
@@ -314,7 +315,8 @@ static struct resource spec_fpga_fmc_i2c_res[] = {
 		.name = "i2c-ocores-mem",
 		.flags = IORESOURCE_MEM,
 		.start = SPEC_BASE_REGS_FMC_I2C,
-		.end = SPEC_BASE_REGS_FMC_I2C + SPEC_BASE_REGS_FMC_I2C_SIZE -1,
+		.end = SPEC_BASE_REGS_FMC_I2C +
+		       SPEC_BASE_REGS_FMC_I2C_SIZE - 1,
 	}, {
 		.name = "i2c-ocores-irq",
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
@@ -339,7 +341,8 @@ static struct resource spec_fpga_spi_res[] = {
 		.name = "spi-ocores-mem",
 		.flags = IORESOURCE_MEM,
 		.start = SPEC_BASE_REGS_FLASH_SPI,
-		.end = SPEC_BASE_REGS_FLASH_SPI + SPEC_BASE_REGS_FLASH_SPI_SIZE - 1,
+		.end = SPEC_BASE_REGS_FLASH_SPI +
+		       SPEC_BASE_REGS_FLASH_SPI_SIZE - 1,
 	}, {
 		.name = "spi-ocores-irq",
 		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
@@ -461,14 +464,14 @@ static ssize_t temperature_show(struct device *dev,
 	struct spec_fpga *spec_fpga = to_spec_fpga(dev);
 
 	if (spec_fpga->meta->cap & SPEC_META_CAP_THERM) {
-		uint32_t temp = ioread32(spec_fpga->fpga + SPEC_FPGA_THERM_TEMP);
+		uint32_t temp;
+
+		temp = ioread32(spec_fpga->fpga + SPEC_FPGA_THERM_TEMP);
 
 		return snprintf(buf, PAGE_SIZE, "%d.%d C\n",
 			temp / 16, (temp & 0xF) * 1000 / 16);
-	} else {
-		return snprintf(buf, PAGE_SIZE, "-.- C\n");
 	}
-
+	return snprintf(buf, PAGE_SIZE, "-.- C\n");
 }
 static DEVICE_ATTR_RO(temperature);
 
@@ -479,14 +482,14 @@ static ssize_t serial_number_show(struct device *dev,
 	struct spec_fpga *spec_fpga = to_spec_fpga(dev);
 
 	if (spec_fpga->meta->cap & SPEC_META_CAP_THERM) {
-		uint32_t msb = ioread32(spec_fpga->fpga + SPEC_FPGA_THERM_SERID_MSB);
-		uint32_t lsb = ioread32(spec_fpga->fpga + SPEC_FPGA_THERM_SERID_LSB);
+		uint32_t msb, lsb;
+
+		msb = ioread32(spec_fpga->fpga + SPEC_FPGA_THERM_SERID_MSB);
+		lsb = ioread32(spec_fpga->fpga + SPEC_FPGA_THERM_SERID_LSB);
 
 		return snprintf(buf, PAGE_SIZE, "0x%08x%08x\n", msb, lsb);
-	} else {
-		return snprintf(buf, PAGE_SIZE, "0x----------------\n");
 	}
-
+	return snprintf(buf, PAGE_SIZE, "0x----------------\n");
 }
 static DEVICE_ATTR_RO(serial_number);
 
@@ -575,7 +578,7 @@ static ssize_t reset_app_store(struct device *dev,
 
 	return count;
 }
-static DEVICE_ATTR(reset_app, 0644, reset_app_show, reset_app_store);
+static DEVICE_ATTR_RW(reset_app);
 
 static struct attribute *spec_fpga_csr_attrs[] = {
 	&dev_attr_pcb_rev.attr,
@@ -689,16 +692,17 @@ static int spec_fpga_app_id_build(struct spec_fpga *spec_fpga,
 				  unsigned long app_off,
 				  char *id, unsigned int size)
 {
-	uint32_t vendor = ioread32be(spec_fpga->fpga + app_off + FPGA_META_VENDOR);
-	uint32_t device = ioread32be(spec_fpga->fpga + app_off + FPGA_META_DEVICE);
+	uint32_t vendor, device;
+
+	vendor = ioread32be(spec_fpga->fpga + app_off + FPGA_META_VENDOR);
+	device = ioread32be(spec_fpga->fpga + app_off + FPGA_META_DEVICE);
 
 	memset(id, 0, size);
 	if (vendor == 0xFF000000) {
 		dev_warn(&spec_fpga->dev, "Vendor UUID not supported yet\n");
 		return -ENODEV;
-	} else {
-		snprintf(id, size, "id:%4phN%4phN", &vendor, &device);
 	}
+	snprintf(id, size, "id:%4phN%4phN", &vendor, &device);
 
 	return 0;
 }

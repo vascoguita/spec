@@ -625,7 +625,7 @@ static ssize_t bootselect_show(struct device *dev,
 		return -EINVAL;
 	}
 }
-static DEVICE_ATTR(bootselect, 0644, bootselect_show, bootselect_store);
+static DEVICE_ATTR_RW(bootselect);
 
 /**
  * Load golden bitstream on FGPA

@@ -124,7 +124,7 @@ struct spec_fpga {
 	struct dentry *dbg_csr;
 	struct debugfs_regset32 dbg_csr_reg;
 #define SPEC_DBG_BLD_INFO_NAME "build_info"
-	struct dentry *dbg_bld_info;
+	struct dentry *dbg_bld;
 };
 
 /**
