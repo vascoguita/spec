@@ -442,8 +442,8 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 	gn412x_dma_tx->sg_len = sg_len;
 
 	/* Configure the hardware for this transfer */
-	gn412x_dma_tx->sgl_hw = kcalloc(sizeof(struct gn412x_dma_tx_hw *),
-					gn412x_dma_tx->sg_len,
+	gn412x_dma_tx->sgl_hw = kcalloc(gn412x_dma_tx->sg_len,
+					sizeof(struct gn412x_dma_tx_hw *),
 					GFP_KERNEL);
 	if (!gn412x_dma_tx->sgl_hw)
 		goto err_alloc_sglhw;
