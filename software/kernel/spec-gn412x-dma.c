@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 /**
  * Copyright (C) 2017 CERN (www.cern.ch)
  * Author: Federico Vaga <federico.vaga@vaga.pv.it>
@@ -20,17 +21,6 @@
 #include <linux/debugfs.h>
 #include <linux/dma-mapping.h>
 
-/* Kernel functions not exported */
-#if 0
-
-/*
- * Take it from the sources, like if this driver was part
- * of that directory
- */
-#include <../drivers/dma/dmaengine.h>
-
-
-#else
 /**
  * dma_cookie_complete - complete a descriptor
  * @tx: descriptor to complete
@@ -102,7 +92,6 @@ static inline enum dma_status dma_cookie_status(struct dma_chan *chan,
 	}
 	return dma_async_is_complete(cookie, complete, used);
 }
-#endif
 
 
 enum gn412x_dma_regs {
@@ -453,8 +442,8 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 	gn412x_dma_tx->sg_len = sg_len;
 
 	/* Configure the hardware for this transfer */
-	gn412x_dma_tx->sgl_hw = kcalloc(sizeof(struct gn412x_dma_tx_hw *),
-					gn412x_dma_tx->sg_len,
+	gn412x_dma_tx->sgl_hw = kcalloc(gn412x_dma_tx->sg_len,
+					sizeof(struct gn412x_dma_tx_hw *),
 					GFP_KERNEL);
 	if (!gn412x_dma_tx->sgl_hw)
 		goto err_alloc_sglhw;
@@ -514,12 +503,13 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 			tx_hw->attribute);
 	}
 
-	dev_dbg(&chan->dev->device, "%s prepared %p\n", __func__, &gn412x_dma_tx->tx);
+	dev_dbg(&chan->dev->device, "%s prepared %p\n", __func__,
+		&gn412x_dma_tx->tx);
 
 	return &gn412x_dma_tx->tx;
 
 err_alloc_pool:
-	while(--i >= 0)
+	while (--i >= 0)
 		dma_pool_free(gn412x_dma->pool,
 			      gn412x_dma_tx->sgl_hw[i],
 			      gn412x_dma_tx->tx.phys);
@@ -551,9 +541,10 @@ static void gn412x_dma_issue_pending(struct dma_chan *chan)
 static void gn412x_dma_start_task(unsigned long arg)
 {
 	struct gn412x_dma_chan *chan = (struct gn412x_dma_chan *)arg;
-	struct gn412x_dma_device *gn412x_dma = to_gn412x_dma_device(chan->chan.device);
+	struct gn412x_dma_device *gn412x_dma;
 	unsigned long flags;
 
+	gn412x_dma = to_gn412x_dma_device(chan->chan.device);
 	if (unlikely(gn412x_dma_is_busy(gn412x_dma))) {
 		dev_err(&gn412x_dma->pdev->dev,
 			"Failed to start DMA transfer: channel busy\n");
@@ -600,8 +591,9 @@ static int gn412x_dma_slave_config(struct dma_chan *chan,
 
 static int gn412x_dma_terminate_all(struct dma_chan *chan)
 {
-	struct gn412x_dma_device *gn412x_dma = to_gn412x_dma_device(chan->device);
+	struct gn412x_dma_device *gn412x_dma;
 
+	gn412x_dma = to_gn412x_dma_device(chan->device);
 	gn412x_dma_ctrl_abort(gn412x_dma);
 	/* FIXME remove all pending */
 	if (!gn412x_dma_is_abort(gn412x_dma)) {
@@ -847,7 +839,7 @@ err_res_mem:
 
 
 /**
-* It removes an instance of the GN4124 DMA engine
+ * It removes an instance of the GN4124 DMA engine
  * @pdev: platform device
  *
  * @return: 0 on success otherwise a negative error code

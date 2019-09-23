@@ -210,8 +210,8 @@ static void spec_dbg_exit(struct spec_gn412x *spec_gn412x)
 
 /* SPEC GPIO configuration */
 
-static void spec_gpio_fpga_select_set(struct spec_gn412x *spec_gn412x,
-				      enum spec_fpga_select sel)
+static void spec_bootsel_set(struct spec_gn412x *spec_gn412x,
+			     enum spec_fpga_select sel)
 {
 	switch (sel) {
 	case SPEC_FPGA_SELECT_FPGA_FLASH:
@@ -227,7 +227,7 @@ static void spec_gpio_fpga_select_set(struct spec_gn412x *spec_gn412x,
 	}
 }
 
-static enum spec_fpga_select spec_gpio_fpga_select_get(struct spec_gn412x *spec_gn412x)
+static enum spec_fpga_select spec_bootsel_get(struct spec_gn412x *spec_gn412x)
 {
 	enum spec_fpga_select sel = 0;
 
@@ -480,12 +480,7 @@ static struct resource gn412x_fcl_res[] = {
 		.flags = IORESOURCE_MEM,
 		.start = 0,
 		.end = 0x1000 - 1,
-	}, {
-		.name = "gn412x-fcl-irq",
-		.flags = IORESOURCE_IRQ,
-		.start = 0,
-		.end = 0,
-	}
+	},
 };
 
 enum spec_mfd_enum {
@@ -556,9 +551,9 @@ static int spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name)
 
 
 	mutex_lock(&spec_gn412x->mtx);
-	sel = spec_gpio_fpga_select_get(spec_gn412x);
+	sel = spec_bootsel_get(spec_gn412x);
 
-	spec_gpio_fpga_select_set(spec_gn412x, SPEC_FPGA_SELECT_GN4124_FPGA);
+	spec_bootsel_set(spec_gn412x, SPEC_FPGA_SELECT_GN4124_FPGA);
 
 	err = compat_spec_fw_load(spec_gn412x, name);
 	if (err)
@@ -570,7 +565,7 @@ static int spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name)
 			 "FPGA incorrectly programmed %d\n", err);
 
 out:
-	spec_gpio_fpga_select_set(spec_gn412x, sel);
+	spec_bootsel_set(spec_gn412x, sel);
 	mutex_unlock(&spec_gn412x->mtx);
 
 	return err;
@@ -597,7 +592,7 @@ static ssize_t bootselect_store(struct device *dev,
 	}
 
 	mutex_lock(&spec_gn412x->mtx);
-	spec_gpio_fpga_select_set(spec_gn412x, sel);
+	spec_bootsel_set(spec_gn412x, sel);
 	mutex_unlock(&spec_gn412x->mtx);
 
 	return count;
@@ -611,7 +606,7 @@ static ssize_t bootselect_show(struct device *dev,
 	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pdev);
 	enum spec_fpga_select sel;
 
-	sel = spec_gpio_fpga_select_get(spec_gn412x);
+	sel = spec_bootsel_get(spec_gn412x);
 	switch (sel) {
 	case SPEC_FPGA_SELECT_FPGA_FLASH:
 		return snprintf(buf, PAGE_SIZE, "fpga-flash\n");
@@ -625,7 +620,7 @@ static ssize_t bootselect_show(struct device *dev,
 		return -EINVAL;
 	}
 }
-static DEVICE_ATTR(bootselect, 0644, bootselect_show, bootselect_store);
+static DEVICE_ATTR_RW(bootselect);
 
 /**
  * Load golden bitstream on FGPA

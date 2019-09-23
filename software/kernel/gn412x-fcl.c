@@ -519,7 +519,7 @@ static int gn412x_fcl_probe(struct platform_device *pdev)
 	struct resource *r;
 	int err;
 
-	gn412x = devm_kzalloc(&pdev->dev, sizeof(*gn412x), GFP_KERNEL);
+	gn412x = kzalloc(sizeof(*gn412x), GFP_KERNEL);
 	if (!gn412x)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, gn412x);
@@ -530,7 +530,7 @@ static int gn412x_fcl_probe(struct platform_device *pdev)
 		err = -EINVAL;
 		goto err_res_mem;
 	}
-	gn412x->mem = devm_ioremap(&pdev->dev, r->start, resource_size(r));
+	gn412x->mem = ioremap(r->start, resource_size(r));
 	if (!gn412x->mem) {
 		err = -EADDRNOTAVAIL;
 		goto err_map;
@@ -558,10 +558,12 @@ err_fpga_reg:
 	compat_fpga_mgr_free(gn412x->mgr);
 err_fpga_create:
 	gn4124_dbg_exit(pdev);
-	devm_iounmap(&pdev->dev, gn412x->mem);
+	iounmap(gn412x->mem);
 err_map:
 err_res_mem:
-	devm_kfree(&pdev->dev, gn412x);
+	kfree(gn412x);
+	platform_set_drvdata(pdev, NULL);
+
 	return err;
 }
 
@@ -569,14 +571,18 @@ static int gn412x_fcl_remove(struct platform_device *pdev)
 {
 	struct gn412x_fcl_dev *gn412x = platform_get_drvdata(pdev);
 
-	gn4124_dbg_exit(pdev);
-
 	if (!gn412x->mgr)
 		return -ENODEV;
 
 	compat_fpga_mgr_unregister(gn412x->mgr);
 	compat_fpga_mgr_free(gn412x->mgr);
+	gn4124_dbg_exit(pdev);
+	iounmap(gn412x->mem);
+	kfree(gn412x);
+	platform_set_drvdata(pdev, NULL);
+
 	dev_dbg(&pdev->dev, "%s\n", __func__);
+
 
 	return 0;
 }

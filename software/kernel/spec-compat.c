@@ -46,6 +46,7 @@ static int fpga_mgr_dev_match(struct device *dev, const void *data)
 	return dev->parent == data;
 }
 
+#define FPGA_CLASS "fpga_mgr_class"
 /**
  * fpga_mgr_get - get an exclusive reference to a fpga mgr
  * @dev:parent device that fpga mgr was registered with
@@ -56,10 +57,12 @@ static int fpga_mgr_dev_match(struct device *dev, const void *data)
  */
 struct fpga_manager *fpga_mgr_get(struct device *dev)
 {
-	struct class *fpga_mgr_class = (struct class *) kallsyms_lookup_name("fpga_mgr_class");
+	struct class *fpga_mgr_class;
 	struct device *mgr_dev;
 
-	mgr_dev = class_find_device(fpga_mgr_class, NULL, dev, fpga_mgr_dev_match);
+	fpga_mgr_class = (struct class *) kallsyms_lookup_name(FPGA_CLASS);
+	mgr_dev = class_find_device(fpga_mgr_class, NULL, dev,
+				    fpga_mgr_dev_match);
 	if (!mgr_dev)
 		return ERR_PTR(-ENODEV);
 

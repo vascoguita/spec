@@ -476,7 +476,7 @@ static int gn412x_gpio_probe(struct platform_device *pdev)
 	struct resource *r;
 	int err;
 
-	gn412x = devm_kzalloc(&pdev->dev, sizeof(*gn412x), GFP_KERNEL);
+	gn412x = kzalloc(sizeof(*gn412x), GFP_KERNEL);
 	if (!gn412x)
 		return -ENOMEM;
 
@@ -488,7 +488,7 @@ static int gn412x_gpio_probe(struct platform_device *pdev)
 		err = -EINVAL;
 		goto err_res_mem;
 	}
-	gn412x->mem = devm_ioremap(&pdev->dev, r->start, resource_size(r));
+	gn412x->mem = ioremap(r->start, resource_size(r));
 	if (!gn412x->mem) {
 		err = -EADDRNOTAVAIL;
 		goto err_map;
@@ -552,16 +552,17 @@ err_req:
 err_add_irq:
 	gpiochip_remove(&gn412x->gpiochip);
 err_add:
-	devm_iounmap(&pdev->dev, gn412x->mem);
+	iounmap(gn412x->mem);
 err_map:
 err_res_mem:
-	devm_kfree(&pdev->dev, gn412x);
+	kfree(gn412x);
 	return err;
 }
 
 static int gn412x_gpio_remove(struct platform_device *pdev)
 {
 	struct gn412x_gpio_dev *gn412x = platform_get_drvdata(pdev);
+
 
 	gn412x_dbg_exit(gn412x);
 
@@ -570,6 +571,8 @@ static int gn412x_gpio_remove(struct platform_device *pdev)
 	free_irq(platform_get_irq(pdev, 0), gn412x);
 	gn412x_gpio_irq_set_nested_thread_all(gn412x, false);
 	gpiochip_remove(&gn412x->gpiochip);
+	iounmap(gn412x->mem);
+	kfree(gn412x);
 	dev_dbg(&pdev->dev, "%s\n", __func__);
 
 	return 0;
