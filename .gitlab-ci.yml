@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: CC0-1.0
+#
+# SPDX-FileCopyrightText: 2020 CERN
+
+before_script:
+  - yum install -y python3
+  - git clone https://gitlab.cern.ch/cohtdrivers/cheby.git ~/git/cheby
+  - export CHEBY=~/git/cheby/proto/cheby.py
+  - git clone https://gitlab.cern.ch/fvaga/fpga-manager.git ~/git/fpga-mgr
+  - export FPGA_MGR=~/git/fpga-mgr
+  - export CONFIG_FPGA_MGR_BACKPORT=y
+  - git clone https://gitlab.cern.ch/coht/fmc.git ~/git/fmc
+  - export FMC=~/git/fmc
+  - git clone --branch proposed_master https://ohwr.org/project/general-cores.git ~/git/general-cores/
+  - export SPI=~/git/general-cores/software/spi-ocores
+  - export I2C=~/git/general-cores/software/i2c-ocores
+
+stages:
+  - static-analysis
+  - build
+  - dkms
+
+reuse:
+  stage: static-analysis
+  image:
+    name: fsfe/reuse:latest
+    entrypoint: [""]
+  script:
+    - reuse lint
+  allow_failure: true
+
+cppcheck:
+  stage: static-analysis
+  script:
+    - yum install -y cppcheck
+    - make -C software cppcheck
+
+build:
+  stage: build
+  script:
+    - yum install -y kernel-devel
+    - LINUX=/usr/src/kernels/*/ make -C $FPGA_MGR all
+    - LINUX=/usr/src/kernels/*/ make -C $FMC/drivers/fmc all
+    - LINUX=/usr/src/kernels/*/ make -C software
+
+build_dkms_rpm:
+  stage: dkms
+  script:
+    - yum install -y dkms
+    - make -C distribution dkms-rpm
