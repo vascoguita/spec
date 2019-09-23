@@ -1,7 +1,25 @@
-# Changelog
+=========
+Changelog
+=========
 
-## [1.4.0] 2019-09-11
-### Added
+[1.4.1] - 2019-09-23
+====================
+Changed
+-------
+- [sw] do not used devm_* operations (it seems to solve problems)
+Removed
+-------
+- [sw] Removed IRQ line assignment to FCL (not used)
+Fixed
+-----
+- [sw] kcalloc usage
+- [sw]  memcpy(), memset() usage
+- [sw] checkpatch style fixes
+
+[1.4.0] 2019-09-11
+==================
+Added
+-----
 - [hdl] spec-base IP-core to support SPEC based designs
 - [sw] Driver for GN4124 FCL using Linux FPGA manager
 - [sw] Driver for GN4124 GPIO using Linux GPIOlib
@@ -9,13 +27,6 @@
 - [sw] Support for spec-base IP-core
 - [sw] Support for FMC
 
-## [x.x.x] 2012-12-14
-### Changed
-- HDL: GN412x-CORE upgrade
-
-## [x.x.x] 2012-12-14
-### Added
-- HDL: golden bitstream
-
-## [0.0.0]
-Start the development
+[0.0.0]
+=======
+Start the development of a new SPEC driver and SPEC HDL support layer
