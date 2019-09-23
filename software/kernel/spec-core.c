@@ -480,12 +480,7 @@ static struct resource gn412x_fcl_res[] = {
 		.flags = IORESOURCE_MEM,
 		.start = 0,
 		.end = 0x1000 - 1,
-	}, {
-		.name = "gn412x-fcl-irq",
-		.flags = IORESOURCE_IRQ,
-		.start = 0,
-		.end = 0,
-	}
+	},
 };
 
 enum spec_mfd_enum {
