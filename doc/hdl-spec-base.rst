@@ -82,7 +82,7 @@ Rule
      ===================  ============  ==========  =============
 
 Observation
-  The capability mask value ``0x1F`` means that all optional components
+  The capability mask value ``0x3F`` means that all optional components
   are instantiated.
 
 Rule
