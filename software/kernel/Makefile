@@ -43,7 +43,7 @@ CHEBY ?= /usr/bin/cheby
 
 all: modules
 
-.PHONY: all modules clean help install modules_install spec-core-fpga.h
+.PHONY: all modules clean help install modules_install coccicheck spec-core-fpga.h
 
 spec-core-fpga.h:
 ifeq ($(DKMS), 0)
@@ -58,4 +58,11 @@ endif
 install: modules_install
 clean: clean-spec-core-fpga.h
 modules help coccicheck modules_install clean: spec-core-fpga.h
-	$(MAKE) -C $(LINUX) M=$(shell pwd) VERSION=$(VERSION) CONFIG_FPGA_MGR_BACKPORT_PATH_ABS=$(CONFIG_FPGA_MGR_BACKPORT_PATH_ABS) CONFIG_FPGA_MGR_BACKPORT=$(CONFIG_FPGA_MGR_BACKPORT) FMC_ABS=$(FMC_ABS) I2C_ABS=$(I2C_ABS) SPI_ABS=$(SPI_ABS) $@
+	$(MAKE) -C $(LINUX) M=$(shell pwd) \
+		VERSION=$(VERSION) \
+		CONFIG_FPGA_MGR_BACKPORT_PATH_ABS=$(CONFIG_FPGA_MGR_BACKPORT_PATH_ABS) \
+		CONFIG_FPGA_MGR_BACKPORT=$(CONFIG_FPGA_MGR_BACKPORT) \
+		FMC_ABS=$(FMC_ABS) \
+		I2C_ABS=$(I2C_ABS) \
+		SPI_ABS=$(SPI_ABS) \
+		$@

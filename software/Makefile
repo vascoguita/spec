@@ -7,18 +7,16 @@ REPO_PARENT ?= $(shell /bin/pwd)/..
 
 DIRS = kernel
 
-.PHONY: all clean modules install modules_install $(DIRS)
+.PHONY: all clean modules install modules_install coccicheck $(DIRS)
 
-all clean modules install coccicheck modules_install: $(DIRS)
+all clean : $(DIRS)
+install modules_install coccicheck modules: kernel
 
 clean: TARGET = clean
 modules: TARGET = modules
 coccicheck: TARGET = coccicheck
 install: TARGET = install
 modules_install: TARGET = modules_install
-
-ENV_VAR := CONFIG_FPGA_MGR_BACKPORT_PATH=$(CONFIG_FPGA_MGR_BACKPORT_PATH)
-ENV_VAR += CONFIG_FPGA_MGR_BACKPORT=$(CONFIG_FPGA_MGR_BACKPORT)
 
 $(DIRS):
 	$(MAKE) -C $@ $(ENV_VAR) $(TARGET)
