@@ -82,16 +82,9 @@ static ssize_t spec_dbg_fw_write(struct file *file,
 	return count;
 }
 
-static int spec_dbg_fw_open(struct inode *inode, struct file *file)
-{
-	file->private_data = inode->i_private;
-
-	return 0;
-}
-
 static const struct file_operations spec_dbg_fw_ops = {
 	.owner = THIS_MODULE,
-	.open  = spec_dbg_fw_open,
+	.open  = simple_open,
 	.write = spec_dbg_fw_write,
 };
 
@@ -279,11 +272,9 @@ static int spec_gpio_init_table(struct spec_gn412x *spec_gn412x)
 	struct gpiod_lookup_table *lookup;
 	int err = 0;
 
-	lookup = kzalloc(spec_gpiod_table_size(), GFP_KERNEL);
+	lookup = kmemdup(&spec_gpiod_table, spec_gpiod_table_size(), GFP_KERNEL);
 	if (!lookup)
 		return -ENOMEM;
-
-	memcpy(lookup, &spec_gpiod_table, spec_gpiod_table_size());
 
 	lookup->dev_id = kstrdup(dev_name(&spec_gn412x->pdev->dev), GFP_KERNEL);
 	if (!lookup->dev_id)
