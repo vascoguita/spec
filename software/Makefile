@@ -9,10 +9,11 @@ DIRS = kernel
 
 .PHONY: all clean modules install modules_install $(DIRS)
 
-all clean modules install modules_install: $(DIRS)
+all clean modules install coccicheck modules_install: $(DIRS)
 
 clean: TARGET = clean
 modules: TARGET = modules
+coccicheck: TARGET = coccicheck
 install: TARGET = install
 modules_install: TARGET = modules_install
 
