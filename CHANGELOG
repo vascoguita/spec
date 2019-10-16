@@ -2,6 +2,12 @@
 Changelog
 =========
 
+[1.4.2] - 2019-10-15
+====================
+Fixed
+-----
+- [sw] fix SPEC driver dependency with I2C OCores
+
 [1.4.1] - 2019-09-23
 ====================
 Changed
