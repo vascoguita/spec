@@ -88,39 +88,47 @@ static const struct file_operations spec_dbg_fw_ops = {
 	.write = spec_dbg_fw_write,
 };
 
+static void seq_printf_meta(struct seq_file *s, const char *indent,
+			    struct spec_meta_id *meta)
+{
+	seq_printf(s, "%sMetadata:\n", indent);
+	seq_printf(s, "%s  - Vendor: 0x%08x\n", indent, meta->vendor);
+	seq_printf(s, "%s  - Device: 0x%08x\n", indent, meta->device);
+	seq_printf(s, "%s  - Version: 0x%08x\n", indent, meta->version);
+	seq_printf(s, "%s  - BOM: 0x%08x\n", indent, meta->bom);
+	seq_printf(s, "%s  - SourceID: 0x%08x%08x%08x%08x\n",
+		   indent,
+		   meta->src[0],
+		   meta->src[1],
+		   meta->src[2],
+		   meta->src[3]);
+	seq_printf(s, "%s  - CapabilityMask: 0x%08x\n", indent, meta->cap);
+	seq_printf(s, "%s  - VendorUUID: 0x%08x%08x%08x%08x\n",
+		   indent,
+		   meta->uuid[0],
+		   meta->uuid[1],
+		   meta->uuid[2],
+		   meta->uuid[3]);
+}
 
 static int spec_dbg_meta(struct seq_file *s, void *offset)
 {
 	struct spec_gn412x *spec_gn412x = s->private;
 	struct resource *r0 = &spec_gn412x->pdev->resource[0];
-	struct spec_meta_id __iomem *meta;
+	void *iomem;
+	uint32_t app_offset;
 
-	meta =  ioremap(r0->start + SPEC_META_BASE, sizeof(*meta));
-	if (!meta) {
+	iomem =  ioremap(r0->start, resource_size(r0));
+	if (!iomem) {
 		dev_warn(&spec_gn412x->pdev->dev, "%s: Mapping failed\n",
 			 __func__);
 		return -ENOMEM;
 	}
-
-	seq_printf(s, "'%s':\n", dev_name(&spec_gn412x->pdev->dev));
-	seq_puts(s, "Metadata:\n");
-	seq_printf(s, "  - Vendor: 0x%08x\n", meta->vendor);
-	seq_printf(s, "  - Device: 0x%08x\n", meta->device);
-	seq_printf(s, "  - Version: 0x%08x\n", meta->version);
-	seq_printf(s, "  - BOM: 0x%08x\n", meta->bom);
-	seq_printf(s, "  - SourceID: 0x%08x%08x%08x%08x\n",
-		   meta->src[0],
-		   meta->src[1],
-		   meta->src[2],
-		   meta->src[3]);
-	seq_printf(s, "  - CapabilityMask: 0x%08x\n", meta->cap);
-	seq_printf(s, "  - VendorUUID: 0x%08x%08x%08x%08x\n",
-		   meta->uuid[0],
-		   meta->uuid[1],
-		   meta->uuid[2],
-		   meta->uuid[3]);
-
-	iounmap(meta);
+	app_offset = ioread32(iomem + 0x40);
+	seq_printf_meta(s, "", iomem + SPEC_META_BASE);
+	seq_puts(s, "Application:\n");
+	seq_printf_meta(s, "  ", iomem + app_offset);
+	iounmap(iomem);
 
 	return 0;
 }
