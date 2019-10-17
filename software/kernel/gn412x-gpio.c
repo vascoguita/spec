@@ -202,7 +202,7 @@ static void gn412x_gpio_free(struct gpio_chip *chip, unsigned int offset)
 static int gn412x_gpio_get_direction(struct gpio_chip *chip,
 				     unsigned int offset)
 {
-	return !gn412x_gpio_reg_read(chip, GNGPIO_DIRECTION_MODE, offset);
+	return !!gn412x_gpio_reg_read(chip, GNGPIO_DIRECTION_MODE, offset);
 }
 
 static int gn412x_gpio_direction_input(struct gpio_chip *chip,
