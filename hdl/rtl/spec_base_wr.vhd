@@ -244,6 +244,7 @@ entity spec_base_wr is
     ddr_wr_fifo_empty_o : out std_logic;
 
     --  Clocks and reset.
+    clk_dmtd_125m_o : out std_logic;
     clk_62m5_sys_o    : out std_logic;
     rst_62m5_sys_n_o  : out std_logic;
     clk_125m_ref_o    : out std_logic;
@@ -777,6 +778,7 @@ begin  -- architecture top
         clk_pll_aux_o       => clk_pll_aux,
         rst_sys_62m5_n_o    => rst_62m5_sys_n,
         rst_ref_125m_n_o    => rst_125m_ref_n,
+        clk_dmtd_125m_o     => clk_dmtd_125m_o,
         rst_pll_aux_n_o     => rst_pll_aux_n,
 
         plldac_sclk_o       => plldac_sclk_o,
