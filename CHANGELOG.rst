@@ -2,7 +2,7 @@
 Changelog
 =========
 
-[unreleased]
+[1.4.4]
 ============
 Fixed
 -----
