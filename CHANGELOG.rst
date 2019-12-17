@@ -10,6 +10,7 @@ Changed
 Fixed
 -----
 - [sw] suggested fixed reported by checkpatch and coccicheck
+- [hdl] restore lost references to git submodules
 
 [1.4.3] - 2019-10-17
 ====================
