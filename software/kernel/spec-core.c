@@ -280,11 +280,13 @@ static int spec_gpio_init_table(struct spec_gn412x *spec_gn412x)
 	struct gpiod_lookup_table *lookup;
 	int err = 0;
 
-	lookup = kmemdup(&spec_gpiod_table, spec_gpiod_table_size(), GFP_KERNEL);
+	lookup = kmemdup(&spec_gpiod_table, spec_gpiod_table_size(),
+			 GFP_KERNEL);
 	if (!lookup)
 		return -ENOMEM;
 
-	lookup->dev_id = kstrdup(dev_name(&spec_gn412x->pdev->dev), GFP_KERNEL);
+	lookup->dev_id = kstrdup(dev_name(&spec_gn412x->pdev->dev),
+				 GFP_KERNEL);
 	if (!lookup->dev_id)
 		goto err_dup;
 

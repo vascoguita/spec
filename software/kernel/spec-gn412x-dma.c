@@ -870,7 +870,7 @@ static const struct platform_device_id gn412x_dma_id[] = {
 		.name = "spec-gn412x-dma",
 		.driver_data = GN412X_DMA_GN4124_IPCORE,
 	},
-	{ .name = "" }, /* last */
+	{}, /* last */
 };
 
 struct platform_driver gn412x_dma_driver = {

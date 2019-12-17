@@ -582,7 +582,7 @@ static const struct platform_device_id gn412x_gpio_id[] = {
 	{
 		.name = "gn412x-gpio",
 	},
-	{ .name = "" }, /* last */
+	{}, /* last */
 };
 
 static struct platform_driver gn412x_gpio_platform_driver = {
