@@ -2,6 +2,12 @@
 Changelog
 =========
 
+[1.4.5] 2019-12-17
+==================
+Something happened while synchronizing different branches and version 1.4.4
+could be inconsistent on different repositories. This release increment realign
+all repositories
+
 [1.4.4] 2019-12-17
 ==================
 Changed
