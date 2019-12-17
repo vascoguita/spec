@@ -591,7 +591,7 @@ static const struct platform_device_id gn412x_fcl_id[] = {
 	{
 		.name = "gn412x-fcl",
 	},
-	{ .name = "" }, /* last */
+	{}, /* last */
 };
 
 static struct platform_driver gn412x_fcl_platform_driver = {

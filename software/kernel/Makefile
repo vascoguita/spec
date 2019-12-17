@@ -1,7 +1,4 @@
 -include Makefile.specific
-# include parent_common.mk for buildsystem's defines
-#use absolute path for REPO_PARENT
-REPO_PARENT ?= $(shell /bin/pwd)/../..
 -include $(REPO_PARENT)/parent_common.mk
 
 KVERSION ?= $(shell uname -r)
@@ -32,7 +29,7 @@ I2C ?= $(DKMSTREE)/i2c-ocores/$(I2C_VERSION)/source
 SPI ?= $(DKMSTREE)/spi-ocores/$(SPI_VERSION)/source
 endif
 
-CONFIG_FPGA_MGR_BACKPORT_PATH_ABS ?= $(abspath $(CONFIG_FPGA_MGR_BACKPORT_PATH))
+FPGA_MGR_ABS ?= $(abspath $(FPGA_MGR))
 FMC_ABS ?= $(abspath $(FMC))
 I2C_ABS ?= $(abspath $(I2C))
 SPI_ABS ?= $(abspath $(SPI))
@@ -60,7 +57,7 @@ clean: clean-spec-core-fpga.h
 modules help coccicheck modules_install clean: spec-core-fpga.h
 	$(MAKE) -C $(LINUX) M=$(shell pwd) \
 		VERSION=$(VERSION) \
-		CONFIG_FPGA_MGR_BACKPORT_PATH_ABS=$(CONFIG_FPGA_MGR_BACKPORT_PATH_ABS) \
+		FPGA_MGR_ABS=$(FPGA_MGR_ABS) \
 		CONFIG_FPGA_MGR_BACKPORT=$(CONFIG_FPGA_MGR_BACKPORT) \
 		FMC_ABS=$(FMC_ABS) \
 		I2C_ABS=$(I2C_ABS) \
