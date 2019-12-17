@@ -2,6 +2,15 @@
 Changelog
 =========
 
+[1.4.4] 2019-12-17
+==================
+Changed
+-----
+- [sw] better integration in coht, rename environment variable to FPGA_MGR
+Fixed
+-----
+- [sw] suggested fixed reported by checkpatch and coccicheck
+
 [1.4.3] - 2019-10-17
 ====================
 Fixed
