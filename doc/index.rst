@@ -1,3 +1,7 @@
+..
+  SPDX-License-Identifier: CC-BY-SA-4.0
+  SPDX-FileCopyrightText: 2019-2020 CERN
+
 ================================
 Welcome to SPEC's documentation!
 ================================
@@ -13,19 +17,16 @@ fully use the card.
 
 The `SPEC project`_ is hosted on the `Open HardWare Repository`_
 
+You can clone the GIT project with the following command::
+
+  git clone https://ohwr.org/project/spec.git
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    hdl-spec-base
    sw-driver
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
 
 .. _`Open HardWare Repository`: https://ohwr.org/
 .. _`SPEC project`: https://ohwr.org/project/spec

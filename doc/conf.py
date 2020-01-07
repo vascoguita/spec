@@ -20,11 +20,11 @@
 # -- Project information -----------------------------------------------------
 
 project = 'SPEC'
-copyright = '2019, Federico Vaga <federico.vaga@cern.ch>, Tristan Gingold <tristan.gingold@cern.ch>, Dimitris Lampridis <dimitrios.lampridis@cern.ch>'
+copyright = '2019-2020, Federico Vaga <federico.vaga@cern.ch>, Tristan Gingold <tristan.gingold@cern.ch>, Dimitris Lampridis <dimitrios.lampridis@cern.ch>'
 author = 'Federico Vaga <federico.vaga@cern.ch>, Tristan Gingold <tristan.gingold@cern.ch>, Dimitris Lampridis <dimitrios.lampridis@cern.ch>'
 
 # The short X.Y version
-version = ''
+version = '1.4'
 # The full version, including alpha/beta/rc tags
 release = 'v1.4'
 
