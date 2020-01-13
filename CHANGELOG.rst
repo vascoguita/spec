@@ -2,6 +2,13 @@
 Changelog
 =========
 
+[1.4.6] 2020-01-13
+==================
+Changed
+-------
+- [doc] improve documentation
+- [sw] better error reporting on I2C errors
+
 [1.4.5] 2019-12-17
 ==================
 Something happened while synchronizing different branches and version 1.4.4

@@ -653,8 +653,12 @@ static int spec_fmc_init(struct spec_fpga *spec_fpga)
 	int err;
 
 	spec_fpga->slot_info.i2c_bus_nr = spec_i2c_get_bus(spec_fpga);
-	if (spec_fpga->slot_info.i2c_bus_nr <= 0)
+	if (spec_fpga->slot_info.i2c_bus_nr <= 0) {
+		dev_err(spec_fpga->dev.parent,
+			"Invalid I2C bus number %d\n",
+			spec_fpga->slot_info.i2c_bus_nr);
 		return -ENODEV;
+	}
 	spec_fpga->slot_info.ga = 0;
 	spec_fpga->slot_info.lun = 1;
 
