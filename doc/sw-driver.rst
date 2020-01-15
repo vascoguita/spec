@@ -2,7 +2,6 @@
   SPDX-License-Identifier: CC-BY-SA-4.0
   SPDX-FileCopyrightText: 2019-2020 CERN
 
-
 .. _spec_driver:
 
 SPEC Driver(s)
@@ -132,6 +131,11 @@ If you did not install the drivers you can use `insmod(8)`_ and `rmmod(8)`_.
 In this case is useful to know what drivers to load (dependencies) and their
 (un)loading order.::
 
+  # typically part of the distribution
+  modprobe at24
+  modprobe mtd
+  modprobe m25p80
+  # from OHWR
   insmod /path/to/fmc-sw/drivers/fmc/fmc.ko
   insmod /path/to/general-cores/software/htvic/drivers/htvic.ko
   insmod /path/to/general-cores/software/i2c-ocores/drivers/i2c/busses/i2c-ocores.ko
@@ -221,9 +225,9 @@ attributes.  Here we focus only on those.
   you can provide your own path by setting it in
   ``/sys/module/firmware_class/parameters/path``.
 
-``<pci-id>/csr_regs`` [R]
+``<pci-id>/spec-<pci-id>/csr_regs`` [R]
   It dumps the Control/Status register for
   the :ref:`SPEC base<spec_hdl_spec_base>`
 
-``<pci-id>/build_info`` [R]
+``<pci-id>/spec-<pci-id>/build_info`` [R]
   It shows the FPGA configuration synthesis information
