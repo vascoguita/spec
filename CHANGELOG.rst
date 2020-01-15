@@ -2,6 +2,13 @@
 Changelog
 =========
 
+[1.4.7] 2020-01-15
+==================
+Fixed
+-------
+- [doc] sysfs paths were wrong
+- [doc] incomplete driver loading list of commands
+
 [1.4.6] 2020-01-13
 ==================
 Changed
