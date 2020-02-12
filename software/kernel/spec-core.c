@@ -64,17 +64,26 @@ static const struct file_operations spec_irq_dbg_info_ops = {
 	.release = single_release,
 };
 
+#define SPEC_DBG_FW_BUF_LEN 128
 static ssize_t spec_dbg_fw_write(struct file *file,
 				 const char __user *buf,
 				 size_t count, loff_t *ppos)
 {
 	struct spec_gn412x *spec_gn412x = file->private_data;
+	char buf_l[SPEC_DBG_FW_BUF_LEN];
 	int err;
 
-	if (!buf || !count) {
-		dev_err(&spec_gn412x->pdev->dev, "Invalid input\n");
+	if (SPEC_DBG_FW_BUF_LEN < count) {
+		dev_err(&spec_gn412x->pdev->dev,
+			 "Firmware name too long max %u\n",
+			SPEC_DBG_FW_BUF_LEN);
+
 		return -EINVAL;
 	}
+	memset(buf_l, 0, SPEC_DBG_FW_BUF_LEN);
+	err = copy_from_user(buf_l, buf, count);
+	if (err)
+		return -EFAULT;
 
 	err = spec_fw_load(spec_gn412x, buf);
 	if (err)
