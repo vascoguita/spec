@@ -2,6 +2,12 @@
 Changelog
 =========
 
+[1.4.8] 2020-02-12
+==================
+Fixed
+-----
+- [sw] fix kernel crash when programming new bitstream
+
 [1.4.7] 2020-01-15
 ==================
 Fixed
