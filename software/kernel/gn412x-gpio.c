@@ -412,8 +412,12 @@ static irqreturn_t gn412x_gpio_irq_handler_t(int irq, void *arg)
 
 	loop = gpio_int_status;
 	for_each_set_bit(i, &loop, GN4124_GPIO_MAX) {
+#if KERNEL_VERSION(4, 14, 0) > LINUX_VERSION_CODE
 		cascade_irq = irq_find_mapping(gc->irqdomain, i);
-		dev_dbg(gc->dev, "GPIO: %d, IRQ: %d\n", i, cascade_irq);
+#else
+		cascade_irq = irq_find_mapping(gc->irq.domain, i);
+#endif
+		dev_dbg(dev, "GPIO: %d, IRQ: %d\n", i, cascade_irq);
 		/*
 		 * Ok, now we execute the handler for the given IRQ. Please
 		 * note that this is not the action requested by the device
@@ -481,7 +485,11 @@ static void gn412x_gpio_irq_set_nested_thread(struct gn412x_gpio_dev *gn412x,
 {
 	int irq;
 
+#if KERNEL_VERSION(4, 14, 0) > LINUX_VERSION_CODE
 	irq = irq_find_mapping(gn412x->gpiochip.irqdomain, gpio);
+#else
+	irq = irq_find_mapping(gn412x->gpiochip.irq.domain, gpio);
+#endif
 	irq_set_nested_thread(irq, nest);
 }
 
@@ -541,7 +549,13 @@ static int gn412x_gpio_probe(struct platform_device *pdev)
 	gn412x->gpiochip.base = -1;
 	gn412x->gpiochip.ngpio = GN4124_GPIO_MAX;
 	gn412x->gpiochip.can_sleep = 0;
-
+#if KERNEL_VERSION(4, 15, 0) <= LINUX_VERSION_CODE
+	gn412x->gpiochip.irq.chip = &gn412x->irqchip;
+	gn412x->gpiochip.irq.first = 0;
+	gn412x->gpiochip.irq.handler = handle_simple_irq;
+	gn412x->gpiochip.irq.default_type = IRQ_TYPE_NONE;
+	gn412x->gpiochip.irq.threaded = true;
+#endif
 	err = gpiochip_add(&gn412x->gpiochip);
 	if (err)
 		goto err_add;
