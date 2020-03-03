@@ -733,22 +733,32 @@ static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 #define SPEC_FPGA_APP_RES_N (32 - SPEC_FPGA_APP_IRQ_BASE + 1)
 	struct pci_dev *pcidev = to_pci_dev(spec_fpga->dev.parent);
 	unsigned int res_n = SPEC_FPGA_APP_RES_N;
-	struct resource res[SPEC_FPGA_APP_RES_N] = {
-		[0] = {
-			.name = "app-mem",
-			.flags = IORESOURCE_MEM,
-		},
-	};
+	struct resource *res;
+	/* struct resource res[SPEC_FPGA_APP_RES_N] = { */
+	/* 	[0] = { */
+	/* 		.name = "app-mem", */
+	/* 		.flags = IORESOURCE_MEM, */
+	/* 	}, */
+	/* }; */
 	struct platform_device *pdev;
 	struct irq_domain *vic_domain;
 	char app_name[SPEC_FPGA_APP_NAME_MAX];
 	unsigned long app_offset;
-	int err;
+	int err = 0;
+
+	res = kzalloc(SPEC_FPGA_APP_RES_N * sizeof(struct resource), GFP_KERNEL);
+	if (!res) {
+		return -ENOMEM;
+	}
+
+	res[0].name  = "app-mem";
+	res[0].flags = IORESOURCE_MEM;
 
 	app_offset = spec_fpga_csr_app_offset(spec_fpga);
 	if (!app_offset) {
 		dev_warn(&spec_fpga->dev, "Application not found\n");
-		return 0;
+		err = 0;
+		goto err_free;
 	}
 
 	res[0].start = pci_resource_start(pcidev, 0) + app_offset;
@@ -777,18 +787,21 @@ static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 	err = spec_fpga_app_id_build(spec_fpga, app_offset,
 				     app_name, SPEC_FPGA_APP_NAME_MAX);
 	if (err)
-		return err;
+		goto err_free;
 	spec_fpga_app_restart(spec_fpga);
 	pdev = platform_device_register_resndata(&spec_fpga->dev,
 						 app_name, PLATFORM_DEVID_AUTO,
 						 res, res_n,
 						 NULL, 0);
-	if (IS_ERR(pdev))
-		return PTR_ERR(pdev);
+	err = IS_ERR(pdev);
+	if (err)
+		goto err_free;
 
 	spec_fpga->app_pdev = pdev;
 
-	return 0;
+err_free:
+	kfree(res);
+	return err;
 }
 
 static void spec_fpga_app_exit(struct spec_fpga *spec_fpga)
