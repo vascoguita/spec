@@ -29,7 +29,7 @@ I2C ?= $(DKMSTREE)/i2c-ocores/$(I2C_VERSION)/source
 SPI ?= $(DKMSTREE)/spi-ocores/$(SPI_VERSION)/source
 endif
 
-FPGA_MGR_ABS ?= $(abspath $(FPGA_MGR))
+FPGA_MGR_ABS ?= $(abspath $(CONFIG_FPGA_MGR_BACKPORT_PATH))
 FMC_ABS ?= $(abspath $(FMC))
 I2C_ABS ?= $(abspath $(I2C))
 SPI_ABS ?= $(abspath $(SPI))
