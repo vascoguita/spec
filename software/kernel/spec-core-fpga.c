@@ -200,6 +200,21 @@ static struct resource spec_fpga_vic_res[] = {
 	},
 };
 
+struct irq_domain *spec_fpga_irq_find_host(struct device *dev)
+{
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0)
+	struct irq_fwspec fwspec = {
+		.fwnode = dev->fwnode,
+		.param_count = 2,
+		.param[0] = ((unsigned long)dev >> 32) & 0xffffffff,
+		.param[1] = ((unsigned long)dev) & 0xffffffff,
+	};
+	return irq_find_matching_fwspec(&fwspec, DOMAIN_BUS_ANY);
+#else
+	return (irq_find_host((void *)dev));
+#endif
+}
+
 /* Vector Interrupt Controller */
 static int spec_fpga_vic_init(struct spec_fpga *spec_fpga)
 {
@@ -274,7 +289,7 @@ static int spec_fpga_dma_init(struct spec_fpga *spec_fpga)
 			ddr_status);
 		return -ENODEV;
 	}
-	vic_domain = irq_find_host((void *)&spec_fpga->vic_pdev->dev);
+	vic_domain = spec_fpga_irq_find_host(&spec_fpga->vic_pdev->dev);
 	if (!vic_domain) {
 		dev_err(&spec_fpga->dev,
 			"Failed to load DMA engine: can't find VIC\n");
@@ -429,7 +444,7 @@ static int spec_fpga_devices_init(struct spec_fpga *spec_fpga)
 		n_mfd++;
 	}
 
-	vic_domain = irq_find_host((void *)&spec_fpga->vic_pdev->dev);
+	vic_domain = spec_fpga_irq_find_host(&spec_fpga->vic_pdev->dev);
 	if (!vic_domain) {
 		/* Remove IRQ resource from all devices */
 		fpga_mfd_devs[0].num_resources = 1;  /* FMC I2C */
@@ -740,7 +755,7 @@ static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 	res[0].end = pci_resource_end(pcidev, 0);
 
 	if (spec_fpga->vic_pdev)
-		vic_domain = irq_find_host((void *)&spec_fpga->vic_pdev->dev);
+		vic_domain = spec_fpga_irq_find_host(&spec_fpga->vic_pdev->dev);
 	else
 		vic_domain = NULL;
 
