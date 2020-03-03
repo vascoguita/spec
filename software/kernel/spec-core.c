@@ -15,6 +15,10 @@
 #include <linux/moduleparam.h>
 #include <linux/mfd/core.h>
 #include <linux/gpio/consumer.h>
+#include <linux/version.h>
+#if KERNEL_VERSION(3, 17, 0) <= LINUX_VERSION_CODE
+#include <linux/gpio/machine.h>
+#endif
 
 #include "platform_data/gn412x-gpio.h"
 #include "spec.h"
