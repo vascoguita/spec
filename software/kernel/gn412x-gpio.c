@@ -19,6 +19,7 @@
 struct gn412x_gpio_dev {
 	void __iomem *mem;
 	struct gpio_chip gpiochip;
+	struct irq_chip irqchip;
 
 	struct completion	compl;
 	struct gn412x_platform_data *pdata;
@@ -360,16 +361,6 @@ static void gn412x_gpio_irq_ack(struct irq_data *d)
 	 */
 }
 
-static struct irq_chip gn412x_gpio_irq_chip = {
-	.name = "GN412X-GPIO",
-	.irq_startup = gn412x_gpio_irq_startup,
-	.irq_disable = gn412x_gpio_irq_disable,
-	.irq_mask = gn412x_gpio_irq_mask,
-	.irq_unmask = gn412x_gpio_irq_unmask,
-	.irq_set_type = gn412x_gpio_irq_set_type,
-	.irq_ack = gn412x_gpio_irq_ack,
-};
-
 /**
  * This will run in hard-IRQ context since we do not have much to do
  */
@@ -532,6 +523,17 @@ static int gn412x_gpio_probe(struct platform_device *pdev)
 	}
 	gn412x_iowrite32(gn412x, 0, GNGPIO_BYPASS_MODE);
 
+	gn412x_gpio_int_cfg_disable(gn412x);
+	gn412x_iowrite32(gn412x, 0xFFFF, GNGPIO_INT_MASK_SET);
+
+	gn412x->irqchip.name = "GN412X-GPIO",
+	gn412x->irqchip.irq_startup = gn412x_gpio_irq_startup,
+	gn412x->irqchip.irq_disable = gn412x_gpio_irq_disable,
+	gn412x->irqchip.irq_mask = gn412x_gpio_irq_mask,
+	gn412x->irqchip.irq_unmask = gn412x_gpio_irq_unmask,
+	gn412x->irqchip.irq_set_type = gn412x_gpio_irq_set_type,
+	gn412x->irqchip.irq_ack = gn412x_gpio_irq_ack,
+
 #if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE
 	gn412x->gpiochip.dev = &pdev->dev;
 #else
@@ -560,14 +562,14 @@ static int gn412x_gpio_probe(struct platform_device *pdev)
 	if (err)
 		goto err_add;
 
-	gn412x_gpio_int_cfg_disable(gn412x);
-	gn412x_iowrite32(gn412x, 0xFFFF, GNGPIO_INT_MASK_SET);
+#if KERNEL_VERSION(4, 15, 0) > LINUX_VERSION_CODE
 	err = gpiochip_irqchip_add(&gn412x->gpiochip,
-				   &gn412x_gpio_irq_chip,
+				   &gn412x->irqchip,
 				   0, handle_simple_irq,
 				   IRQ_TYPE_NONE);
 	if (err)
 		goto err_add_irq;
+#endif
 
 	gn412x_gpio_irq_set_nested_thread_all(gn412x, true);
 
@@ -602,8 +604,10 @@ static int gn412x_gpio_probe(struct platform_device *pdev)
 
 err_req:
 	gn412x_gpio_irq_set_nested_thread_all(gn412x, false);
+#if KERNEL_VERSION(4, 15, 0) > LINUX_VERSION_CODE
 err_add_irq:
 	gpiochip_remove(&gn412x->gpiochip);
+#endif
 err_add:
 	iounmap(gn412x->mem);
 err_map:
