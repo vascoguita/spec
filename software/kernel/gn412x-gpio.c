@@ -77,12 +77,18 @@ static int gn412x_dbg_init(struct gn412x_gpio_dev *gn412x)
 	struct dentry *dir, *file;
 	int err;
 
-	dir = debugfs_create_dir(dev_name(gn412x->gpiochip.dev), NULL);
+#if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE
+	struct device *dev = gn412x->gpiochip.dev;
+#else
+	struct device *dev = gn412x->gpiochip.parent;
+#endif
+
+	dir = debugfs_create_dir(dev_name(dev), NULL);
 	if (IS_ERR_OR_NULL(dir)) {
 		err = PTR_ERR(dir);
-		dev_warn(gn412x->gpiochip.dev,
+		dev_warn(dev,
 			"Cannot create debugfs directory \"%s\" (%d)\n",
-			dev_name(gn412x->gpiochip.dev), err);
+			dev_name(dev), err);
 		goto err_dir;
 	}
 
@@ -93,7 +99,7 @@ static int gn412x_dbg_init(struct gn412x_gpio_dev *gn412x)
 				       dir, &gn412x->dbg_reg32);
 	if (IS_ERR_OR_NULL(file)) {
 		err = PTR_ERR(file);
-		dev_warn(gn412x->gpiochip.dev,
+		dev_warn(dev,
 			 "Cannot create debugfs file \"%s\" (%d)\n",
 			 GN412X_DBG_REG_NAME, err);
 		goto err_reg32;
@@ -183,9 +189,15 @@ static int gn412x_gpio_request(struct gpio_chip *chip, unsigned int offset)
 {
 	int val;
 
+#if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE
+	struct device *dev = chip->dev;
+#else
+	struct device *dev = chip->parent;
+#endif
+
 	val = gn412x_gpio_reg_read(chip, GNGPIO_BYPASS_MODE, offset);
 	if (val) {
-		dev_err(chip->dev, "%s GPIO %d is in BYPASS mode\n",
+		dev_err(dev, "%s GPIO %d is in BYPASS mode\n",
 			chip->label, offset);
 		return -EBUSY;
 	}
@@ -264,13 +276,19 @@ static int gn412x_gpio_irq_set_type(struct irq_data *d, unsigned int flow_type)
 {
 	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
 
+#if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE
+	struct device *dev = gc->dev;
+#else
+	struct device *dev = gc->parent;
+#endif
+
 	/*
 	 * detect errors:
 	 * - level and edge together cannot work
 	 */
 	if ((flow_type & IRQ_TYPE_LEVEL_MASK) &&
 	    (flow_type & IRQ_TYPE_EDGE_BOTH)) {
-		dev_err(gc->dev,
+		dev_err(dev,
 			"Impossible to set GPIO IRQ %ld to both LEVEL and EDGE (0x%x)\n",
 			d->hwirq, flow_type);
 		return -EINVAL;
@@ -380,6 +398,12 @@ static irqreturn_t gn412x_gpio_irq_handler_t(int irq, void *arg)
 	unsigned long loop;
 	irqreturn_t ret = IRQ_NONE;
 	int i;
+
+#if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE
+	struct device *dev = gc->dev;
+#else
+	struct device *dev = gc->parent;
+#endif
 
 	gpio_int_status = gn412x_ioread32(gn412x, GNGPIO_INT_STATUS);
 	gpio_int_status &= ~gn412x_ioread32(gn412x, GNGPIO_INT_MASK);
@@ -500,7 +524,11 @@ static int gn412x_gpio_probe(struct platform_device *pdev)
 	}
 	gn412x_iowrite32(gn412x, 0, GNGPIO_BYPASS_MODE);
 
+#if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE
 	gn412x->gpiochip.dev = &pdev->dev;
+#else
+	gn412x->gpiochip.parent = &pdev->dev;
+#endif
 	gn412x->gpiochip.label = "gn412x-gpio";
 	gn412x->gpiochip.owner = THIS_MODULE;
 	gn412x->gpiochip.request = gn412x_gpio_request;
@@ -529,6 +557,7 @@ static int gn412x_gpio_probe(struct platform_device *pdev)
 
 	gn412x_gpio_irq_set_nested_thread_all(gn412x, true);
 
+#if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE
 	err = request_threaded_irq(platform_get_irq(pdev, 0),
 				   gn412x_gpio_irq_handler_h,
 				   gn412x_gpio_irq_handler_t,
@@ -537,6 +566,16 @@ static int gn412x_gpio_probe(struct platform_device *pdev)
 				   gn412x);
 	if (err) {
 		dev_err(gn412x->gpiochip.dev, "Can't request IRQ %d (%d)\n",
+#else
+	err = request_threaded_irq(platform_get_irq(pdev, 0),
+				   gn412x_gpio_irq_handler_h,
+				   gn412x_gpio_irq_handler_t,
+				   IRQF_SHARED,
+				   dev_name(gn412x->gpiochip.parent),
+				   gn412x);
+	if (err) {
+		dev_err(gn412x->gpiochip.parent, "Can't request IRQ %d (%d)\n",
+#endif
 			platform_get_irq(pdev, 0), err);
 		goto err_req;
 	}
