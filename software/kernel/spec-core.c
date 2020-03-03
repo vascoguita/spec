@@ -16,6 +16,7 @@
 #include <linux/mfd/core.h>
 #include <linux/gpio/consumer.h>
 #include <linux/version.h>
+#include <linux/uaccess.h>
 #if KERNEL_VERSION(3, 17, 0) <= LINUX_VERSION_CODE
 #include <linux/gpio/machine.h>
 #endif
