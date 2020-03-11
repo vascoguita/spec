@@ -2,6 +2,17 @@
 Changelog
 =========
 
+
+[1.4.9] 2020-03-10
+==================
+Added
+-----
+- [sw] support for kernel version more recent than 3.10 (RedHat)
+
+Fixed
+-----
+- [sw] reduce allocation on stack
+
 [1.4.8] 2020-02-12
 ==================
 Fixed
