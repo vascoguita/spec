@@ -84,7 +84,6 @@ NET "ddr_udqs_n_b" IN_TERM = NONE;
 NET "inst_spec_base/*cmp_ddr_ctrl_bank?/*/c?_pll_lock"                                     TIG;
 NET "inst_spec_base/*cmp_ddr_ctrl_bank?/*/memc?_mcb_raw_wrapper_inst/selfrefresh_mcb_mode" TIG;
 NET "inst_spec_base/*cmp_ddr_ctrl_bank?/*/mcb_soft_calibration_inst/DONE_SOFTANDHARD_CAL"  TIG;
-#NET "inst_base/*cmp_ddr_ctrl_bank?/*/mcb_soft_calibration_inst/SELFREFRESH_MCB_REQ"   TIG;
 
 # Ignore async reset to DDR controller
 NET "inst_spec_base/ddr_rst" TPTHRU = ddr_rst;
