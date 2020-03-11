@@ -734,22 +734,15 @@ static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 	struct pci_dev *pcidev = to_pci_dev(spec_fpga->dev.parent);
 	unsigned int res_n = SPEC_FPGA_APP_RES_N;
 	struct resource *res;
-	/* struct resource res[SPEC_FPGA_APP_RES_N] = { */
-	/* 	[0] = { */
-	/* 		.name = "app-mem", */
-	/* 		.flags = IORESOURCE_MEM, */
-	/* 	}, */
-	/* }; */
 	struct platform_device *pdev;
 	struct irq_domain *vic_domain;
 	char app_name[SPEC_FPGA_APP_NAME_MAX];
 	unsigned long app_offset;
 	int err = 0;
 
-	res = kzalloc(SPEC_FPGA_APP_RES_N * sizeof(struct resource), GFP_KERNEL);
-	if (!res) {
+	res = kcalloc(SPEC_FPGA_APP_RES_N, sizeof(*res), GFP_KERNEL);
+	if (!res)
 		return -ENOMEM;
-	}
 
 	res[0].name  = "app-mem";
 	res[0].flags = IORESOURCE_MEM;
