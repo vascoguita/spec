@@ -4,6 +4,7 @@
  * Author: Federico Vaga <federico.vaga@cern.ch>
  */
 
+#include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/fpga/fpga-mgr.h>
 #include <linux/delay.h>

@@ -20,6 +20,8 @@
 #include <linux/delay.h>
 #include <linux/debugfs.h>
 #include <linux/dma-mapping.h>
+#include <linux/version.h>
+#include <linux/mod_devicetable.h>
 
 /**
  * dma_cookie_complete - complete a descriptor
@@ -605,9 +607,11 @@ static int gn412x_dma_terminate_all(struct dma_chan *chan)
 	return 0;
 }
 
+
+#if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
 static int gn412x_dma_device_control(struct dma_chan *chan,
-				enum dma_ctrl_cmd cmd,
-				unsigned long arg)
+				     enum dma_ctrl_cmd cmd,
+				     unsigned long arg)
 {
 	switch (cmd) {
 	case DMA_SLAVE_CONFIG:
@@ -624,7 +628,7 @@ static int gn412x_dma_device_control(struct dma_chan *chan,
 	}
 	return -ENODEV;
 }
-
+#endif
 
 static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 {
@@ -742,7 +746,19 @@ static int gn412x_dma_engine_init(struct gn412x_dma_device *gn412x_dma,
 	dma->device_alloc_chan_resources = gn412x_dma_alloc_chan_resources;
 	dma->device_free_chan_resources = gn412x_dma_free_chan_resources;
 	dma->device_prep_slave_sg = gn412x_dma_prep_slave_sg;
+#if KERNEL_VERSION(4, 0, 0) > LINUX_VERSION_CODE
 	dma->device_control = gn412x_dma_device_control;
+#else
+	/* TODO: adjust/verify addr widths, direction and granularity. */
+	dma->src_addr_widths = DMA_SLAVE_BUSWIDTH_4_BYTES;
+	dma->dst_addr_widths = DMA_SLAVE_BUSWIDTH_4_BYTES;
+	dma->directions =
+		1 << DMA_DEV_TO_MEM |
+		1 << DMA_MEM_TO_DEV;
+	dma->residue_granularity = 0;
+	dma->device_config = gn412x_dma_slave_config;
+	dma->device_terminate_all = gn412x_dma_terminate_all;
+#endif
 	dma->device_tx_status = gn412x_dma_tx_status;
 	dma->device_issue_pending = gn412x_dma_issue_pending;
 
