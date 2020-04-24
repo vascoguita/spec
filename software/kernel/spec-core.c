@@ -90,7 +90,7 @@ static ssize_t spec_dbg_fw_write(struct file *file,
 	if (err)
 		return -EFAULT;
 
-	err = spec_fw_load(spec_gn412x, buf);
+	err = spec_fw_load(spec_gn412x, buf_l);
 	if (err)
 		return err;
 	return count;
