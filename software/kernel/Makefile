@@ -29,6 +29,26 @@ I2C ?= $(DKMSTREE)/i2c-ocores/$(I2C_VERSION)/source
 SPI ?= $(DKMSTREE)/spi-ocores/$(SPI_VERSION)/source
 endif
 
+ifdef REPO_PARENT
+FPGA_MGR ?= $(REPO_PARENT)/fpga-mgr-backport/
+FMC ?= $(REPO_PARENT)/fmc-sw/
+I2C ?= $(REPO_PARENT)/general-cores/software/i2c-ocores/
+SPI ?= $(REPO_PARENT)/general-cores/software/spi-ocores/
+endif
+
+ifndef FPGA_MGR
+$(error "Missing FPGA_MGR environment variable")
+endif
+ifndef FMC
+$(error "Missing FMC environment variable")
+endif
+ifndef I2C
+$(error "Missing I2C environment variable")
+endif
+ifndef SPI
+$(error "Missing SPI environment variable")
+endif
+
 FPGA_MGR_ABS ?= $(abspath $(FPGA_MGR))
 FMC_ABS ?= $(abspath $(FMC))
 I2C_ABS ?= $(abspath $(I2C))

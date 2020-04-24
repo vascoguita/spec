@@ -2,6 +2,16 @@
 Changelog
 =========
 
+[1.4.10] 2020-04-24
+===================
+Changed
+-------
+- [bld] assign dependencies path based on REPO_PARENT
+- [bld] check for missing dependencies
+
+Fixed
+-----
+- [sw] fix kernel crash when programming new bitstream
 
 [1.4.9] 2020-03-10
 ==================
