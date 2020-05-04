@@ -787,7 +787,8 @@ static void spec_fpga_app_init_res_dma(struct spec_fpga *spec_fpga,
 #define SPEC_FPGA_APP_NAME_MAX 47
 #define SPEC_FPGA_APP_IRQ_BASE 6
 #define SPEC_FPGA_APP_RES_IRQ_START 2
-#define SPEC_FPGA_APP_RES_N (32 - SPEC_FPGA_APP_IRQ_BASE + 1 + 1) /* IRQs MEM DMA */
+#define SPEC_FPGA_APP_RES_IRQ_N (32 - SPEC_FPGA_APP_IRQ_BASE)
+#define SPEC_FPGA_APP_RES_N (SPEC_FPGA_APP_RES_IRQ_N + 1 + 1) /* IRQs MEM DMA */
 #define SPEC_FPGA_APP_RES_MEM 0
 #define SPEC_FPGA_APP_RES_DMA 1
 static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
@@ -814,7 +815,7 @@ static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 	err = spec_fpga_app_init_res_irq(spec_fpga,
 					 SPEC_FPGA_APP_IRQ_BASE,
 					 &res[SPEC_FPGA_APP_RES_IRQ_START],
-					 32 - SPEC_FPGA_APP_IRQ_BASE);
+					 SPEC_FPGA_APP_RES_IRQ_N);
 	if (err)
 		res_n = 2;
 
