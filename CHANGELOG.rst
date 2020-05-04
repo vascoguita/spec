@@ -2,6 +2,17 @@
 Changelog
 =========
 
+
+[1.4.11] 2020-05-04
+===================
+Added
+-----
+- [sw] added DMA engine channel for application to the list of resources
+
+Changed
+-----
+- [sw] little code improvements
+
 [1.4.10] 2020-04-24
 ===================
 Changed
