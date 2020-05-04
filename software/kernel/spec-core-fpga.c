@@ -745,42 +745,43 @@ static int spec_fpga_app_init_res_mem(struct spec_fpga *spec_fpga,
 	return 0;
 }
 
-static int spec_fpga_app_init_res_irq(struct spec_fpga *spec_fpga,
-				      unsigned int first_hwirq,
-				      struct resource *res,
-				      unsigned int res_n)
+static void spec_fpga_app_init_res_irq(struct spec_fpga *spec_fpga,
+				       unsigned int first_hwirq,
+				       struct resource *res,
+				       unsigned int res_n)
 {
 	struct irq_domain *vic_domain;
 	int i, hwirq;
 
-	if (spec_fpga->vic_pdev)
-		vic_domain = spec_fpga_irq_find_host(&spec_fpga->vic_pdev->dev);
-	else
-		return -ENODEV;
+	if (!spec_fpga->vic_pdev)
+		return;
 
+	vic_domain = spec_fpga_irq_find_host(&spec_fpga->vic_pdev->dev);
 	for (i = 0, hwirq = first_hwirq; i < res_n; ++i, ++hwirq) {
 		res[i].name = "app-irq";
 		res[i].flags = IORESOURCE_IRQ;
 		res[i].start = irq_find_mapping(vic_domain, hwirq);
 		res[i].end = res[1].start;
 	}
-
-	return 0;
 }
 
 static void spec_fpga_app_init_res_dma(struct spec_fpga *spec_fpga,
 				       struct resource *res)
 {
-	struct dma_device *dma = platform_get_drvdata(spec_fpga->dma_pdev);
+	struct dma_device *dma;
 
-	res->name  = "app-dma";
-	res->flags = IORESOURCE_DMA;
+	if (!spec_fpga->dma_pdev) {
+		dev_warn(&spec_fpga->dev, "Not able to find DMA engine: platform_device missing\n");
+		return ;
+	}
+	dma = platform_get_drvdata(spec_fpga->dma_pdev);
 	if (dma) {
+		res->name  = "app-dma";
+		res->flags = IORESOURCE_DMA;
 		res->start = 0;
 		res->start |= dma->dev_id << 16;
 	} else {
-		dev_warn(&spec_fpga->dev, "Not able to find DMA engine\n");
-		res->start = -1;
+		dev_warn(&spec_fpga->dev, "Not able to find DMA engine: drvdata missing\n");
 	}
 }
 
@@ -812,12 +813,10 @@ static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 		goto err_free;
 	}
 	spec_fpga_app_init_res_dma(spec_fpga, &res[SPEC_FPGA_APP_RES_DMA]);
-	err = spec_fpga_app_init_res_irq(spec_fpga,
-					 SPEC_FPGA_APP_IRQ_BASE,
-					 &res[SPEC_FPGA_APP_RES_IRQ_START],
-					 SPEC_FPGA_APP_RES_IRQ_N);
-	if (err)
-		res_n = 2;
+	spec_fpga_app_init_res_irq(spec_fpga,
+				   SPEC_FPGA_APP_IRQ_BASE,
+				   &res[SPEC_FPGA_APP_RES_IRQ_START],
+				   SPEC_FPGA_APP_RES_IRQ_N);
 
 	err = spec_fpga_app_id_build(spec_fpga,
 				     spec_fpga_csr_app_offset(spec_fpga),
