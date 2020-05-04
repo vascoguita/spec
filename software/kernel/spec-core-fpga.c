@@ -728,12 +728,11 @@ static int spec_fpga_app_id_build(struct spec_fpga *spec_fpga,
 }
 
 static int spec_fpga_app_init_res_mem(struct spec_fpga *spec_fpga,
-				       struct resource *res)
+				      unsigned int app_offset,
+				      struct resource *res)
 {
 	struct pci_dev *pcidev = to_pci_dev(spec_fpga->dev.parent);
-	unsigned long app_offset;
 
-	app_offset = spec_fpga_csr_app_offset(spec_fpga);
 	if (!app_offset)
 		return -ENODEV;
 
@@ -797,14 +796,15 @@ static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 	struct resource *res;
 	struct platform_device *pdev;
 	char app_name[SPEC_FPGA_APP_NAME_MAX];
-
+	unsigned int app_offset;
 	int err = 0;
 
+	app_offset = spec_fpga_csr_app_offset(spec_fpga);
 	res = kcalloc(SPEC_FPGA_APP_RES_N, sizeof(*res), GFP_KERNEL);
 	if (!res)
 		return -ENOMEM;
 
-	err = spec_fpga_app_init_res_mem(spec_fpga,
+	err = spec_fpga_app_init_res_mem(spec_fpga, app_offset,
 					 &res[SPEC_FPGA_APP_RES_MEM]);
 	if (err) {
 		dev_warn(&spec_fpga->dev, "Application not found\n");
@@ -817,8 +817,7 @@ static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 				   &res[SPEC_FPGA_APP_RES_IRQ_START],
 				   SPEC_FPGA_APP_RES_IRQ_N);
 
-	err = spec_fpga_app_id_build(spec_fpga,
-				     spec_fpga_csr_app_offset(spec_fpga),
+	err = spec_fpga_app_id_build(spec_fpga, app_offset,
 				     app_name, SPEC_FPGA_APP_NAME_MAX);
 	if (err)
 		goto err_free;
