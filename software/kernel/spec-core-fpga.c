@@ -9,6 +9,7 @@
 #include <linux/ioport.h>
 #include <linux/gpio/consumer.h>
 #include <linux/irqdomain.h>
+#include <linux/dmaengine.h>
 #include <linux/mfd/core.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/flash.h>
@@ -726,56 +727,95 @@ static int spec_fpga_app_id_build(struct spec_fpga *spec_fpga,
 	return 0;
 }
 
-static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
+static int spec_fpga_app_init_res_mem(struct spec_fpga *spec_fpga,
+				      unsigned int app_offset,
+				      struct resource *res)
 {
+	struct pci_dev *pcidev = to_pci_dev(spec_fpga->dev.parent);
+
+	if (!app_offset)
+		return -ENODEV;
+
+	res->name  = "app-mem";
+	res->flags = IORESOURCE_MEM;
+	res->start = pci_resource_start(pcidev, 0) + app_offset;
+	res->end = pci_resource_end(pcidev, 0);
+
+	return 0;
+}
+
+static void spec_fpga_app_init_res_irq(struct spec_fpga *spec_fpga,
+				       unsigned int first_hwirq,
+				       struct resource *res,
+				       unsigned int res_n)
+{
+	struct irq_domain *vic_domain;
+	int i, hwirq;
+
+	if (!spec_fpga->vic_pdev)
+		return;
+
+	vic_domain = spec_fpga_irq_find_host(&spec_fpga->vic_pdev->dev);
+	for (i = 0, hwirq = first_hwirq; i < res_n; ++i, ++hwirq) {
+		res[i].name = "app-irq";
+		res[i].flags = IORESOURCE_IRQ;
+		res[i].start = irq_find_mapping(vic_domain, hwirq);
+	}
+}
+
+static void spec_fpga_app_init_res_dma(struct spec_fpga *spec_fpga,
+				       struct resource *res)
+{
+	struct dma_device *dma;
+
+	if (!spec_fpga->dma_pdev) {
+		dev_warn(&spec_fpga->dev, "Not able to find DMA engine: platform_device missing\n");
+		return ;
+	}
+	dma = platform_get_drvdata(spec_fpga->dma_pdev);
+	if (dma) {
+		res->name  = "app-dma";
+		res->flags = IORESOURCE_DMA;
+		res->start = 0;
+		res->start |= dma->dev_id << 16;
+	} else {
+		dev_warn(&spec_fpga->dev, "Not able to find DMA engine: drvdata missing\n");
+	}
+}
+
 #define SPEC_FPGA_APP_NAME_MAX 47
 #define SPEC_FPGA_APP_IRQ_BASE 6
-#define SPEC_FPGA_APP_RES_N (32 - SPEC_FPGA_APP_IRQ_BASE + 1)
-	struct pci_dev *pcidev = to_pci_dev(spec_fpga->dev.parent);
+#define SPEC_FPGA_APP_RES_IRQ_START 2
+#define SPEC_FPGA_APP_RES_IRQ_N (32 - SPEC_FPGA_APP_IRQ_BASE)
+#define SPEC_FPGA_APP_RES_N (SPEC_FPGA_APP_RES_IRQ_N + 1 + 1) /* IRQs MEM DMA */
+#define SPEC_FPGA_APP_RES_MEM 0
+#define SPEC_FPGA_APP_RES_DMA 1
+static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
+{
 	unsigned int res_n = SPEC_FPGA_APP_RES_N;
 	struct resource *res;
 	struct platform_device *pdev;
-	struct irq_domain *vic_domain;
 	char app_name[SPEC_FPGA_APP_NAME_MAX];
-	unsigned long app_offset;
+	unsigned int app_offset;
 	int err = 0;
 
+	app_offset = spec_fpga_csr_app_offset(spec_fpga);
 	res = kcalloc(SPEC_FPGA_APP_RES_N, sizeof(*res), GFP_KERNEL);
 	if (!res)
 		return -ENOMEM;
 
-	res[0].name  = "app-mem";
-	res[0].flags = IORESOURCE_MEM;
-
-	app_offset = spec_fpga_csr_app_offset(spec_fpga);
-	if (!app_offset) {
+	err = spec_fpga_app_init_res_mem(spec_fpga, app_offset,
+					 &res[SPEC_FPGA_APP_RES_MEM]);
+	if (err) {
 		dev_warn(&spec_fpga->dev, "Application not found\n");
 		err = 0;
 		goto err_free;
 	}
-
-	res[0].start = pci_resource_start(pcidev, 0) + app_offset;
-	res[0].end = pci_resource_end(pcidev, 0);
-
-	if (spec_fpga->vic_pdev)
-		vic_domain = spec_fpga_irq_find_host(&spec_fpga->vic_pdev->dev);
-	else
-		vic_domain = NULL;
-
-	if (vic_domain) {
-		int i, hwirq;
-
-		for (i = 1, hwirq = SPEC_FPGA_APP_IRQ_BASE;
-		     i < SPEC_FPGA_APP_RES_N;
-		     ++i, ++hwirq) {
-			res[i].name = "app-irq",
-			res[i].flags = IORESOURCE_IRQ,
-			res[i].start = irq_find_mapping(vic_domain, hwirq);
-			res[i].end = res[1].start;
-		}
-	} else {
-		res_n = 1;
-	}
+	spec_fpga_app_init_res_dma(spec_fpga, &res[SPEC_FPGA_APP_RES_DMA]);
+	spec_fpga_app_init_res_irq(spec_fpga,
+				   SPEC_FPGA_APP_IRQ_BASE,
+				   &res[SPEC_FPGA_APP_RES_IRQ_START],
+				   SPEC_FPGA_APP_RES_IRQ_N);
 
 	err = spec_fpga_app_id_build(spec_fpga, app_offset,
 				     app_name, SPEC_FPGA_APP_NAME_MAX);
