@@ -807,7 +807,6 @@ static int gn412x_dma_probe(struct platform_device *pdev)
 	if (!gn412x_dma)
 		return -ENOMEM;
 	gn412x_dma->pdev = pdev;
-	platform_set_drvdata(pdev, gn412x_dma);
 
 	r = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!r) {
@@ -839,6 +838,7 @@ static int gn412x_dma_probe(struct platform_device *pdev)
 		goto err_reg;
 
 	gn412x_dma_dbg_init(gn412x_dma);
+	platform_set_drvdata(pdev, gn412x_dma);
 
 	return 0;
 err_reg:
