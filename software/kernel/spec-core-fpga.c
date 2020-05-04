@@ -9,6 +9,7 @@
 #include <linux/ioport.h>
 #include <linux/gpio/consumer.h>
 #include <linux/irqdomain.h>
+#include <linux/dmaengine.h>
 #include <linux/mfd/core.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/flash.h>
@@ -767,11 +768,28 @@ static int spec_fpga_app_init_res_irq(struct spec_fpga *spec_fpga,
 	return 0;
 }
 
+static void spec_fpga_app_init_res_dma(struct spec_fpga *spec_fpga,
+				       struct resource *res)
+{
+	struct dma_device *dma = platform_get_drvdata(spec_fpga->dma_pdev);
+
+	res->name  = "app-dma";
+	res->flags = IORESOURCE_DMA;
+	if (dma) {
+		res->start = 0;
+		res->start |= dma->dev_id << 16;
+	} else {
+		dev_warn(&spec_fpga->dev, "Not able to find DMA engine\n");
+		res->start = -1;
+	}
+}
+
 #define SPEC_FPGA_APP_NAME_MAX 47
 #define SPEC_FPGA_APP_IRQ_BASE 6
-#define SPEC_FPGA_APP_RES_IRQ_START 1
-#define SPEC_FPGA_APP_RES_N (32 - SPEC_FPGA_APP_IRQ_BASE + 1)
+#define SPEC_FPGA_APP_RES_IRQ_START 2
+#define SPEC_FPGA_APP_RES_N (32 - SPEC_FPGA_APP_IRQ_BASE + 1 + 1) /* IRQs MEM DMA */
 #define SPEC_FPGA_APP_RES_MEM 0
+#define SPEC_FPGA_APP_RES_DMA 1
 static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 {
 	unsigned int res_n = SPEC_FPGA_APP_RES_N;
@@ -792,6 +810,7 @@ static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
 		err = 0;
 		goto err_free;
 	}
+	spec_fpga_app_init_res_dma(spec_fpga, &res[SPEC_FPGA_APP_RES_DMA]);
 	err = spec_fpga_app_init_res_irq(spec_fpga,
 					 SPEC_FPGA_APP_IRQ_BASE,
 					 &res[SPEC_FPGA_APP_RES_IRQ_START],
