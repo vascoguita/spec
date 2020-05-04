@@ -761,7 +761,6 @@ static void spec_fpga_app_init_res_irq(struct spec_fpga *spec_fpga,
 		res[i].name = "app-irq";
 		res[i].flags = IORESOURCE_IRQ;
 		res[i].start = irq_find_mapping(vic_domain, hwirq);
-		res[i].end = res[1].start;
 	}
 }
 
