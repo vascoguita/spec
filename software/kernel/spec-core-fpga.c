@@ -726,58 +726,81 @@ static int spec_fpga_app_id_build(struct spec_fpga *spec_fpga,
 	return 0;
 }
 
-static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
+static int spec_fpga_app_init_res_mem(struct spec_fpga *spec_fpga,
+				       struct resource *res)
 {
+	struct pci_dev *pcidev = to_pci_dev(spec_fpga->dev.parent);
+	unsigned long app_offset;
+
+	app_offset = spec_fpga_csr_app_offset(spec_fpga);
+	if (!app_offset)
+		return -ENODEV;
+
+	res->name  = "app-mem";
+	res->flags = IORESOURCE_MEM;
+	res->start = pci_resource_start(pcidev, 0) + app_offset;
+	res->end = pci_resource_end(pcidev, 0);
+
+	return 0;
+}
+
+static int spec_fpga_app_init_res_irq(struct spec_fpga *spec_fpga,
+				      unsigned int first_hwirq,
+				      struct resource *res,
+				      unsigned int res_n)
+{
+	struct irq_domain *vic_domain;
+	int i, hwirq;
+
+	if (spec_fpga->vic_pdev)
+		vic_domain = spec_fpga_irq_find_host(&spec_fpga->vic_pdev->dev);
+	else
+		return -ENODEV;
+
+	for (i = 0, hwirq = first_hwirq; i < res_n; ++i, ++hwirq) {
+		res[i].name = "app-irq";
+		res[i].flags = IORESOURCE_IRQ;
+		res[i].start = irq_find_mapping(vic_domain, hwirq);
+		res[i].end = res[1].start;
+	}
+
+	return 0;
+}
+
 #define SPEC_FPGA_APP_NAME_MAX 47
 #define SPEC_FPGA_APP_IRQ_BASE 6
+#define SPEC_FPGA_APP_RES_IRQ_START 1
 #define SPEC_FPGA_APP_RES_N (32 - SPEC_FPGA_APP_IRQ_BASE + 1)
-	struct pci_dev *pcidev = to_pci_dev(spec_fpga->dev.parent);
+#define SPEC_FPGA_APP_RES_MEM 0
+static int spec_fpga_app_init(struct spec_fpga *spec_fpga)
+{
 	unsigned int res_n = SPEC_FPGA_APP_RES_N;
 	struct resource *res;
 	struct platform_device *pdev;
-	struct irq_domain *vic_domain;
 	char app_name[SPEC_FPGA_APP_NAME_MAX];
-	unsigned long app_offset;
+
 	int err = 0;
 
 	res = kcalloc(SPEC_FPGA_APP_RES_N, sizeof(*res), GFP_KERNEL);
 	if (!res)
 		return -ENOMEM;
 
-	res[0].name  = "app-mem";
-	res[0].flags = IORESOURCE_MEM;
-
-	app_offset = spec_fpga_csr_app_offset(spec_fpga);
-	if (!app_offset) {
+	err = spec_fpga_app_init_res_mem(spec_fpga,
+					 &res[SPEC_FPGA_APP_RES_MEM]);
+	if (err) {
 		dev_warn(&spec_fpga->dev, "Application not found\n");
 		err = 0;
 		goto err_free;
 	}
+	err = spec_fpga_app_init_res_irq(spec_fpga,
+					 SPEC_FPGA_APP_IRQ_BASE,
+					 &res[SPEC_FPGA_APP_RES_IRQ_START],
+					 32 - SPEC_FPGA_APP_IRQ_BASE);
+	if (err)
+		res_n = 2;
 
-	res[0].start = pci_resource_start(pcidev, 0) + app_offset;
-	res[0].end = pci_resource_end(pcidev, 0);
-
-	if (spec_fpga->vic_pdev)
-		vic_domain = spec_fpga_irq_find_host(&spec_fpga->vic_pdev->dev);
-	else
-		vic_domain = NULL;
-
-	if (vic_domain) {
-		int i, hwirq;
-
-		for (i = 1, hwirq = SPEC_FPGA_APP_IRQ_BASE;
-		     i < SPEC_FPGA_APP_RES_N;
-		     ++i, ++hwirq) {
-			res[i].name = "app-irq",
-			res[i].flags = IORESOURCE_IRQ,
-			res[i].start = irq_find_mapping(vic_domain, hwirq);
-			res[i].end = res[1].start;
-		}
-	} else {
-		res_n = 1;
-	}
-
-	err = spec_fpga_app_id_build(spec_fpga, app_offset,
+	err = spec_fpga_app_id_build(spec_fpga,
+				     spec_fpga_csr_app_offset(spec_fpga),
 				     app_name, SPEC_FPGA_APP_NAME_MAX);
 	if (err)
 		goto err_free;
