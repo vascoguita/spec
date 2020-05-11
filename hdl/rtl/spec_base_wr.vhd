@@ -36,6 +36,7 @@ use work.wr_spec_pkg.all;
 use work.buildinfo_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.streamers_pkg.all;
+use work.sourceid_spec_base_pkg;
 
 library unisim;
 use unisim.vcomponents.all;
@@ -599,9 +600,18 @@ begin  -- architecture top
         when x"3" =>
           -- BOM
           metadata_data <= x"fffe0000";
-        when x"4" | x"5" | x"6" | x"7" =>
+        when x"4" =>
           -- source id
-          metadata_data <= x"00000000";
+          metadata_data <= sourceid_spec_base_pkg.sourceid(127 downto 96);
+        when x"5" =>
+          -- source id
+          metadata_data <= sourceid_spec_base_pkg.sourceid(95 downto 64);
+        when x"6" =>
+          -- source id
+          metadata_data <= sourceid_spec_base_pkg.sourceid(63 downto 32);
+        when x"7" =>
+          -- source id
+          metadata_data <= sourceid_spec_base_pkg.sourceid(31 downto 0);
         when x"8" =>
           -- capability mask
           metadata_data <= x"00000000";
