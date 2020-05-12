@@ -2,6 +2,13 @@
 Changelog
 =========
 
+[1.4.13] 2020-05-12
+===================
+Fixed
+-----
+- [hdl] report correct version in spec-base metadata
+
+
 [1.4.12] 2020-05-12
 ===================
 Added
