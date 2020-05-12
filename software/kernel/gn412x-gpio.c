@@ -174,8 +174,6 @@ static void gn412x_gpio_int_cfg_enable(struct gn412x_gpio_dev *gn412x)
 /**
  * Disable GPIO interrupts from a single configuration space
  * @gn412x gn412x device
- *
- * Return: 0 on success, otherwise a negative error number
  */
 static void gn412x_gpio_int_cfg_disable(struct gn412x_gpio_dev *gn412x)
 {
