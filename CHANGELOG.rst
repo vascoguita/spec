@@ -2,6 +2,15 @@
 Changelog
 =========
 
+[1.4.12] 2020-05-12
+===================
+Added
+-----
+- [hdl] metadata source-id automatic assignment
+
+Changed
+-----
+- [sw] do not double remap memory
 
 [1.4.11] 2020-05-04
 ===================

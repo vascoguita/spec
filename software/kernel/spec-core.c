@@ -132,17 +132,24 @@ static int spec_dbg_meta(struct seq_file *s, void *offset)
 	void *iomem;
 	uint32_t app_offset;
 
-	iomem =  ioremap(r0->start, resource_size(r0));
+	if (!spec_gn412x->spec_fpga) {
+		iomem =  ioremap(r0->start, resource_size(r0));
+	} else {
+		iomem = spec_gn412x->spec_fpga->fpga;
+	}
+
 	if (!iomem) {
 		dev_warn(&spec_gn412x->pdev->dev, "%s: Mapping failed\n",
 			 __func__);
 		return -ENOMEM;
 	}
+
 	app_offset = ioread32(iomem + 0x40);
 	seq_printf_meta(s, "", iomem + SPEC_META_BASE);
 	seq_puts(s, "Application:\n");
 	seq_printf_meta(s, "  ", iomem + app_offset);
-	iounmap(iomem);
+	if (!spec_gn412x->spec_fpga)
+		iounmap(iomem);
 
 	return 0;
 }
