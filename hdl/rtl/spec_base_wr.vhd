@@ -596,7 +596,7 @@ begin  -- architecture top
           metadata_data <= x"53504543";
         when x"2" =>
           -- Version
-          metadata_data <= x"01040000";
+          metadata_data <= x"01040011";
         when x"3" =>
           -- BOM
           metadata_data <= x"fffe0000";
