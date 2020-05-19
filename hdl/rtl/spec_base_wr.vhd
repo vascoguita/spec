@@ -303,7 +303,7 @@ entity spec_base_wr is
     app_wb_o           : out t_wishbone_master_out;
     app_wb_i           : in  t_wishbone_master_in;
 
-    sim_wb_i : in t_wishbone_slave_in;
+    sim_wb_i : in t_wishbone_slave_in := cc_dummy_slave_in;
     sim_wb_o : out t_wishbone_slave_out
   );
 end entity spec_base_wr;
