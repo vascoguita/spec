@@ -92,7 +92,7 @@ TIMESPEC TS_dmtd_skew = FROM "skew_limit" TO "FFS" 1.25 ns DATAPATHONLY;
 #----------------------------------------
 
 # Declaration of domains
-NET "*cmp_xwrc_board_spec/clk_pll_dmtd"            TNM_NET = clk_dmtd;
+NET "*cmp_xwrc_board_spec*cmp_dmtd_clk_pll/CLKOUT0"            TNM_NET = clk_dmtd;
 NET "*cmp_xwrc_board_spec/phy8_to_wrc_rx_clk"      TNM_NET = phy_clk;
 
 TIMEGRP "dmtd_sync_ffs" = "sync_ffs" EXCEPT "clk_dmtd";
@@ -105,9 +105,9 @@ TIMEGRP "dmtd_sync_reg" = "sync_reg" EXCEPT "clk_dmtd";
 TIMEGRP "phy_sync_reg"  = "sync_reg" EXCEPT "phy_clk";
 
 # no gc_sync_reg for DMTD
-#TIMESPEC TS_dmtd_sync_reg = FROM clk_dmtd TO "dmtd_sync_reg" 16ns DATAPATHONLY;
+TIMESPEC TS_dmtd_sync_reg = FROM clk_dmtd TO "dmtd_sync_reg" 16ns DATAPATHONLY;
 TIMESPEC TS_phy_sync_reg = FROM phy_clk TO "phy_sync_reg" 8ns DATAPATHONLY;
 
 # no gc_sync_word for DMTD or PHY
-#TIMESPEC TS_dmtd_sync_word = FROM sync_word TO clk_dmtd 48ns DATAPATHONLY;
-#TIMESPEC TS_phy_sync_word  = FROM sync_word TO phy_clk  24ns DATAPATHONLY;
+TIMESPEC TS_dmtd_sync_word = FROM sync_word TO clk_dmtd 48ns DATAPATHONLY;
+TIMESPEC TS_phy_sync_word  = FROM sync_word TO phy_clk  24ns DATAPATHONLY;

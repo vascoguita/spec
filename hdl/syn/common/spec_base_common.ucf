@@ -154,8 +154,8 @@ NET "*/gc_reset_async_in" TIG;
 
 NET "inst_spec_base/clk_62m5_sys"              TNM_NET = sys_clk;
 NET "inst_spec_base/clk_125m_ref"              TNM_NET = ref_clk;
-NET "*/cmp_gn4124_core/cmp_wrapped_gn4124/sys_clk" TNM_NET = pci_clk;
-NET "*/cmp_gn4124_core/cmp_wrapped_gn4124/io_clk"  TNM_NET = pci_clk;
+NET "*/gen_with_gennum.cmp_gn4124_core/cmp_wrapped_gn4124/sys_clk" TNM_NET = pci_clk;
+NET "*/gen_with_gennum.cmp_gn4124_core/cmp_wrapped_gn4124/io_clk"  TNM_NET = pci_clk;
 
 TIMEGRP "sys_grp" = "sys_clk" "ref_clk";
 

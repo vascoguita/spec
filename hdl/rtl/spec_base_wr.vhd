@@ -73,7 +73,8 @@ entity spec_base_wr is
     -- Its purpose is to reduce some internal counters/timeouts to speed up simulations.
     g_SIMULATION : boolean := False;
     -- Increase information messages during simulation
-    g_VERBOSE    : boolean := False
+    g_VERBOSE    : boolean := False;
+    g_SIM_BYPASS_GENNUM : boolean := False
   );
   port (
     ---------------------------------------------------------------------------
@@ -244,6 +245,7 @@ entity spec_base_wr is
     ddr_wr_fifo_empty_o : out std_logic;
 
     --  Clocks and reset.
+    clk_dmtd_125m_o : out std_logic;
     clk_62m5_sys_o    : out std_logic;
     rst_62m5_sys_n_o  : out std_logic;
     clk_125m_ref_o    : out std_logic;
@@ -299,7 +301,10 @@ entity spec_base_wr is
     --  Addresses 0-0x1fff are not available (used by the carrier).
     --  This is a pipelined wishbone with byte granularity.
     app_wb_o           : out t_wishbone_master_out;
-    app_wb_i           : in  t_wishbone_master_in
+    app_wb_i           : in  t_wishbone_master_in;
+
+    sim_wb_i : in t_wishbone_slave_in := cc_dummy_slave_in;
+    sim_wb_o : out t_wishbone_slave_out
   );
 end entity spec_base_wr;
 
@@ -418,6 +423,8 @@ begin  -- architecture top
 
   gn_gpio_b(1) <= 'Z';
 
+  gen_with_gennum : if g_SIMULATION = false or g_sim_bypass_gennum = false generate
+
   cmp_gn4124_core : entity work.xwb_gn4124_core
     generic map (
       g_WITH_DMA                    => g_WITH_DDR,
@@ -500,6 +507,13 @@ begin  -- architecture top
       wb_dma_dat_o       => gn_wb_ddr_out,
       wb_dma_dat_i       => gn_wb_ddr_in
     );
+
+  end generate gen_with_gennum;
+
+  gen_without_gennum: if g_SIMULATION = true and g_sim_bypass_gennum = true generate
+    gn_wb_out <= sim_wb_i;
+    sim_wb_o <= gn_wb_in;
+  end generate gen_without_gennum;
 
   --  Mini-crossbar from gennum to carrier and application bus.
   inst_split: entity work.xwb_split
@@ -777,6 +791,7 @@ begin  -- architecture top
         clk_pll_aux_o       => clk_pll_aux,
         rst_sys_62m5_n_o    => rst_62m5_sys_n,
         rst_ref_125m_n_o    => rst_125m_ref_n,
+        clk_dmtd_125m_o     => clk_dmtd_125m_o,
         rst_pll_aux_n_o     => rst_pll_aux_n,
 
         plldac_sclk_o       => plldac_sclk_o,
