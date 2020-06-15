@@ -114,7 +114,7 @@ NET "inst_spec_base/*cmp_ddr_ctrl_bank3/*/memc3_mcb_raw_wrapper_inst/ioi_drp_clk
 # DMA
 #---------------------------------------
 
-NET "inst_spec_base/cmp_gn4124_core/cmp_wrapped_gn4124/gen_with_dma.cmp_dma_controller/dma_async_*" TNM = FFS "dma_ffs";
+NET "inst_spec_base/gen_with_gennum.cmp_gn4124_core/cmp_wrapped_gn4124/gen_with_dma.cmp_dma_controller/dma_async_*" TNM = FFS "dma_ffs";
 
 TIMESPEC TS_dma_async_ffs = FROM dma_ffs TO pci_clk  15ns  DATAPATHONLY;
 
