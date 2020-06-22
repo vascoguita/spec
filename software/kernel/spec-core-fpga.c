@@ -142,13 +142,13 @@ static int spec_fpga_dbg_init(struct spec_fpga *spec_fpga)
 	spec_fpga->dbg_csr_reg.nregs = ARRAY_SIZE(spec_fpga_debugfs_reg32);
 	spec_fpga->dbg_csr_reg.base = spec_fpga->fpga;
 	spec_fpga->dbg_csr = debugfs_create_regset32(SPEC_DBG_CSR_NAME, 0200,
-						spec_fpga->dbg_dir_fpga,
-						&spec_fpga->dbg_csr_reg);
+						     spec_fpga->dbg_dir_fpga,
+						     &spec_fpga->dbg_csr_reg);
 	if (IS_ERR_OR_NULL(spec_fpga->dbg_csr)) {
 		err = PTR_ERR(spec_fpga->dbg_csr);
 		dev_warn(&spec_fpga->dev,
-			"Cannot create debugfs file \"%s\" (%d)\n",
-			SPEC_DBG_CSR_NAME, err);
+			 "Cannot create debugfs file \"%s\" (%d)\n",
+			 SPEC_DBG_CSR_NAME, err);
 		goto err;
 	}
 
