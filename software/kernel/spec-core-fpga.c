@@ -122,6 +122,65 @@ static const struct file_operations spec_fpga_dbg_bld_ops = {
 	.release = single_release,
 };
 
+static loff_t spec_fpga_dbg_dma_llseek(struct file *file,
+				       loff_t pos, int whence)
+{
+	switch(whence) {
+	case 0: /* SEEK_SET */
+		break;
+
+	case 1: /* SEEK_CUR */
+		break;
+
+	case 2: /* SEEK_END */
+		break;
+
+	default: /* can't happen */
+		return -EINVAL;
+	}
+
+	return -ENODEV;
+}
+
+static ssize_t spec_fpga_dbg_dma_read(struct file *file,
+				      char __user *buf,
+				      size_t count, loff_t *ppos)
+{
+	return -ENODEV;
+}
+
+static ssize_t spec_fpga_dbg_dma_write(struct file *file,
+				       const char __user *buf,
+				       size_t count, loff_t *ppos)
+{
+	return -ENODEV;
+}
+
+static int spec_fpga_dbg_dma_open(struct inode *inode, struct file *file)
+{
+	return -ENODEV;
+}
+
+static int spec_fpga_dbg_dma_flush(struct file *file, fl_owner_t id)
+{
+	return -ENODEV;
+}
+
+static int spec_fpga_dbg_dma_release(struct inode *inode, struct file *file)
+{
+	return -ENODEV;
+}
+
+static const struct file_operations spec_fpga_dbg_dma_ops = {
+	.owner = THIS_MODULE,
+	.llseek = spec_fpga_dbg_dma_llseek,
+	.read = spec_fpga_dbg_dma_read,
+	.write = spec_fpga_dbg_dma_write,
+	.open  = spec_fpga_dbg_dma_open,
+	.flush = spec_fpga_dbg_dma_flush,
+	.release = spec_fpga_dbg_dma_release,
+};
+
 static int spec_fpga_dbg_init(struct spec_fpga *spec_fpga)
 {
 	struct pci_dev *pdev = to_pci_dev(spec_fpga->dev.parent);
@@ -162,6 +221,19 @@ static int spec_fpga_dbg_init(struct spec_fpga *spec_fpga)
 		dev_err(&spec_fpga->dev,
 			"Cannot create debugfs file \"%s\" (%d)\n",
 			SPEC_DBG_BLD_INFO_NAME, err);
+		goto err;
+	}
+
+	spec_fpga->dbg_dma = debugfs_create_file(SPEC_DBG_DMA_NAME,
+						 0444,
+						 spec_fpga->dbg_dir_fpga,
+						 spec_fpga,
+						 &spec_fpga_dbg_dma_ops);
+	if (IS_ERR_OR_NULL(spec_fpga->dbg_dma)) {
+		err = PTR_ERR(spec_fpga->dbg_dma);
+		dev_err(&spec_fpga->dev,
+			"Cannot create debugfs file \"%s\" (%d)\n",
+			SPEC_DBG_DMA_NAME, err);
 		goto err;
 	}
 
