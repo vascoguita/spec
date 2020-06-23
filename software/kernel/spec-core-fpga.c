@@ -122,6 +122,11 @@ static const struct file_operations spec_fpga_dbg_bld_ops = {
 	.release = single_release,
 };
 
+struct spec_fpga_dbg_dma {
+	struct spec_fpga *spec_fpga;
+	struct dma_chan *dchan;
+
+};
 static loff_t spec_fpga_dbg_dma_llseek(struct file *file,
 				       loff_t pos, int whence)
 {
@@ -156,19 +161,63 @@ static ssize_t spec_fpga_dbg_dma_write(struct file *file,
 	return -ENODEV;
 }
 
+static bool spec_fpga_dbg_dma_filter(struct dma_chan *dchan, void *arg)
+{
+	return dchan->device == arg;
+}
+
 static int spec_fpga_dbg_dma_open(struct inode *inode, struct file *file)
 {
-	return -ENODEV;
+	struct spec_fpga_dbg_dma *dbgdma;
+	struct spec_fpga *spec_fpga = inode->i_private;
+	dma_cap_mask_t dma_mask;
+	int err;
+
+	dbgdma = kzalloc(sizeof(*dbgdma), GFP_KERNEL);
+	if (!dbgdma)
+		return -ENOMEM;
+
+	if (!spec_fpga->dma_pdev) {
+		dev_warn(&spec_fpga->dev,
+			 "Not able to find DMA engine: platform_device missing\n");
+		err = -ENODEV;
+		goto err_nodma;
+	}
+
+	dma_cap_zero(dma_mask);
+	dma_cap_set(DMA_SLAVE, dma_mask);
+	dma_cap_set(DMA_PRIVATE, dma_mask);
+	dbgdma->dchan = dma_request_channel(dma_mask, spec_fpga_dbg_dma_filter,
+					    platform_get_drvdata(spec_fpga->dma_pdev));
+	if (!dbgdma->dchan) {
+		dev_dbg(&spec_fpga->dev,
+			"DMA transfer Failed: can't request channel\n");
+		err = -EBUSY;
+		goto err_req;
+	}
+	dbgdma->spec_fpga = spec_fpga;
+	file->private_data = dbgdma;
+	return 0;
+
+err_req:
+	kfree(dbgdma);
+err_nodma:
+	return err;
 }
 
 static int spec_fpga_dbg_dma_flush(struct file *file, fl_owner_t id)
 {
-	return -ENODEV;
+	return 0;
 }
 
 static int spec_fpga_dbg_dma_release(struct inode *inode, struct file *file)
 {
-	return -ENODEV;
+	struct spec_fpga_dbg_dma *dbgdma = file->private_data;
+
+	dma_release_channel(dbgdma->dchan);
+	kfree(dbgdma);
+
+	return 0;
 }
 
 static const struct file_operations spec_fpga_dbg_dma_ops = {
