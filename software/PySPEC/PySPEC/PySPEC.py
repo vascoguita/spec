@@ -17,7 +17,7 @@ class PySPEC:
         self.dma = os.path.join(self.debugfs_fpga, "dma")
 
     def dma_start(self):
-        self.dma_file = open(self.dma, "rb")
+        self.dma_file = open(self.dma, "rb", buffering=0)
 
     def dma_stop(self):
         if hasattr(self, "dma_file"):
