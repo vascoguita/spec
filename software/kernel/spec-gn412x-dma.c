@@ -594,6 +594,7 @@ static int gn412x_dma_slave_config(struct dma_chan *chan,
 static int gn412x_dma_terminate_all(struct dma_chan *chan)
 {
 	struct gn412x_dma_device *gn412x_dma;
+	struct gn412x_dma_tx *tx;
 
 	gn412x_dma = to_gn412x_dma_device(chan->device);
 	gn412x_dma_ctrl_abort(gn412x_dma);
@@ -604,6 +605,15 @@ static int gn412x_dma_terminate_all(struct dma_chan *chan)
 		return -EINVAL;
 	}
 
+	tx = to_gn412x_dma_chan(chan)->tx_curr;
+	if (tx->tx.callback_result) {
+		const struct dmaengine_result result = {
+			.result = DMA_TRANS_ABORTED,
+			.residue = 0,
+		};
+
+		tx->tx.callback_result(tx->tx.callback_param, &result);
+	}
 	return 0;
 }
 
@@ -651,12 +661,27 @@ static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 	switch (state) {
 	case GN412X_DMA_STAT_IDLE:
 		dma_cookie_complete(&tx->tx);
-		if (tx->tx.callback)
+		if (tx->tx.callback_result) {
+			const struct dmaengine_result result = {
+				.result = DMA_TRANS_NOERROR,
+				.residue = 0,
+			};
+
+			tx->tx.callback_result(tx->tx.callback_param, &result);
+		} else if (tx->tx.callback) {
 			tx->tx.callback(tx->tx.callback_param);
+		}
 		break;
 	case GN412X_DMA_STAT_ERROR:
-		dev_err(&gn412x_dma->pdev->dev,
-			"DMA transfer failed: error\n");
+		if (tx->tx.callback_result) {
+			const struct dmaengine_result result = {
+				.result = DMA_TRANS_READ_FAILED,
+				.residue = 0,
+			};
+
+			tx->tx.callback_result(tx->tx.callback_param, &result);
+		}
+		dev_err(&gn412x_dma->pdev->dev, "DMA transfer failed: error\n");
 		break;
 	default:
 		dev_err(&gn412x_dma->pdev->dev,
