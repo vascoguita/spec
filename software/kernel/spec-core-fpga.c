@@ -263,7 +263,7 @@ static ssize_t spec_fpga_dbg_dma_read(struct file *file, char __user *buf,
 	if (count == 0)
 		return 0;
 
-	count = min(KMALLOC_MAX_SIZE, count);
+	count = min(KMALLOC_MAX_SIZE / 2, count);
 	data = kmalloc(count, GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
@@ -296,7 +296,7 @@ static ssize_t spec_fpga_dbg_dma_write(struct file *file,
 	if (count == 0)
 		return 0;
 
-	count = max(KMALLOC_MAX_SIZE, count);
+	count = max(KMALLOC_MAX_SIZE / 2, count);
 
 	data = kmalloc(count, GFP_KERNEL);
 	if (!data)
