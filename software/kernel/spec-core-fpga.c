@@ -184,7 +184,7 @@ static int spec_fpga_dbg_dma_transfer(struct spec_fpga_dbg_dma *dbgdma,
 
 	tx = dmaengine_prep_slave_single(dbgdma->dchan,
 					 dbgdma->datadma, count,
-					 DMA_DEV_TO_MEM, 0);
+					 dir, 0);
 	if (!tx) {
 		err = -EINVAL;
 		goto err_prep;
