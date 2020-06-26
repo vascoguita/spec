@@ -39,6 +39,8 @@
 #define GN4124_GPIO_SCL 5
 #define GN4124_GPIO_SDA 4
 
+#define SPEC_DDR_SIZE (256 * 1024 * 1024)
+
 /**
  * @SPEC_FPGA_SELECT_FPGA_FLASH: (default) the FPGA is an SPI master that can
  *                               access the flash (at boot it takes its

@@ -134,25 +134,7 @@ struct spec_fpga_dbg_dma {
 	struct dmaengine_result dma_res;
 	struct completion compl;
 };
-static loff_t spec_fpga_dbg_dma_llseek(struct file *file,
-				       loff_t pos, int whence)
-{
-	switch(whence) {
-	case 0: /* SEEK_SET */
-		break;
 
-	case 1: /* SEEK_CUR */
-		break;
-
-	case 2: /* SEEK_END */
-		break;
-
-	default: /* can't happen */
-		return -EINVAL;
-	}
-
-	return -ENODEV;
-}
 
 struct spec_fmca_dbg_dma_tx_ctxt {
 	struct dmaengine_result dma_res;
@@ -251,6 +233,9 @@ static ssize_t spec_fpga_dbg_dma_read(struct file *file, char __user *buf,
 	if (count == 0)
 		return 0;
 
+	if (*ppos >= SPEC_DDR_SIZE)
+		return -EINVAL;
+
 	count = min(dbgdma->datalen, count);
 	err = spec_fpga_dbg_dma_transfer(file->private_data, DMA_DEV_TO_MEM,
 					 count, *ppos);
@@ -278,6 +263,9 @@ static ssize_t spec_fpga_dbg_dma_write(struct file *file,
 
 	if (count == 0)
 		return 0;
+
+	if (*ppos >= SPEC_DDR_SIZE)
+		return -EINVAL;
 
 	count = min(dbgdma->datalen, count);
 	err = copy_from_user(dbgdma->data, buf, count);
@@ -370,7 +358,7 @@ static int spec_fpga_dbg_dma_release(struct inode *inode, struct file *file)
 
 static const struct file_operations spec_fpga_dbg_dma_ops = {
 	.owner = THIS_MODULE,
-	.llseek = spec_fpga_dbg_dma_llseek,
+	.llseek = default_llseek,
 	.read = spec_fpga_dbg_dma_read,
 	.write = spec_fpga_dbg_dma_write,
 	.open  = spec_fpga_dbg_dma_open,

@@ -60,5 +60,5 @@ class TestDma(object):
         - 1, 2, 3, 4: performing transfers of these sizes led to a failure
         """
         spec.dma_start()
-        spec.dma_write(b"\x00" * dma_size)
+        spec.dma_write(0, b"\x00" * dma_size)
         spec.dma_stop()

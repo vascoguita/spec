@@ -27,19 +27,24 @@ class PySPEC:
             self.dma_file.close()
             del self.dma_file
 
-    def dma_read(self, size):
+    def dma_read(self, offset, size):
         """
         Trigger a *device to memory* DMA transfer
         """
+        self.__dma_seek(offset)
         data = []
         while size - len(data) > 0:
             data += self.dma_file.read(size - len(data))
         return data
 
-    def dma_write(self, data):
+    def dma_write(self, offset, data):
         """
         Trigger a *device to memory* DMA transfer
         """
+        self.__dma_seek(offset)
         start = 0
         while len(data) - start > 0:
             start += self.dma_file.write(data[start:])
+
+    def __dma_seek(self, offset):
+       self.dma_file.seek(offset)
