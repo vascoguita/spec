@@ -128,6 +128,9 @@ static const struct file_operations spec_fpga_dbg_bld_ops = {
 struct spec_fpga_dbg_dma {
 	struct spec_fpga *spec_fpga;
 	struct dma_chan *dchan;
+	size_t datalen;
+	void *data;
+	dma_addr_t datadma;
 	struct dmaengine_result dma_res;
 	struct completion compl;
 };
@@ -167,38 +170,10 @@ static int spec_fpga_dbg_dma_transfer(struct spec_fpga_dbg_dma *dbgdma,
 				      enum dma_transfer_direction dir,
 				      void *data, size_t count, loff_t offset)
 {
-	size_t max_segment_size;
-	unsigned int nr_pages = (count / PAGE_SIZE) + 1;
-	struct page **pages;
-	struct sg_table sgt;
-	int i;
 	int err;
-	int sg_len;
 	struct dma_slave_config sconfig;
 	struct dma_async_tx_descriptor *tx;
 	dma_cookie_t cookie;
-
-	pages = kcalloc(nr_pages, sizeof(struct page *), GFP_KERNEL);
-	if (!pages)
-		return -ENOMEM;
-
-	for (i = 0; i < nr_pages; ++i)
-		pages[i] = virt_to_page(data + PAGE_SIZE * i);
-
-	max_segment_size = dma_get_max_seg_size(dbgdma->dchan->device->dev);
-	max_segment_size &= PAGE_MASK; /* to make alloc_table happy */
-	err = __sg_alloc_table_from_pages(&sgt, pages, nr_pages,
-					  offset_in_page(data), count,
-					  max_segment_size, GFP_KERNEL);
-	if (err)
-		goto err_alloc;
-
-	sg_len = dma_map_sg(dbgdma->spec_fpga->dev.parent,
-			    sgt.sgl, sgt.nents, dir);
-	if (sg_len < 0) {
-		err = sg_len;
-		goto err_map;
-	}
 
 	memset(&sconfig, 0, sizeof(sconfig));
 	sconfig.direction = dir;
@@ -207,8 +182,9 @@ static int spec_fpga_dbg_dma_transfer(struct spec_fpga_dbg_dma *dbgdma,
 	if (err)
 		goto err_cfg;
 
-	tx = dmaengine_prep_slave_sg(dbgdma->dchan, sgt.sgl, sg_len,
-				     DMA_DEV_TO_MEM, 0);
+	tx = dmaengine_prep_slave_single(dbgdma->dchan,
+					 dbgdma->datadma, count,
+					 DMA_DEV_TO_MEM, 0);
 	if (!tx) {
 		err = -EINVAL;
 		goto err_prep;
@@ -245,44 +221,33 @@ static int spec_fpga_dbg_dma_transfer(struct spec_fpga_dbg_dma *dbgdma,
 err_sub:
 err_prep:
 err_cfg:
-	dma_unmap_sg(dbgdma->spec_fpga->dev.parent,
-		     sgt.sgl, sgt.nents, dir);
-err_map:
-	sg_free_table(&sgt);
-err_alloc:
-	kfree(pages);
 	return err;
 }
 
 static ssize_t spec_fpga_dbg_dma_read(struct file *file, char __user *buf,
 				      size_t count, loff_t *ppos)
 {
+	struct spec_fpga_dbg_dma *dbgdma = file->private_data;
 	int err;
-	void *data;
 
 	if (count == 0)
 		return 0;
 
-	count = min(KMALLOC_MAX_SIZE / 2, count);
-	data = kmalloc(count, GFP_KERNEL);
-	if (!data)
-		return -ENOMEM;
+	count = min(dbgdma->datalen, count);
 	err = spec_fpga_dbg_dma_transfer(file->private_data, DMA_DEV_TO_MEM,
-					 data, count, *ppos);
+					 dbgdma->data, count, *ppos);
 	if (err)
 		goto err_trans;
-	err = copy_to_user(data, buf, count);
+	err = copy_to_user(dbgdma->data, buf, count);
 	if (err)
 		goto err_cpy;
 
-	kfree(data);
 	*ppos += count;
 
 	return count;
 
 err_cpy:
 err_trans:
-	kfree(data);
 	return err;
 }
 
@@ -290,33 +255,26 @@ static ssize_t spec_fpga_dbg_dma_write(struct file *file,
 				       const char __user *buf, size_t count,
 				       loff_t *ppos)
 {
+	struct spec_fpga_dbg_dma *dbgdma = file->private_data;
 	int err;
-	void *data;
 
 	if (count == 0)
 		return 0;
 
-	count = max(KMALLOC_MAX_SIZE / 2, count);
-
-	data = kmalloc(count, GFP_KERNEL);
-	if (!data)
-		return -ENOMEM;
-	err = copy_from_user(data, buf, count);
+	count = min(dbgdma->datalen, count);
+	err = copy_from_user(dbgdma->data, buf, count);
 	if (err)
 		goto err_cpy;
-
-	err = spec_fpga_dbg_dma_transfer(file->private_data, DMA_MEM_TO_DEV,
-					 data, count, *ppos);
+	err = spec_fpga_dbg_dma_transfer(dbgdma, DMA_MEM_TO_DEV,
+					 dbgdma->data, count, *ppos);
 	if (err)
 		goto err_trans;
-	kfree(data);
 	*ppos += count;
 
 	return count;
 
 err_trans:
 err_cpy:
-	kfree(data);
 	return err;
 }
 
@@ -332,15 +290,24 @@ static int spec_fpga_dbg_dma_open(struct inode *inode, struct file *file)
 	dma_cap_mask_t dma_mask;
 	int err;
 
-	dbgdma = kzalloc(sizeof(*dbgdma), GFP_KERNEL);
-	if (!dbgdma)
-		return -ENOMEM;
-
 	if (!spec_fpga->dma_pdev) {
 		dev_warn(&spec_fpga->dev,
 			 "Not able to find DMA engine: platform_device missing\n");
-		err = -ENODEV;
-		goto err_nodma;
+		return -ENODEV;
+	}
+
+	dbgdma = kzalloc(sizeof(*dbgdma), GFP_KERNEL);
+	if (!dbgdma)
+		return -ENOMEM;
+	init_completion(&dbgdma->compl);
+	dbgdma->spec_fpga = spec_fpga;
+	dbgdma->datalen = 0x3FFF;
+	dbgdma->data = dma_alloc_coherent(dbgdma->spec_fpga->dev.parent,
+					  dbgdma->datalen, &dbgdma->datadma,
+					  GFP_KERNEL);
+	if (!dbgdma->data) {
+		err = -ENOMEM;
+		goto err_dma_alloc;
 	}
 
 	dma_cap_zero(dma_mask);
@@ -354,14 +321,15 @@ static int spec_fpga_dbg_dma_open(struct inode *inode, struct file *file)
 		err = -EBUSY;
 		goto err_req;
 	}
-	init_completion(&dbgdma->compl);
-	dbgdma->spec_fpga = spec_fpga;
+
 	file->private_data = dbgdma;
 	return 0;
 
 err_req:
+	dma_free_coherent(dbgdma->spec_fpga->dev.parent,
+			  dbgdma->datalen, dbgdma->data, dbgdma->datadma);
+err_dma_alloc:
 	kfree(dbgdma);
-err_nodma:
 	return err;
 }
 
@@ -374,6 +342,8 @@ static int spec_fpga_dbg_dma_release(struct inode *inode, struct file *file)
 {
 	struct spec_fpga_dbg_dma *dbgdma = file->private_data;
 
+	dma_free_coherent(dbgdma->spec_fpga->dev.parent,
+			  dbgdma->datalen, dbgdma->data, dbgdma->datadma);
 	dma_release_channel(dbgdma->dchan);
 	kfree(dbgdma);
 
