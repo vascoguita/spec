@@ -603,7 +603,7 @@ static int gn412x_dma_terminate_all(struct dma_chan *chan)
 	}
 
 	tx = to_gn412x_dma_chan(chan)->tx_curr;
-	if (tx->tx.callback_result) {
+	if (tx && tx->tx.callback_result) {
 		const struct dmaengine_result result = {
 			.result = DMA_TRANS_ABORTED,
 			.residue = 0,
