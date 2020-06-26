@@ -31,4 +31,7 @@ class PySPEC:
         """
         Trigger a *device to memory* DMA transfer
         """
-        return self.dma_file.read(size)
+        data = []
+        while size - len(data) > 0:
+            data += self.dma_file.read(size - len(data))
+        return data
