@@ -174,6 +174,23 @@ static int spec_fpga_dbg_dma_transfer(struct spec_fpga_dbg_dma *dbgdma,
 	struct dma_slave_config sconfig;
 	struct dma_async_tx_descriptor *tx;
 	dma_cookie_t cookie;
+	size_t max_segment;
+	struct sg_table sgt;
+	struct scatterlist *sg;
+	int i;
+
+	max_segment = dma_get_max_seg_size(dbgdma->dchan->device->dev) & PAGE_MASK;
+	err = sg_alloc_table(&sgt, (count / max_segment) + 1, GFP_KERNEL);
+	if (err)
+		goto err_sgt;
+
+	for_each_sg(sgt.sgl, sg, sgt.nents, i) {
+		sg_dma_address(sg) = dbgdma->datadma + (i * max_segment);
+		if (sg_is_last(sg))
+			sg_dma_len(sg) = count % max_segment;
+		else
+			sg_dma_len(sg) = max_segment;
+	}
 
 	memset(&sconfig, 0, sizeof(sconfig));
 	sconfig.direction = dir;
@@ -182,9 +199,8 @@ static int spec_fpga_dbg_dma_transfer(struct spec_fpga_dbg_dma *dbgdma,
 	if (err)
 		goto err_cfg;
 
-	tx = dmaengine_prep_slave_single(dbgdma->dchan,
-					 dbgdma->datadma, count,
-					 dir, 0);
+	tx = dmaengine_prep_slave_sg(dbgdma->dchan, sgt.sgl, sgt.nents,
+				     dir, 0);
 	if (!tx) {
 		err = -EINVAL;
 		goto err_prep;
@@ -221,6 +237,8 @@ static int spec_fpga_dbg_dma_transfer(struct spec_fpga_dbg_dma *dbgdma,
 err_sub:
 err_prep:
 err_cfg:
+	sg_free_table(&sgt);
+err_sgt:
 	return err;
 }
 
