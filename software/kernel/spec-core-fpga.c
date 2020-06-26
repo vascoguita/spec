@@ -168,7 +168,7 @@ static void spec_fmca_dbg_dma_tx_complete(void *arg,
 
 static int spec_fpga_dbg_dma_transfer(struct spec_fpga_dbg_dma *dbgdma,
 				      enum dma_transfer_direction dir,
-				      void *data, size_t count, loff_t offset)
+				      size_t count, loff_t offset)
 {
 	int err;
 	struct dma_slave_config sconfig;
@@ -235,7 +235,7 @@ static ssize_t spec_fpga_dbg_dma_read(struct file *file, char __user *buf,
 
 	count = min(dbgdma->datalen, count);
 	err = spec_fpga_dbg_dma_transfer(file->private_data, DMA_DEV_TO_MEM,
-					 dbgdma->data, count, *ppos);
+					 count, *ppos);
 	if (err)
 		goto err_trans;
 	err = copy_to_user(dbgdma->data, buf, count);
@@ -266,7 +266,7 @@ static ssize_t spec_fpga_dbg_dma_write(struct file *file,
 	if (err)
 		goto err_cpy;
 	err = spec_fpga_dbg_dma_transfer(dbgdma, DMA_MEM_TO_DEV,
-					 dbgdma->data, count, *ppos);
+					 count, *ppos);
 	if (err)
 		goto err_trans;
 	*ppos += count;
