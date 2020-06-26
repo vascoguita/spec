@@ -241,7 +241,7 @@ static ssize_t spec_fpga_dbg_dma_read(struct file *file, char __user *buf,
 					 count, *ppos);
 	if (err)
 		goto err_trans;
-	err = copy_to_user(dbgdma->data, buf, count);
+	err = copy_to_user(buf, dbgdma->data, count);
 	if (err)
 		goto err_cpy;
 
