@@ -9,7 +9,9 @@ from PySPEC import PySPEC
 
 @pytest.fixture(scope="function")
 def spec():
-    return PySPEC(pytest.pci_id)
+    spec_dev = PySPEC(pytest.pci_id)
+    yield spec_dev
+    spec_dev.dma_stop()
 
 def pytest_addoption(parser):
     parser.addoption("--pci-id",
