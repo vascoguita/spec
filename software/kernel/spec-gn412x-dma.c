@@ -458,7 +458,8 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 		if (sg_dma_len(sg) > dma_get_max_seg_size(chan->device->dev)) {
 			dev_err(&chan->dev->device,
 				"Maximum transfer size %d, got %d on transfer %d\n",
-				0x3FFF, sg_dma_len(sg), i);
+				dma_get_max_seg_size(chan->device->dev),
+				sg_dma_len(sg), i);
 			goto err_alloc_pool;
 		}
 		gn412x_dma_tx->sgl_hw[i] = dma_pool_alloc(gn412x_dma->pool,
