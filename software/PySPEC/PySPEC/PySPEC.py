@@ -16,6 +16,9 @@ class PySPEC:
         self.debugfs_fpga = os.path.join(self.debugfs, "spec-0000:{:s}".format(self.pci_id))
         self.dma = os.path.join(self.debugfs_fpga, "dma")
 
+    def __del__(self):
+        self.dma_stop()
+
     def dma_start(self):
         self.dma_file = open(self.dma, "rb", buffering=0)
 
