@@ -319,7 +319,7 @@ static int spec_fpga_dbg_dma_open(struct inode *inode, struct file *file)
 		return -ENOMEM;
 	init_completion(&dbgdma->compl);
 	dbgdma->spec_fpga = spec_fpga;
-	dbgdma->datalen = 0x3FFF;
+	dbgdma->datalen = 4 * 1024 *1024;
 	dbgdma->data = dma_alloc_coherent(dbgdma->spec_fpga->dev.parent,
 					  dbgdma->datalen, &dbgdma->datadma,
 					  GFP_KERNEL);
