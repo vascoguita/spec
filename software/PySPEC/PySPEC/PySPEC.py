@@ -25,6 +25,7 @@ class PySPEC:
     def dma_stop(self):
         if hasattr(self, "dma_file"):
             self.dma_file.close()
+            del self.dma_file
 
     def dma_read(self, size):
         """
