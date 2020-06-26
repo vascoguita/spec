@@ -40,9 +40,13 @@ class TestDma(object):
         - 1, 2, 3, 4: performing transfers of these sizes led to a failure
         """
         spec.dma_start()
-        data = spec.dma_read(dma_size)
-        assert len(data) == dma_size
+        data1 = spec.dma_read(0, dma_size)
+        assert len(data1) == dma_size
+        data2 = spec.dma_read(0, dma_size)
+        assert len(data2) == dma_size
         spec.dma_stop()
+
+        assert data1 == data2
 
     @pytest.mark.parametrize("dma_size",
                              [0, 1, 2, 3] + \
