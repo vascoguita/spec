@@ -66,3 +66,20 @@ class TestDma(object):
         spec.dma_start()
         spec.dma_write(0, b"\x00" * dma_size)
         spec.dma_stop()
+
+
+    @pytest.mark.parametrize("dma_offset", [0x0])
+    @pytest.mark.parametrize("dma_size",
+                             [2**i for i in range(3, 22)])
+    def test_dma(self, spec, dma_offset, dma_size):
+        """
+        Write and read back buffers using DMA.
+        """
+        data = bytes([random.randrange(0, 0xFF, 1) for i in range(dma_size)])
+
+        spec.dma_start()
+        spec.dma_write(dma_offset, data)
+        data_rb = spec.dma_read(dma_offset, dma_size)
+        spec.dma_stop()
+
+        assert data == data_rb
