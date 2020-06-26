@@ -20,7 +20,7 @@ class PySPEC:
         self.dma_stop()
 
     def dma_start(self):
-        self.dma_file = open(self.dma, "rb", buffering=0)
+        self.dma_file = open(self.dma, "rb+", buffering=0)
 
     def dma_stop(self):
         if hasattr(self, "dma_file"):
@@ -35,3 +35,11 @@ class PySPEC:
         while size - len(data) > 0:
             data += self.dma_file.read(size - len(data))
         return data
+
+    def dma_write(self, data):
+        """
+        Trigger a *device to memory* DMA transfer
+        """
+        start = 0
+        while len(data) - start > 0:
+            start += self.dma_file.write(data[start:])

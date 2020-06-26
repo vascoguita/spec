@@ -349,7 +349,6 @@ static int gn412x_dma_alloc_chan_resources(struct dma_chan *dchan)
 	struct gn412x_dma_chan *chan = to_gn412x_dma_chan(dchan);
 
 	memset(&chan->sconfig, 0, sizeof(struct dma_slave_config));
-	chan->sconfig.direction = DMA_DEV_TO_MEM;
 
 	return 0;
 }
@@ -389,8 +388,8 @@ static void gn412x_dma_prep_fixup(struct gn412x_dma_tx_hw *tx_hw,
 }
 
 static void gn412x_dma_prep(struct gn412x_dma_tx_hw *tx_hw,
-			    struct scatterlist *sg,
-			    dma_addr_t start_addr)
+			    struct scatterlist *sg, dma_addr_t start_addr,
+			    enum dma_transfer_direction direction)
 {
 	tx_hw->start_addr = start_addr & 0xFFFFFFFF;
 	tx_hw->dma_addr_l = sg_dma_address(sg);
@@ -401,8 +400,10 @@ static void gn412x_dma_prep(struct gn412x_dma_tx_hw *tx_hw,
 	tx_hw->next_addr_l = 0x00000000;
 	tx_hw->next_addr_h = 0x00000000;
 	tx_hw->attribute = 0x0;
+	if (direction == DMA_MEM_TO_DEV)
+		tx_hw->attribute |= GN412X_DMA_ATTR_DIR_MEM_TO_DEV;
 	if (!sg_is_last(sg))
-		tx_hw->attribute = GN412X_DMA_ATTR_CHAIN;
+		tx_hw->attribute |= GN412X_DMA_ATTR_CHAIN;
 }
 
 static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
@@ -416,12 +417,6 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 	struct scatterlist *sg;
 	dma_addr_t src_addr;
 	int i;
-
-	if (unlikely(direction != DMA_DEV_TO_MEM)) {
-		dev_err(&chan->dev->device,
-			"Support only DEV -> MEM transfers\n");
-		goto err;
-	}
 
 	if (unlikely(sconfig->direction != direction)) {
 		dev_err(&chan->dev->device,
@@ -479,7 +474,8 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 		} else {
 			gn412x_dma_tx->tx.phys = phys;
 		}
-		gn412x_dma_prep(gn412x_dma_tx->sgl_hw[i], sg, src_addr);
+		gn412x_dma_prep(gn412x_dma_tx->sgl_hw[i], sg, src_addr,
+				direction);
 		src_addr += sg_dma_len(sg);
 	}
 
