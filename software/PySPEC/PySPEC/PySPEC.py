@@ -35,7 +35,7 @@ class PySPEC:
         data = []
         while size - len(data) > 0:
             data += self.dma_file.read(size - len(data))
-        return data
+        return bytes(data)
 
     def dma_write(self, offset, data):
         """
@@ -44,7 +44,7 @@ class PySPEC:
         self.__dma_seek(offset)
         start = 0
         while len(data) - start > 0:
-            start += self.dma_file.write(data[start:])
+            start += self.dma_file.write(bytes(data[start:]))
 
     def __dma_seek(self, offset):
        self.dma_file.seek(offset)
