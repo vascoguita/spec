@@ -15,7 +15,6 @@ if locals().get('fetchto', None) is None:
 include_dirs = [
     fetchto + "/gn4124-core/hdl/sim/gn4124_bfm",
     fetchto + "/general-cores/sim/",
-#    fetchto + "/general-cores/modules/wishbone/wb_spi/",
     fetchto + "/ddr3-sp6-core/hdl/sim/",
 ]
 
@@ -26,7 +25,7 @@ files = [
 
 modules = {
     "local" : [
-        "../../top/full",
+        "../../top/dma_test",
     ],
   "git" : [
       "https://ohwr.org/project/wr-cores.git",
@@ -42,4 +41,4 @@ try:
 except:
   pass
 
-ctrls = ["bank3_64b_32b" ]
+ctrls = ["bank3_32b_32b" ]

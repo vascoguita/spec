@@ -31,21 +31,17 @@ module main;
 
    // 125Mhz
    always #4ns clk_125m_pllref <= ~clk_125m_pllref;
-   // 20Mhz
-   always #25ns clk_20m_vcxo <= ~clk_20m_vcxo;
 
-   spec_full
+   spec_dma_test
      #(
+       .g_dma_use_pci_clk (0),
        .g_SIMULATION(1)
        )
    DUT
      (
       .button1_n_i              (rst_n),
-      .clk_20m_vcxo_i           (clk_20m_vcxo),
       .clk_125m_pllref_p_i      (clk_125m_pllref),
       .clk_125m_pllref_n_i      (~clk_125m_pllref),
-      .clk_125m_gtp_p_i         (clk_125m_pllref),
-      .clk_125m_gtp_n_i         (~clk_125m_pllref),
       .gn_rst_n_i                (i_gn4124.rst_n),
       .gn_p2l_clk_n_i            (i_gn4124.p2l_clk_n),
       .gn_p2l_clk_p_i            (i_gn4124.p2l_clk_p),
@@ -117,6 +113,7 @@ module main;
    typedef enum bit {RD,WR} dma_dir_t;
 
    task dma_xfer(input CBusAccessor acc,
+                 input uint64_t host_addr,
                  input uint32_t start_addr,
                  input uint32_t length,
                  input dma_dir_t dma_dir,
@@ -130,8 +127,8 @@ module main;
 
       // Setup DMA addresses
       acc.write(`DMA_BASE + 'h08, start_addr);             // dma start addr
-      acc.write(`DMA_BASE + 'h0C, 'h20000000);             // host addr low
-      acc.write(`DMA_BASE + 'h10, 'h00000000);             // host addr high
+      acc.write(`DMA_BASE + 'h0C, host_addr & 'hffffffff); // host addr low
+      acc.write(`DMA_BASE + 'h10, host_addr >> 32);        // host addr high
       acc.write(`DMA_BASE + 'h14, length);                 // length in bytes
       acc.write(`DMA_BASE + 'h18, 'h00000000);             // next low
       acc.write(`DMA_BASE + 'h1C, 'h00000000);             // next high
@@ -171,13 +168,39 @@ module main;
 
    typedef virtual IGN4124PCIMaster vIGN4124PCIMaster;
 
+   task dma_read_pattern(vIGN4124PCIMaster i_gn4124);
+
+      int i;
+
+      uint64_t val, expected;
+
+      CBusAccessor acc;
+      acc = i_gn4124.get_accessor();
+      acc.set_default_xfer_size(4);
+
+      // Read pattern from device memory
+      dma_xfer(acc, 'h20000000, 'h0, 4 * 'h20, RD);
+      // Verify pattern
+      for (i = 'h00; i < 'h20; i++)
+        begin
+           expected  = i+1;
+           expected |= (i+1) << 8;
+           expected |= (i+1) << 16;
+           expected |= (i+1) << 24;
+           i_gn4124.host_mem_read(i*4, val);
+           if (val != expected)
+             $fatal(1, "<%t> READ-BACK ERROR at host address 0x%x: expected 0x%8x, got 0x%8x",
+                    $realtime, i*4, expected, val);
+        end
+   endtask // dma_read_pattern
+
    task dma_test(vIGN4124PCIMaster i_gn4124,
                  input uint32_t word_count);
 
       int i;
 
-      uint32_t word_addr;
-      uint64_t val, expected;
+      uint32_t word_addr, word_remain, word_ptr;
+      uint64_t val, expected, host_addr;
       uint64_t data_queue[$];
 
       CBusAccessor acc;
@@ -194,14 +217,33 @@ module main;
            data_queue.push_back(val);
         end
       // Write data to device memory
-      dma_xfer(acc, word_addr * 4, word_count * 4, WR);
+      word_ptr = word_addr;
+      word_remain = word_count;
+      host_addr = 'h20000000;
+      while (word_remain != 0)
+        begin
+           if (word_remain > 1024)
+             begin
+                dma_xfer(acc, host_addr, word_ptr * 4, 4096, WR);
+                word_remain -= 1024;
+                word_ptr    += 1024;
+                host_addr   += 4096;
+             end
+           else
+             begin
+                dma_xfer(acc, host_addr, word_ptr * 4, word_remain * 4, WR);
+                word_ptr += word_remain;
+                word_remain = 0;
+                host_addr = 'h20000000;
+             end
+        end
       // Clear host memory
       for (i = 0; i < word_count; i++)
         begin
            i_gn4124.host_mem_write(i*4, 0);
         end
       // Read data from device memory
-      dma_xfer(acc, word_addr * 4, word_count * 4, RD);
+      dma_xfer(acc, host_addr, word_addr * 4, word_count * 4, RD);
       // Compare against written data
       for (i = 0; i < word_count; i++)
         begin
@@ -229,9 +271,15 @@ module main;
       $display ("Simulation START");
       $display();
 
-      #2us;
+      #10us;
 
-      dma_test(vi_gn4124, 'h20);
+      dma_read_pattern(vi_gn4124);
+
+      for (i = 2; i < 13; i++)
+        begin
+           #1us;
+           dma_test(vi_gn4124, 2**i);
+        end
 
       $display();
       $display ("Simulation PASSED");
@@ -240,18 +288,5 @@ module main;
       $finish;
 
    end
-
-   initial begin
-      // Silence Xilinx unisim DSP48A1 warnings about invalid OPMODE
-      force DUT.inst_spec_base.gen_wr.cmp_xwrc_board_spec.cmp_board_common.cmp_xwr_core.
-        WRPC.LM32_CORE.gen_profile_medium_icache.U_Wrapped_LM32.cpu.
-          multiplier.D1.OPMODE_dly = 0;
-      force DUT.inst_spec_base.gen_wr.cmp_xwrc_board_spec.cmp_board_common.cmp_xwr_core.
-        WRPC.LM32_CORE.gen_profile_medium_icache.U_Wrapped_LM32.cpu.
-          multiplier.D2.OPMODE_dly = 0;
-      force DUT.inst_spec_base.gen_wr.cmp_xwrc_board_spec.cmp_board_common.cmp_xwr_core.
-        WRPC.LM32_CORE.gen_profile_medium_icache.U_Wrapped_LM32.cpu.
-          multiplier.D3.OPMODE_dly = 0;
-   end // initial begin
 
 endmodule // main
