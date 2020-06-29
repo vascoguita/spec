@@ -9,6 +9,7 @@ import os
 
 class PySPEC:
     DDR_SIZE = 256 * 1024 * 1024
+    DDR_ALIGN = 4
 
     def __init__(self, pci_id):
         self.pci_id = pci_id
