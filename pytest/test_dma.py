@@ -65,6 +65,7 @@ class TestDma(object):
         """
         spec.dma_start()
         spec.dma_write(0, b"\x00" * dma_size)
+        assert count == dma_size
         spec.dma_stop()
 
 
