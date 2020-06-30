@@ -107,7 +107,7 @@ class TestDma(object):
         """
         spec.dma_start()
         with pytest.raises(OSError) as error:
-            spec.dma_read(ddr_offset + unaligned, (16 + unaligned))
+            spec.dma_read(ddr_offset, (16 + unaligned))
         spec.dma_stop()
 
     @pytest.mark.parametrize("ddr_offset",
@@ -119,7 +119,7 @@ class TestDma(object):
         """
         spec.dma_start()
         with pytest.raises(OSError) as error:
-            spec.dma_write(ddr_offset + unaligned, b"\x00" * (16 + unaligned))
+            spec.dma_write(ddr_offset, b"\x00" * (16 + unaligned))
         spec.dma_stop()
 
     @pytest.mark.parametrize("split", [2**i for i in range(3, 14)])
