@@ -48,11 +48,11 @@ class PySPEC:
         >>> spec_dma.close()
         """
         spec_dma = self.PySPECDMA(self)
-        spec_dma.open()
+        spec_dma.request()
         try:
             yield spec_dma
         finally:
-            spec_dma.close()
+            spec_dma.release()
 
     class PySPECDMA:
         """
@@ -81,7 +81,7 @@ class PySPEC:
             """
             self.spec = spec
 
-        def open(self):
+        def request(self):
             """
             Open a DMA file descriptor
 
@@ -89,7 +89,7 @@ class PySPEC:
             """
             self.dma_file = open(os.path.join(self.spec.debugfs_fpga, "dma"),
                                  "rb+", buffering=0)
-        def close(self):
+        def release(self):
             """
             Close the DMA file descriptor
 
