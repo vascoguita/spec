@@ -72,6 +72,31 @@ class TestDma(object):
         spec.dma_stop()
 
 
+    @pytest.mark.parametrize("buffer_size", [1, 2, 3])
+    def test_dma_invalid_size_read(self, spec, buffer_size):
+        """
+        The HDL engine masks the 2 least significant bits. For small transfers
+        this translates into a zero length transfer which is not supported.
+        Also 0 is an invalid size, but read/write returns immediatly because
+        there is nothing to transfer.
+        """
+        spec.dma_start()
+        with pytest.raises(OSError) as error:
+            spec.dma_read(0, buffer_size)
+        spec.dma_stop()
+
+    @pytest.mark.parametrize("buffer_size", [1, 2, 3])
+    def test_dma_invalid_size_write(self, spec, buffer_size):
+        """
+        The HDL engine masks the 2 least significant bits. For small transfers
+        this translates into a zero length transfer which is not supported.
+        """
+        spec.dma_start()
+        with pytest.raises(OSError) as error:
+            spec.dma_write(0, b"\x00" * buffer_size)
+        spec.dma_stop()
+
+
     @pytest.mark.parametrize("dma_offset", [0x0])
     @pytest.mark.parametrize("dma_size",
                              [2**i for i in range(3, 22)])
