@@ -231,3 +231,9 @@ attributes.  Here we focus only on those.
 
 ``<pci-id>/spec-<pci-id>/build_info`` [R]
   It shows the FPGA configuration synthesis information
+
+``<pci-id>/spec-<pci-id>/dma`` [RW]
+  It exports DMA capabilities to user-space. The user can ``open(2)``
+  and ``close(2)`` to request and release a DMA engine channel. Then,
+  the user can use ``lseek(2)`` to set the offset in the DDR, and
+  ``read(2)``/``write(2)`` to start the DMA transfer.
