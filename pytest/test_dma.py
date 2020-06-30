@@ -4,7 +4,10 @@ SPDX-FileCopyrightText: 2020 CERN
 """
 import pytest
 import random
+import math
 from PySPEC import PySPEC
+
+random_repetitions = 0
 
 class TestDma(object):
     def test_acquisition_release(self, spec):
@@ -119,18 +122,92 @@ class TestDma(object):
             spec.dma_write(ddr_offset + unaligned, b"\x00" * (16 + unaligned))
         spec.dma_stop()
 
-    @pytest.mark.parametrize("dma_offset", [0x0])
-    @pytest.mark.parametrize("dma_size",
-                             [2**i for i in range(3, 22)])
-    def test_dma(self, spec, dma_offset, dma_size):
+    @pytest.mark.parametrize("split", [2**i for i in range(3, 14)])
+    @pytest.mark.parametrize("ddr_offset", [0x0, ])
+    @pytest.mark.parametrize("buffer_size", [2**14, ])
+    def test_dma_split_read(self, spec, buffer_size, ddr_offset, split, capsys):
         """
-        Write and read back buffers using DMA.
+        Write and read back buffers using DMA. We test different combinations
+        of offset and size. Here we atrificially split the **read** in small
+        pieces.
+
+        In the past we had problems with transfers greater than 4KiB. Be sure
+        that we can perform transfers (read) of "any" size.
         """
-        data = bytes([random.randrange(0, 0xFF, 1) for i in range(dma_size)])
+        data = bytes([random.randrange(0, 0xFF, 1) for i in range(buffer_size)])
+        spec.dma_start()
+        spec.dma_write(ddr_offset, data)
+        fail = False
+        for offset in range(0, buffer_size, split):
+            data_rb = spec.dma_read(ddr_offset + offset, split)
+            assert data[offset:min(offset+split, buffer_size)] == data_rb, \
+              "offset: {:d}".format(offset)
+        spec.dma_stop()
+
+        assert fail == False
+
+    @pytest.mark.parametrize("split", [2**i for i in range(3, 14)])
+    @pytest.mark.parametrize("ddr_offset", [0x0, ])
+    @pytest.mark.parametrize("buffer_size", [2**14, ])
+    def test_dma_split_write(self, spec, buffer_size, ddr_offset, split):
+        """
+        Write and read back buffers using DMA. We test different combinations
+        of offset and size. Here we atrificially split the **write** in small
+        pieces.
+
+        In the past we had problems with transfers greater than 4KiB. Be sure
+        that we can perform transfers (write) of "any" size.
+        """
+        data = bytes([random.randrange(0, 0xFF, 1) for i in range(buffer_size)])
+        spec.dma_start()
+        for offset in range(0, buffer_size, split):
+            spec.dma_write(offset, data[offset:min(offset+split, buffer_size)])
+        data_rb = spec.dma_read(0x0, buffer_size)
+        assert data == data_rb, "offset: {:d}".format(offset)
+        spec.dma_stop()
+
+
+    @pytest.mark.parametrize("split", [2**i for i in range(3, 14)])
+    @pytest.mark.parametrize("buffer_size", [2**14, ])
+    def test_dma_split(self, spec, buffer_size, split):
+        """
+        Write and read back buffers using DMA. We test different combinations
+        of offset and size. Here we atrificially split transfers in small
+        pieces.
+
+        In the past we had problems with transfers greater than 4KiB. Be sure
+        that we can perform transfers of "any" size.
+        """
+        data = bytes([random.randrange(0, 0xFF, 1) for i in range(buffer_size)])
+        spec.dma_start()
+        for offset in range(0, buffer_size, split):
+            spec.dma_write(offset, data[offset:min(offset+split, buffer_size)])
+        for offset in range(0, buffer_size, split):
+            data_rb = spec.dma_read(offset, split)
+            assert data[offset:min(offset+split, buffer_size)] == data_rb
+        spec.dma_stop()
+
+    @pytest.mark.parametrize("ddr_offset",
+                             [0x0] + \
+                             [2**i for i in range(int(math.log2(PySPEC.DDR_ALIGN)), int(math.log2(PySPEC.DDR_SIZE)))] + \
+                             [random.randrange(0, PySPEC.DDR_SIZE, PySPEC.DDR_ALIGN) for x in range(random_repetitions)])
+    @pytest.mark.parametrize("buffer_size",
+                             [2**i for i in range(int(math.log2(PySPEC.DDR_ALIGN)) + 1, 22)] + \
+                             [random.randrange(PySPEC.DDR_ALIGN * 2, 4096, PySPEC.DDR_ALIGN) for x in range(random_repetitions)])
+    def test_dma(self, spec, ddr_offset, buffer_size):
+        """
+        Write and read back buffers using DMA. We test different combinations
+        of offset and size. Here we try to perform transfers as large as
+        possible (short scatterlist)
+        """
+        if ddr_offset + buffer_size >= PySPEC.DDR_SIZE:
+            pytest.skip("DDR Overflow!")
+
+        data = bytes([random.randrange(0, 0xFF, 1) for i in range(buffer_size)])
 
         spec.dma_start()
-        spec.dma_write(dma_offset, data)
-        data_rb = spec.dma_read(dma_offset, dma_size)
+        spec.dma_write(ddr_offset, data)
+        data_rb = spec.dma_read(ddr_offset, buffer_size)
         spec.dma_stop()
 
         assert data == data_rb
