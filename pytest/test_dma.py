@@ -24,6 +24,21 @@ class TestDma(object):
             spec_c.dma_start()
         spec.dma_stop()
 
+    def test_dma_no_buffer(self, spec):
+        """
+        The DMA engine should not return an error on a 0 length DMA
+        transfer. Instead, it returns 0 byte transfered.
+        """
+        spec.dma_start()
+        data = spec.dma_read(0, 0)
+        spec.dma_stop()
+        assert len(data) == 0
+
+        spec.dma_start()
+        count = spec.dma_write(0, b"")
+        spec.dma_stop()
+        assert count == 0
+
     @pytest.mark.parametrize("buffer_size",
                              [2**i for i in range(3, 22)])
     def test_dma_read(self, spec, buffer_size):
