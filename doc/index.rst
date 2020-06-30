@@ -27,6 +27,7 @@ You can clone the GIT project with the following command::
 
    hdl-spec-base
    sw-driver
+   sw-python
 
 .. _`Open HardWare Repository`: https://ohwr.org/
 .. _`SPEC project`: https://ohwr.org/project/spec
