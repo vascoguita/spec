@@ -144,6 +144,7 @@ enum gn412x_dma_state {
 };
 #define GN412X_DMA_STAT_ACK BIT(2)
 
+#define GN412X_DMA_DDR_ALIGN 4
 
 /**
  * Transfer descriptor an hardware transfer
@@ -457,6 +458,12 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 				sg_dma_len(sg), i);
 			goto err_alloc_pool;
 		}
+		if (sg_dma_len(sg) & (GN412X_DMA_DDR_ALIGN - 1)) {
+			dev_err(&chan->dev->device,
+				"Transfer size must be aligne to %d Bytes, got %d Bytes\n",
+				GN412X_DMA_DDR_ALIGN, sg_dma_len(sg));
+			goto err_alloc_pool;
+		}
 		gn412x_dma_tx->sgl_hw[i] = dma_pool_alloc(gn412x_dma->pool,
 							  GFP_DMA,
 							  &phys);
@@ -584,6 +591,9 @@ static int gn412x_dma_slave_config(struct dma_chan *chan,
 	memcpy(&gn412x_dma_chan->sconfig, sconfig,
 	       sizeof(struct dma_slave_config));
 	spin_unlock_irqrestore(&gn412x_dma_chan->lock, flags);
+
+	if (gn412x_dma_chan->sconfig.src_addr & (GN412X_DMA_DDR_ALIGN - 1))
+		return -EINVAL;
 
 	return 0;
 }
