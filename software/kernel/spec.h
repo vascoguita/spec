@@ -39,6 +39,8 @@
 #define GN4124_GPIO_SCL 5
 #define GN4124_GPIO_SDA 4
 
+#define SPEC_DDR_SIZE (256 * 1024 * 1024)
+
 /**
  * @SPEC_FPGA_SELECT_FPGA_FLASH: (default) the FPGA is an SPI master that can
  *                               access the flash (at boot it takes its
@@ -125,6 +127,8 @@ struct spec_fpga {
 	struct debugfs_regset32 dbg_csr_reg;
 #define SPEC_DBG_BLD_INFO_NAME "build_info"
 	struct dentry *dbg_bld;
+#define SPEC_DBG_DMA_NAME "dma"
+	struct dentry *dbg_dma;
 };
 
 /**
