@@ -26,8 +26,8 @@ class TestDma(object):
 
     def test_dma_no_buffer(self, spec):
         """
-        The DMA engine should not return an error on a 0 length DMA
-        transfer. Instead, it returns 0 byte transfered.
+        The read/write will return immediatelly if asked to perform
+        0-length transfer.
         """
         spec.dma_start()
         data = spec.dma_read(0, 0)

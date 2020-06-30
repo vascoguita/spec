@@ -230,9 +230,6 @@ static ssize_t spec_fpga_dbg_dma_read(struct file *file, char __user *buf,
 	struct spec_fpga_dbg_dma *dbgdma = file->private_data;
 	int err;
 
-	if (count == 0)
-		return 0;
-
 	if (*ppos >= SPEC_DDR_SIZE)
 		return -EINVAL;
 
@@ -260,9 +257,6 @@ static ssize_t spec_fpga_dbg_dma_write(struct file *file,
 {
 	struct spec_fpga_dbg_dma *dbgdma = file->private_data;
 	int err;
-
-	if (count == 0)
-		return 0;
 
 	if (*ppos >= SPEC_DDR_SIZE)
 		return -EINVAL;
