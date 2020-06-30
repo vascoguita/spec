@@ -129,13 +129,10 @@ class TestDma(object):
         data = bytes([random.randrange(0, 0xFF, 1) for i in range(buffer_size)])
         with spec.dma() as dma:
             dma.write(ddr_offset, data)
-            fail = False
+            data_rb = b""
             for offset in range(0, buffer_size, split):
-                data_rb = dma.read(ddr_offset + offset, split)
-                assert data[offset:min(offset+split, buffer_size)] == data_rb, \
-                  "offset: {:d}".format(offset)
-
-        assert fail == False
+                data_rb += dma.read(ddr_offset + offset, split)
+            assert data == data_rb
 
     @pytest.mark.parametrize("split", [2**i for i in range(3, 14)])
     @pytest.mark.parametrize("ddr_offset", [0x0, ])
@@ -154,7 +151,7 @@ class TestDma(object):
             for offset in range(0, buffer_size, split):
                 dma.write(offset, data[offset:min(offset+split, buffer_size)])
             data_rb = dma.read(0x0, buffer_size)
-            assert data == data_rb, "offset: {:d}".format(offset)
+            assert data == data_rb
 
     @pytest.mark.parametrize("split", [2**i for i in range(3, 14)])
     @pytest.mark.parametrize("buffer_size", [2**14, ])
