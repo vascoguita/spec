@@ -34,7 +34,7 @@ GN4124 GPIO
 
 GN4124 FCL
   This driver provides support for the GN4124 FCL (FPGA Configuration Loader).
-  It uses the `FPGA manager interface`_ to program the FPGA at runtime.
+  It uses the `FPGA manager interface`_ to program the FPGA at run-time.
 
 If the SPEC based application is using the :ref:`SPEC
 base<spec_hdl_spec_base>` component then it can profit from the
@@ -220,7 +220,7 @@ attributes.  Here we focus only on those.
   Miscellaneous information about the card status: IRQ mapping.
 
 ``<pci-id>/fpga_firmware`` [W]
-  It configure the FPGA with a bitstream which name is provided as input.
+  It configures the FPGA with a bitstream which name is provided as input.
   Remember that firmwares are installed in ``/lib/firmware`` and alternatively
   you can provide your own path by setting it in
   ``/sys/module/firmware_class/parameters/path``.
