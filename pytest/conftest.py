@@ -11,7 +11,6 @@ from PySPEC import PySPEC
 def spec():
     spec_dev = PySPEC(pytest.pci_id)
     yield spec_dev
-    spec_dev.dma_stop()
 
 def pytest_addoption(parser):
     parser.addoption("--pci-id",
