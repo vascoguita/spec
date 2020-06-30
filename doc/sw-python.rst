@@ -7,7 +7,5 @@
 SPEC Python: PySPEC
 ===================
 
-
-
 .. autoclass:: PySPEC.PySPEC
    :members:
