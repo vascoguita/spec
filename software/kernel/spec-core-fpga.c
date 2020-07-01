@@ -18,6 +18,7 @@
 #include <linux/delay.h>
 #include <linux/completion.h>
 #include <linux/jiffies.h>
+#include <linux/uaccess.h>
 
 #include "linux/printk.h"
 #include "spec.h"
