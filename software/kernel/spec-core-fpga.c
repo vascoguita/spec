@@ -166,8 +166,10 @@ static int spec_fpga_dbg_dma_transfer(struct spec_fpga_dbg_dma *dbgdma,
 		"arg: {dir: %d, size: %ld, offset: 0x%08llx}\n",
 		dir, count, offset);
 
-	max_segment = dma_get_max_seg_size(dbgdma->dchan->device->dev) & PAGE_MASK;
-	err = sg_alloc_table(&sgt, (count / max_segment) + 1, GFP_KERNEL);
+	max_segment = dma_get_max_seg_size(dbgdma->dchan->device->dev);
+	err = sg_alloc_table(&sgt,
+			     (count / max_segment) + !!(count % max_segment),
+			     GFP_KERNEL);
 	if (err)
 		goto err_sgt;
 
