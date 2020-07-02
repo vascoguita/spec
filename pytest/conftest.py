@@ -15,6 +15,13 @@ def spec():
 def pytest_addoption(parser):
     parser.addoption("--pci-id",
                      required=True, help="SPEC PCI Identifier")
+    parser.addoption("--bitstream",
+                     required=True, help="SPEC bitstream to be tested")
 
 def pytest_configure(config):
     pytest.pci_id = config.getoption("--pci-id")
+    pytest.cfg_bitstream = config.getoption("--bitstream")
+
+    spec = PySPEC(pytest.pci_id)
+    spec.program_fpga(pytest.cfg_bitstream)
+    del spec
