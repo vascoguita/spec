@@ -206,3 +206,20 @@ class TestDma(object):
             dma.write(0, data)
             for i in range(1000000):
                 assert data == dma.read(0, len(data))
+
+    def test_dma_reg_word(self, spec):
+        """
+        Regression test.
+        It happend that a 4Bytes transfer was triggering a DMA error
+        and in some cases it was irremediably corrupting the gennum chip
+        """
+        data = b"\x01\x23\x45\x67\x89\xab\xcd\xef"
+        with spec.dma() as dma:
+            dma.write(0, data)
+            for i in range(1000000):
+                try:
+                    data_rb = dma.read(0, 4)
+                except OSError as error:
+                    assert data == dma.read(0, 8)
+                finally:
+                    assert data[0:4] == data_rb
