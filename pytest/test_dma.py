@@ -193,3 +193,16 @@ class TestDma(object):
             dma.write(ddr_offset, data)
             data_rb = dma.read(ddr_offset, buffer_size)
             assert data == data_rb
+
+    def test_dma_reg_zero(self, spec):
+        """
+        Regression test.
+        It happend that after 256Bytes the received data is just
+        0x00. Other times it happend at different sizes but always
+        among the first power of two values
+        """
+        data = bytes([random.randrange(0, 0xFF, 1) for i in range(1024)])
+        with spec.dma() as dma:
+            dma.write(0, data)
+            for i in range(1000000):
+                assert data == dma.read(0, len(data))
