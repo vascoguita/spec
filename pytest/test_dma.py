@@ -211,15 +211,16 @@ class TestDma(object):
         """
         Regression test.
         It happend that a 4Bytes transfer was triggering a DMA error
-        and in some cases it was irremediably corrupting the gennum chip
+        and in some cases it was irremediably corrupting the gennum chip.
+        This is most likely to happen once after programming the FPGA, and
+        it may take a long time before it happens again.
         """
-        data = b"\x01\x23\x45\x67\x89\xab\xcd\xef"
+        spec.program_fpga(pytest.cfg_bitstream)
         with spec.dma() as dma:
+            data = b"0123456789abcdefghilmnopqrstuvwx"
             dma.write(0, data)
-            for i in range(1000000):
+            for i in range(10000000):
                 try:
-                    data_rb = dma.read(0, 4)
+                    assert data[0:4] == dma.read(0, 4)
                 except OSError as error:
-                    assert data == dma.read(0, 8)
-                finally:
-                    assert data[0:4] == data_rb
+                    assert False, "Failed after {:d} transfers".format(i)
