@@ -24,6 +24,22 @@ class PySPEC:
         self.debugfs =  "/sys/kernel/debug/0000:{:s}".format(self.pci_id)
         self.debugfs_fpga = os.path.join(self.debugfs, "spec-0000:{:s}".format(self.pci_id))
 
+    def program_fpga(self, bitstream):
+        """
+        Program the FPGA with the given bitstream
+
+        :var path: path to bitstream
+        :raise OSError: on failure
+        """
+        with open("/sys/module/firmware_class/parameters/path", "r") as f:
+            prev = f.read()
+        with open("/sys/module/firmware_class/parameters/path", "w") as f:
+            f.write(os.path.dirname(bitstream))
+        with open(os.path.join(self.debugfs, "fpga_firmware"), "w") as f:
+            f.write(os.path.basename(bitstream))
+        with open("/sys/module/firmware_class/parameters/path", "w") as f:
+            f.write(os.path.dirname(prev))
+
     @contextmanager
     def dma(self):
         """
