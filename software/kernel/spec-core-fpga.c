@@ -166,7 +166,16 @@ static int spec_fpga_dbg_dma_transfer(struct spec_fpga_dbg_dma *dbgdma,
 		"arg: {dir: %d, size: %ld, offset: 0x%08llx}\n",
 		dir, count, offset);
 
-	max_segment = dma_get_max_seg_size(dbgdma->dchan->device->dev);
+	/*
+	 * Compensate HDL limitation.
+	 * The gennum core has no DMA size limits for reading. Unfortunatelly,
+	 * the implementation is not symmetric and on write the limit is
+	 * 4096 Bytes
+	 */
+	if (dir == DMA_DEV_TO_MEM)
+		max_segment = dma_get_max_seg_size(dbgdma->dchan->device->dev);
+	else
+		max_segment = 4096;
 	err = sg_alloc_table(&sgt,
 			     (count / max_segment) + !!(count % max_segment),
 			     GFP_KERNEL);

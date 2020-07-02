@@ -145,6 +145,9 @@ enum gn412x_dma_state {
 #define GN412X_DMA_STAT_ACK BIT(2)
 
 #define GN412X_DMA_DDR_ALIGN 4
+#define GN412X_DMA_DDR_SIZE (256 * 1024 * 1024)
+#define GN412X_DMA_MAX_SEG_R GN412X_DMA_DDR_SIZE
+#define GN412X_DMA_MAX_SEG_W 0x1000
 
 /**
  * Transfer descriptor an hardware transfer
@@ -451,9 +454,15 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 	for_each_sg(sgl, sg, sg_len, i) {
 		dma_addr_t phys;
 
-		if (sg_dma_len(sg) > dma_get_max_seg_size(chan->device->dev)) {
+		if (direction == DMA_MEM_TO_DEV &&
+		    sg_dma_len(sg) >= GN412X_DMA_MAX_SEG_W) {
 			dev_err(&chan->dev->device,
-				"Maximum transfer size %d, got %d on transfer %d\n",
+				"Maximum write transfer size %d, got %d on transfer %d\n",
+			        GN412X_DMA_MAX_SEG_W, sg_dma_len(sg), i);
+			goto err_alloc_pool;
+		} else if (sg_dma_len(sg) > dma_get_max_seg_size(chan->device->dev)) {
+			dev_err(&chan->dev->device,
+				"Maximum read transfer size %d, got %d on transfer %d\n",
 				dma_get_max_seg_size(chan->device->dev),
 				sg_dma_len(sg), i);
 			goto err_alloc_pool;
@@ -802,7 +811,7 @@ static int gn412x_dma_engine_init(struct gn412x_dma_device *gn412x_dma,
 	tasklet_init(&gn412x_dma->chan.task, gn412x_dma_start_task,
 		     (unsigned long)&gn412x_dma->chan);
 
-	dma_set_max_seg_size(dma->dev, 0x7FFF);
+	dma_set_max_seg_size(dma->dev, GN412X_DMA_DDR_SIZE);
 
 	gn412x_dma->pool = dma_pool_create(dev_name(dma->dev), dma->dev,
 					   sizeof(struct gn412x_dma_tx_hw),
