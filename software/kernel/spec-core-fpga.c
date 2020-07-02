@@ -175,10 +175,13 @@ static int spec_fpga_dbg_dma_transfer(struct spec_fpga_dbg_dma *dbgdma,
 
 	for_each_sg(sgt.sgl, sg, sgt.nents, i) {
 		sg_dma_address(sg) = dbgdma->datadma + (i * max_segment);
-		if (sg_is_last(sg))
-			sg_dma_len(sg) = count % max_segment;
-		else
-			sg_dma_len(sg) = max_segment;
+		sg_dma_len(sg) = max_segment;
+		if (sg_is_last(sg)) {
+			size_t len = count % max_segment;
+
+			if (len)
+				sg_dma_len(sg) = len;
+		}
 	}
 
 	memset(&sconfig, 0, sizeof(sconfig));
