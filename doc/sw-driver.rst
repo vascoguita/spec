@@ -237,3 +237,56 @@ attributes.  Here we focus only on those.
   and ``close(2)`` to request and release a DMA engine channel. Then,
   the user can use ``lseek(2)`` to set the offset in the DDR, and
   ``read(2)``/``write(2)`` to start the DMA transfer.
+
+DMA
+---
+
+On SPEC-Based designs the DMA engine is implemented in HDL. This means
+that you can't perform a DMA transfer without a *spec-base* device
+on the FPGA.
+
+The SPEC driver(s) implements the dmaengine API for the HDL DMA
+engine. To request a dmaengine channel the user must provide a filter
+function. The SPEC driver assigns to the application driver a
+IORESOURCE_DMA which value is ``dma_device->dev_id << 16 |
+channel_number``. Therefore, the user can use the following filter
+function.::
+
+  static bool filter_function(struct dma_chan *dchan, void *arg)
+  {
+          struct dma_device *ddev = dchan->device;
+          int dev_id = (*((int *)arg) >> 16) & 0xFFFF;
+          int chan_id = *((int *)arg) & 0xFFFF;
+
+          return ddev->dev_id == dev_id && dchan->chan_id == chan_id;
+  }
+
+  void function(void)
+  {
+          struct resource *r;
+          int dma_dev_id;
+          dma_cap_mask_t dma_mask;
+
+          /* ... */
+
+          r = platform_get_resource(pdev, IORESOURCE_DMA, TDC_DMA);
+          dma_dev_id = r->start;
+
+          dma_cap_zero(dma_mask);
+          dma_cap_set(DMA_SLAVE, dma_mask);
+          dma_cap_set(DMA_PRIVATE, dma_mask);
+          dchan = dma_request_channel(dma_mask, filter_function,
+	                              dma_dev_id);
+
+          /* ... */
+  }
+
+You can get the maximum transfer size by calling ``dma_get_max_seg_size()``.::
+
+  dma_get_max_seg_size(dchan->device->dev);
+
+.. warning::
+
+   The HDL DMA engine implementation does not support very well
+   ``DMA_MEM_TO_DEV`` transfers. To overcome some bugs users must
+   split their transfers in 4KiB chunks.
