@@ -5,6 +5,8 @@ SPDX-FileCopyrightText: 2020 CERN
 import pytest
 import random
 import math
+import os
+import re
 from PySPEC import PySPEC
 
 random_repetitions = 0
@@ -224,3 +226,43 @@ class TestDma(object):
                     assert data[0:4] == dma.read(0, 4)
                 except OSError as error:
                     assert False, "Failed after {:d} transfers".format(i)
+
+    @pytest.mark.parametrize("dma_alloc_size",
+                             [2**20 * x for x in range(1, 5)])
+    def test_dma_throughput_read(self, spec, dma_alloc_size):
+        """
+        It roughly measure read throughput by using the kernel
+        tracer. It does a simple avarage of 100 acquisitions.
+        A safe expectation today is 230MBps
+        """
+        tracing_path = "/sys/kernel/debug/tracing"
+        with open(os.path.join(tracing_path, "current_tracer"), "w") as f:
+            f.write("function")
+        with open(os.path.join(tracing_path, "set_ftrace_filter"), "w") as f:
+            f.write("gn412x_dma_irq_handler\ngn412x_dma_start_task")
+        with open(os.path.join(tracing_path, "trace"), "w") as f:
+            f.write("")
+
+        diff = []
+        for i in range(100):
+            with open(os.path.join(tracing_path, "trace"), "w") as f:
+                f.write("")
+            with spec.dma(dma_alloc_size) as dma:
+                data = dma.read(0, dma_alloc_size)
+                assert len(data) == dma_alloc_size
+            with open(os.path.join(tracing_path, "trace"), "r") as f:
+                trace = f.read()
+
+            start = re.search(r"([0-9]+\.[0-9]{6}): gn412x_dma_start_task", trace, re.MULTILINE)
+            assert start is not None, trace
+            assert len(start.groups()) == 1
+            end = re.search(r"([0-9]+\.[0-9]{6}): gn412x_dma_irq_handler", trace, re.MULTILINE)
+            assert end is not None, trace
+            assert len(end.groups()) == 1
+            diff.append(float(end.group(1)) - float(start.group(1)))
+            assert diff[-1] > 0
+
+        throughput_m  = int((dma_alloc_size / (round(math.fsum(diff) / 100, 6))) / 1024 / 1024)
+        assert throughput_m > 230, \
+          "Expected mora than {:d} MBps, got {:d} MBps".format(500,
+                                                               throughput_m)
