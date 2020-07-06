@@ -668,6 +668,15 @@ static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 	/* FIXME check for spurious - need HDL fix */
 	gn412x_dma_irq_ack(gn412x_dma);
 
+	if (unlikely(chan->sconfig.direction == DMA_MEM_TO_DEV)) {
+		/*
+		 * There is a bug in the HDL core, write path.
+		 * The IRQ line is asserted before the actual end of transfer.
+		 * A delay of 5us is the best compromise (empirical tests)
+		 */
+		ndelay(5000);
+	}
+
 	spin_lock_irqsave(&chan->lock, flags);
 	tx = chan->tx_curr;
 	chan->tx_curr = NULL;
