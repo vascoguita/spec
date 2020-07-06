@@ -41,7 +41,7 @@ class PySPEC:
             f.write(os.path.dirname(prev))
 
     @contextmanager
-    def dma(self):
+    def dma(self, dma_coherent_size=None):
         """
         Create a DMA context from which users can do DMA
         transfers. Within this context the user can use
@@ -64,7 +64,7 @@ class PySPEC:
         >>> spec_dma.close()
         """
         spec_dma = self.PySPECDMA(self)
-        spec_dma.request()
+        spec_dma.request(dma_coherent_size)
         try:
             yield spec_dma
         finally:
@@ -97,12 +97,18 @@ class PySPEC:
             """
             self.spec = spec
 
-        def request(self):
+
+        def request(self, dma_coherent_size=None):
             """
             Open a DMA file descriptor
 
+            :var dma_coherent_size: DMA coherent allocation size (in-kernel).
             :raise OSError: if the open(2) or the driver fails
             """
+            if dma_coherent_size is not None:
+                with open("/sys/module/spec_fmc_carrier/parameters/user_dma_coherent_size", "w") as f:
+                    f.write(str(dma_coherent_size))
+
             self.dma_file = open(os.path.join(self.spec.debugfs_fpga, "dma"),
                                  "rb+", buffering=0)
         def release(self):

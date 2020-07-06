@@ -238,6 +238,14 @@ attributes.  Here we focus only on those.
   the user can use ``lseek(2)`` to set the offset in the DDR, and
   ``read(2)``/``write(2)`` to start the DMA transfer.
 
+Module Parameters
+-----------------
+
+``user_dma_coherent_size`` [RW]
+  It sets the maximum size for a coherent DMA memory allocation. A
+  change to this value is applied on ``open(2)``
+  (file ``<pci-id>/spec-<pci-id>/dma``).
+
 DMA
 ---
 

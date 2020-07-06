@@ -19,11 +19,16 @@
 #include <linux/completion.h>
 #include <linux/jiffies.h>
 #include <linux/uaccess.h>
+#include <linux/moduleparam.h>
 
 #include "linux/printk.h"
 #include "spec.h"
 #include "spec-compat.h"
 
+static int user_dma_coherent_size = 4 * 1024 * 1024;
+module_param(user_dma_coherent_size, int, 0644);
+MODULE_PARM_DESC(user_dma_coherent_size,
+		 "DMA coherent allocation's size in bytes (default 4MiB)");
 
 enum spec_fpga_irq_lines {
 	SPEC_FPGA_IRQ_FMC_I2C = 0,
@@ -320,7 +325,7 @@ static int spec_fpga_dbg_dma_open(struct inode *inode, struct file *file)
 		return -ENOMEM;
 	init_completion(&dbgdma->compl);
 	dbgdma->spec_fpga = spec_fpga;
-	dbgdma->datalen = 4 * 1024 *1024;
+	dbgdma->datalen = user_dma_coherent_size;
 	dbgdma->data = dma_alloc_coherent(dbgdma->spec_fpga->dev.parent,
 					  dbgdma->datalen, &dbgdma->datadma,
 					  GFP_KERNEL);
