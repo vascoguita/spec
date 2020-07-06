@@ -455,7 +455,7 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 		dma_addr_t phys;
 
 		if (direction == DMA_MEM_TO_DEV &&
-		    sg_dma_len(sg) >= GN412X_DMA_MAX_SEG_W) {
+		    sg_dma_len(sg) > GN412X_DMA_MAX_SEG_W) {
 			dev_err(&chan->dev->device,
 				"Maximum write transfer size %d, got %d on transfer %d\n",
 			        GN412X_DMA_MAX_SEG_W, sg_dma_len(sg), i);
