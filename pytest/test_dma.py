@@ -209,6 +209,8 @@ class TestDma(object):
             for i in range(1000000):
                 assert data == dma.read(0, len(data))
 
+    @pytest.mark.skipif(pytest.cfg_bitstream,
+                        reason="We need a bitstream to reflash")
     def test_dma_reg_word(self, spec):
         """
         Regression test.
