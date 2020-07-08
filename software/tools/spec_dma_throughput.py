@@ -24,6 +24,8 @@ def main():
                         help='Minimum transfer size in Bytes (default: 4096 Bytes). It is rounded to the lower power of 2.')
     parser.add_argument('--max', default=4 * 1024 * 1024, type=int,
                         help='Maximum transfer size in Bytes (default: 4194304 Bytes). It is rounded to the lower power of 2.')
+    parser.add_argument('--seg', default=0, type=int,
+                        help='Overwrite scatterlist segment size.')
     args = parser.parse_args()
 
     tracing_path = "/sys/kernel/debug/tracing"
@@ -41,7 +43,7 @@ def main():
         with open(os.path.join(tracing_path, "trace"), "w") as f:
             f.write("")
         with spec.dma(size) as dma:
-            dma.read(0, size)
+            dma.read(0, size, args.seg)
         with open(os.path.join(tracing_path, "trace"), "r") as f:
             throughput.append((float(size) / 1024 / 1024) / dma_time_get(f.read()))
         print("{:d} Bytes -> {:f} MBps".format(size, throughput[-1]))

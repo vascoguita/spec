@@ -174,6 +174,30 @@ class TestDma(object):
                 data_rb = dma.read(offset, split)
                 assert data[offset:min(offset+split, buffer_size)] == data_rb
 
+    @pytest.mark.parametrize("segment_size", [2**i for i in range(3, 20)])
+    def test_dma_scatterlist_read(self, spec, segment_size):
+        """
+        Enforce a scatterlist on known size to read 1MiB.
+        """
+        buffer_size = 2**20
+        data = bytes([random.randrange(0, 0xFF, 1) for i in range(buffer_size)])
+        with spec.dma() as dma:
+            dma.write(0, data)
+            assert data == dma.read(0, len(data), segment_size)
+
+    @pytest.mark.parametrize("segment_size", [2**i for i in range(3, 12)])
+    def test_dma_scatterlist_write(self, spec, segment_size):
+        """
+        Enforce a scatterlist on known size to write 1MiB.
+        Remember: on write the scatterlist is enforced by the driver
+        on buffers bigger than 4KiB
+        """
+        buffer_size = 2**20
+        data = bytes([random.randrange(0, 0xFF, 1) for i in range(buffer_size)])
+        with spec.dma() as dma:
+            dma.write(0, data, segment_size)
+            assert data == dma.read(0, len(data))
+
     @pytest.mark.parametrize("ddr_offset",
                              [0x0] + \
                              [2**i for i in range(int(math.log2(PySPEC.DDR_ALIGN)), int(math.log2(PySPEC.DDR_SIZE)))] + \

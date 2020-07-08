@@ -29,6 +29,10 @@ static int user_dma_coherent_size = 4 * 1024 * 1024;
 module_param(user_dma_coherent_size, int, 0644);
 MODULE_PARM_DESC(user_dma_coherent_size,
 		 "DMA coherent allocation's size in bytes (default 4MiB)");
+static size_t user_dma_max_segment;
+module_param(user_dma_max_segment, long, 0644);
+MODULE_PARM_DESC(user_dma_max_segment,
+		 "Maximum DMA segment size in bytes (default 0, meaning whatever supported by the DMA engine)");
 
 enum spec_fpga_irq_lines {
 	SPEC_FPGA_IRQ_FMC_I2C = 0,
@@ -179,6 +183,8 @@ static int spec_fpga_dbg_dma_transfer(struct spec_fpga_dbg_dma *dbgdma,
 		max_segment = dma_get_max_seg_size(dbgdma->dchan->device->dev);
 	else
 		max_segment = 4096;
+	if (user_dma_max_segment)
+		max_segment = min(user_dma_max_segment, max_segment);
 	err = sg_alloc_table(&sgt,
 			     (count / max_segment) + !!(count % max_segment),
 			     GFP_KERNEL);

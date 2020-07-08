@@ -120,30 +120,40 @@ class PySPEC:
             if hasattr(self, "dma_file"):
                 self.dma_file.close()
 
-        def read(self, offset, size):
+        def read(self, offset, size, max_segment=0):
             """
             Trigger a *device to memory* DMA transfer
 
             :var offset: offset within the DDR
             :var size: number of bytes to be transferred
+            :var max_segment: maximum size of a single transfer in a
+                              scatterlist. Default is 0, it means to use
+                              the DMA engine's default.
             :return: the data transfered as bytes() array
             :raise OSError: if the read(2) or the driver fails
             """
+            with open("/sys/module/spec_fmc_carrier/parameters/user_dma_max_segment", "w") as f:
+                    f.write(str(max_segment))
             self.__seek(offset)
             data = []
             while size - len(data) > 0:
                 data += self.dma_file.read(size - len(data))
             return bytes(data)
 
-        def write(self, offset, data):
+        def write(self, offset, data, max_segment=0):
             """
             Trigger a *memory to device* DMA transfer
 
             :var offset: offset within the DDR
             :var size: number of bytes to be transferred
+            :var max_segment: maximum size of a single transfer in a
+                              scatterlist. Default is 0, it means to use
+                              the DMA engine's default.
             :return: the number of transfered bytes
             :raise OSError: if the write(2) or the driver fails
             """
+            with open("/sys/module/spec_fmc_carrier/parameters/user_dma_max_segment", "w") as f:
+                    f.write(str(max_segment))
             self.__seek(offset)
             start = 0
             while len(data) - start > 0:

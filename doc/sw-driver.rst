@@ -246,6 +246,11 @@ Module Parameters
   change to this value is applied on ``open(2)``
   (file ``<pci-id>/spec-<pci-id>/dma``).
 
+``user_dma_max_segment`` [RW]
+  It sets the maximum size for a DMA transfer in a scatterlist. A
+  change to this value is applied on the next ``read(2)`` or ``write(2)``
+  (file ``<pci-id>/spec-<pci-id>/dma``).
+
 DMA
 ---
 
