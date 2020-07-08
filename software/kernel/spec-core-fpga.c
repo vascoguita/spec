@@ -172,10 +172,8 @@ static int spec_fpga_dbg_dma_transfer(struct spec_fpga_dbg_dma *dbgdma,
 		dir, count, offset);
 
 	/*
-	 * Compensate HDL limitation.
-	 * The gennum core has no DMA size limits for reading. Unfortunatelly,
-	 * the implementation is not symmetric and on write the limit is
-	 * 4096 Bytes
+	 * The GN4124 chip has a 4KiB payload. For DMA_DEV_TO_MEM this is
+	 * handled by the HDL core. For DMA_MEM_TO_DEV, the split is done here.
 	 */
 	if (dir == DMA_DEV_TO_MEM)
 		max_segment = dma_get_max_seg_size(dbgdma->dchan->device->dev);

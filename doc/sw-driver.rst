@@ -294,7 +294,9 @@ You can get the maximum transfer size by calling ``dma_get_max_seg_size()``.::
   dma_get_max_seg_size(dchan->device->dev);
 
 .. warning::
-
-   The HDL DMA engine implementation does not support very well
-   ``DMA_MEM_TO_DEV`` transfers. To overcome some bugs users must
-   split their transfers in 4KiB chunks.
+   The GN4124 chip has a 4KiB payload. When doing a ``DMA_DEV_TO_MEM``
+   the HDL DMA engine splits transfers in 4KiB chunks, but for
+   ``DMA_MEM_TO_DEV`` transfers the split should happen in the
+   driver: it does not happen. The DMA engine implementation
+   supports ``DMA_MEM_TO_DEV`` manly for testing purposes; to avoid
+   complications in the driver the 4KiB split is left to users.
