@@ -209,7 +209,7 @@ class TestDma(object):
         """
         Write and read back buffers using DMA. We test different combinations
         of offset and size. Here we try to perform transfers as large as
-        possible (short scatterlist)
+        possible.
         """
         if ddr_offset + buffer_size >= PySPEC.DDR_SIZE:
             pytest.skip("DDR Overflow!")
