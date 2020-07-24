@@ -74,11 +74,6 @@ entity spec_base_wr is
     g_SIMULATION : boolean := False;
     -- Increase information messages during simulation
     g_VERBOSE    : boolean := False;
-    -- if TRUE, use 200MHz PCI clock also for DMA transfers. Note
-    -- that this might be very hard to achieve timing closure with.
-    -- if FALSE, use the 125MHz "ref" clock and async_fifos for
-    -- clock domain crossing between this clock and the PCI one.
-    g_DMA_USE_PCI_CLK : boolean := FALSE;
     g_SIM_BYPASS_GENNUM : boolean := False
   );
   port (
@@ -338,9 +333,6 @@ architecture top of spec_base_wr is
   signal gn_wb_out     : t_wishbone_master_out;
   signal gn_wb_in      : t_wishbone_master_in;
 
-  signal wb_dma_clk   : std_logic;
-  signal wb_dma_rst_n : std_logic;
-
   --  The wishbone bus to the carrier part.
   signal carrier_wb_out : t_wishbone_slave_out;
   signal carrier_wb_in  : t_wishbone_slave_in;
@@ -400,8 +392,6 @@ architecture top of spec_base_wr is
   signal rst_125m_ref_n : std_logic;
   signal clk_125m_ref   : std_logic;
   signal clk_10m_ext    : std_logic;
-  signal clk_200m_gnm   : std_logic;
-  signal rst_200m_gnm_n : std_logic;
 
   -- I2C EEPROM
   signal eeprom_sda_in  : std_logic;
@@ -435,23 +425,9 @@ begin  -- architecture top
 
   gen_with_gennum : if g_SIMULATION = false or g_sim_bypass_gennum = false generate
 
-    -- DMA WB clock and reset selection
-    gen_sync_wb_dma : if g_DMA_USE_PCI_CLK = TRUE generate
-      wb_dma_clk   <= clk_200m_gnm;
-      wb_dma_rst_n <= rst_200m_gnm_n;
-    end generate gen_sync_wb_dma;
-
-    gen_async_wb_dma : if g_DMA_USE_PCI_CLK = FALSE generate
-      wb_dma_clk   <= clk_125m_ref;
-      wb_dma_rst_n <= rst_125m_ref_n;
-      -- wb_dma_clk   <= clk_62m5_sys;
-      -- wb_dma_rst_n <= rst_62m5_sys_n;
-    end generate gen_async_wb_dma;
-
   cmp_gn4124_core : entity work.xwb_gn4124_core
     generic map (
       g_WITH_DMA                    => g_WITH_DDR,
-      g_DMA_USE_PCI_CLK             => g_DMA_USE_PCI_CLK,
       g_WBM_TO_WB_FIFO_SIZE         => 16,
       g_WBM_TO_WB_FIFO_FULL_THRES   => 12,
       g_WBM_FROM_WB_FIFO_SIZE       => 16,
@@ -462,11 +438,6 @@ begin  -- architecture top
       -- Control and status
       rst_n_a_i => gn_rst_n_i,
       status_o  => gennum_status,
-
-      ---------------------------------------------------------
-      -- 200MHz PCI clock output and synchronous reset for applications
-      clk_200m_o   => clk_200m_gnm,
-      rst_200m_n_o => rst_200m_gnm_n,
 
       ---------------------------------------------------------
       -- P2L Direction
@@ -525,8 +496,8 @@ begin  -- architecture top
 
       ---------------------------------------------------------
       -- L2P DMA Interface (Pipelined Wishbone master)
-      wb_dma_dat_clk_i   => wb_dma_clk,
-      wb_dma_dat_rst_n_i => wb_dma_rst_n,
+      wb_dma_dat_clk_i   => clk_125m_ref,
+      wb_dma_dat_rst_n_i => rst_125m_ref_n,
       wb_dma_dat_o       => gn_wb_ddr_out,
       wb_dma_dat_i       => gn_wb_ddr_in
     );
@@ -1133,8 +1104,8 @@ begin  -- architecture top
         p0_wr_underrun_o => open,
         p0_wr_error_o    => open,
 
-        wb1_rst_n_i => wb_dma_rst_n,
-        wb1_clk_i   => wb_dma_clk,
+        wb1_rst_n_i => rst_125m_ref_n,
+        wb1_clk_i   => clk_125m_ref,
         wb1_sel_i   => gn_wb_ddr_out.sel,
         wb1_cyc_i   => gn_wb_ddr_out.cyc,
         wb1_stb_i   => gn_wb_ddr_out.stb,

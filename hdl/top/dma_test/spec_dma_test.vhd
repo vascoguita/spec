@@ -37,8 +37,7 @@ use work.wishbone_pkg.all;
 
 entity spec_dma_test is
   generic (
-    g_DMA_USE_PCI_CLK : boolean := FALSE;
-    g_SIMULATION      : boolean := FALSE
+    g_SIMULATION : boolean := FALSE
     );
   port (
     -- Global ports
@@ -125,14 +124,13 @@ architecture arch of spec_dma_test is
 begin
   inst_spec_base : entity work.spec_base_wr
     generic map (
-      g_WITH_VIC        => TRUE,
-      g_WITH_ONEWIRE    => FALSE,
-      g_WITH_SPI        => FALSE,
-      g_WITH_DDR        => TRUE,
-      g_DDR_DATA_SIZE   => 32,
-      g_WITH_WR         => FALSE,
-      g_DMA_USE_PCI_CLK => g_DMA_USE_PCI_CLK,
-      g_SIMULATION      => g_SIMULATION
+      g_WITH_VIC      => TRUE,
+      g_WITH_ONEWIRE  => FALSE,
+      g_WITH_SPI      => FALSE,
+      g_WITH_DDR      => TRUE,
+      g_DDR_DATA_SIZE => 32,
+      g_WITH_WR       => FALSE,
+      g_SIMULATION    => g_SIMULATION
       )
     port map (
       clk_125m_pllref_p_i => clk_125m_pllref_p_i,

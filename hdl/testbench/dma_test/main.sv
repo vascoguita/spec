@@ -34,7 +34,6 @@ module main;
 
    spec_dma_test
      #(
-       .g_dma_use_pci_clk (0),
        .g_SIMULATION(1)
        )
    DUT
