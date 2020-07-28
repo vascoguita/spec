@@ -32,7 +32,7 @@ module main;
    // 125Mhz
    always #4ns clk_125m_pllref <= ~clk_125m_pllref;
 
-   spec_dma_test
+   spec_golden
      #(
        .g_SIMULATION(1)
        )
@@ -167,32 +167,6 @@ module main;
 
    typedef virtual IGN4124PCIMaster vIGN4124PCIMaster;
 
-   task dma_read_pattern(vIGN4124PCIMaster i_gn4124);
-
-      int i;
-
-      uint64_t val, expected;
-
-      CBusAccessor acc;
-      acc = i_gn4124.get_accessor();
-      acc.set_default_xfer_size(4);
-
-      // Read pattern from device memory
-      dma_xfer(acc, 'h20000000, 'h0, 4 * 'h20, RD);
-      // Verify pattern
-      for (i = 'h00; i < 'h20; i++)
-        begin
-           expected  = i+1;
-           expected |= (i+1) << 8;
-           expected |= (i+1) << 16;
-           expected |= (i+1) << 24;
-           i_gn4124.host_mem_read(i*4, val);
-           if (val != expected)
-             $fatal(1, "<%t> READ-BACK ERROR at host address 0x%x: expected 0x%8x, got 0x%8x",
-                    $realtime, i*4, expected, val);
-        end
-   endtask // dma_read_pattern
-
    task dma_test(vIGN4124PCIMaster i_gn4124,
                  input uint32_t word_count);
 
@@ -271,8 +245,6 @@ module main;
       $display();
 
       #10us;
-
-      dma_read_pattern(vi_gn4124);
 
       for (i = 2; i < 13; i++)
         begin

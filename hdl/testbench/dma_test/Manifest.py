@@ -25,14 +25,8 @@ files = [
 
 modules = {
     "local" : [
-        "../../top/dma_test",
+        "../../top/golden",
     ],
-  "git" : [
-      "https://ohwr.org/project/wr-cores.git",
-      "https://ohwr.org/project/general-cores.git",
-      "https://ohwr.org/project/gn4124-core.git",
-      "https://ohwr.org/project/ddr3-sp6-core.git",
-  ],
 }
 
 # Do not fail during hdlmake fetch
