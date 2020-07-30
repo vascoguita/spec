@@ -1128,6 +1128,7 @@ static void spec_fpga_app_exit(struct spec_fpga *spec_fpga)
 static bool spec_fpga_is_valid(struct spec_gn412x *spec_gn412x,
 			       struct spec_meta_id *meta)
 {
+
 	if ((meta->bom & SPEC_META_BOM_END_MASK) != SPEC_META_BOM_LE) {
 		dev_err(&spec_gn412x->pdev->dev,
 			"Expected Little Endian devices BOM: 0x%x\n",
@@ -1150,7 +1151,7 @@ static bool spec_fpga_is_valid(struct spec_gn412x *spec_gn412x,
 		return false;
 	}
 
-	if ((meta->version & SPEC_META_VERSION_MASK) != SPEC_META_VERSION_1_4) {
+	if ((meta->version & SPEC_META_VERSION_MASK) != SPEC_META_VERSION_2_0) {
 		dev_err(&spec_gn412x->pdev->dev,
 			"Unknow version: %08x\n", meta->version);
 		return false;
