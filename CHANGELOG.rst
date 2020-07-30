@@ -2,6 +2,22 @@
 Changelog
 =========
 
+Unreleased
+==========
+Added
+-----
+- [hdl] new testbench to test the DMA feature (read/write to DDR memory) in the new golden.
+
+Changed
+-------
+- [hdl] Switch to 125MHz (from 62.5MHz before) clock for DMA transfers.
+- [hdl] Cleanup of top-levels, addition of DMA to the golden.
+
+Fixed
+-----
+- [hdl] DMA misalignment issue due to loss of 32-bit words, caused in turn by inadequate flow control.
+- [hdl] typo in synthesis constraints.
+
 [1.4.15] 2020-06-03
 ===================
 Added
