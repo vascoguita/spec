@@ -2,11 +2,14 @@
 Changelog
 =========
 
-Unreleased
-==========
+[2.0.0] 2020-07-30
+==================
 Added
 -----
 - [hdl] new testbench to test the DMA feature (read/write to DDR memory) in the new golden.
+- [sw] basic Python module to handle DMA and FPGA programming
+- [sw] user-space DMA interface in debugfs (read/write)
+- [tst] add integration tests for DMA transfers
 
 Changed
 -------
