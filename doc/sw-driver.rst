@@ -34,7 +34,7 @@ GN4124 GPIO
 
 GN4124 FCL
   This driver provides support for the GN4124 FCL (FPGA Configuration Loader).
-  It uses the `FPGA manager interface`_ to program the FPGA at runtime.
+  It uses the `FPGA manager interface`_ to program the FPGA at run-time.
 
 If the SPEC based application is using the :ref:`SPEC
 base<spec_hdl_spec_base>` component then it can profit from the
@@ -220,7 +220,7 @@ attributes.  Here we focus only on those.
   Miscellaneous information about the card status: IRQ mapping.
 
 ``<pci-id>/fpga_firmware`` [W]
-  It configure the FPGA with a bitstream which name is provided as input.
+  It configures the FPGA with a bitstream which name is provided as input.
   Remember that firmwares are installed in ``/lib/firmware`` and alternatively
   you can provide your own path by setting it in
   ``/sys/module/firmware_class/parameters/path``.
@@ -231,3 +231,77 @@ attributes.  Here we focus only on those.
 
 ``<pci-id>/spec-<pci-id>/build_info`` [R]
   It shows the FPGA configuration synthesis information
+
+``<pci-id>/spec-<pci-id>/dma`` [RW]
+  It exports DMA capabilities to user-space. The user can ``open(2)``
+  and ``close(2)`` to request and release a DMA engine channel. Then,
+  the user can use ``lseek(2)`` to set the offset in the DDR, and
+  ``read(2)``/``write(2)`` to start the DMA transfer.
+
+Module Parameters
+-----------------
+
+``user_dma_coherent_size`` [RW]
+  It sets the maximum size for a coherent DMA memory allocation. A
+  change to this value is applied on ``open(2)``
+  (file ``<pci-id>/spec-<pci-id>/dma``).
+
+``user_dma_max_segment`` [RW]
+  It sets the maximum size for a DMA transfer in a scatterlist. A
+  change to this value is applied on the next ``read(2)`` or ``write(2)``
+  (file ``<pci-id>/spec-<pci-id>/dma``).
+
+DMA
+---
+
+On SPEC-Based designs the DMA engine is implemented in HDL. This means
+that you can't perform a DMA transfer without a *spec-base* device
+on the FPGA.
+
+The SPEC driver(s) implements the dmaengine API for the HDL DMA
+engine. To request a dmaengine channel the user must provide a filter
+function. The SPEC driver assigns to the application driver a
+IORESOURCE_DMA which value is ``dma_device->dev_id << 16 |
+channel_number``. Therefore, the user can use the following filter
+function.::
+
+  static bool filter_function(struct dma_chan *dchan, void *arg)
+  {
+          struct dma_device *ddev = dchan->device;
+          int dev_id = (*((int *)arg) >> 16) & 0xFFFF;
+          int chan_id = *((int *)arg) & 0xFFFF;
+
+          return ddev->dev_id == dev_id && dchan->chan_id == chan_id;
+  }
+
+  void function(void)
+  {
+          struct resource *r;
+          int dma_dev_id;
+          dma_cap_mask_t dma_mask;
+
+          /* ... */
+
+          r = platform_get_resource(pdev, IORESOURCE_DMA, TDC_DMA);
+          dma_dev_id = r->start;
+
+          dma_cap_zero(dma_mask);
+          dma_cap_set(DMA_SLAVE, dma_mask);
+          dma_cap_set(DMA_PRIVATE, dma_mask);
+          dchan = dma_request_channel(dma_mask, filter_function,
+	                              dma_dev_id);
+
+          /* ... */
+  }
+
+You can get the maximum transfer size by calling ``dma_get_max_seg_size()``.::
+
+  dma_get_max_seg_size(dchan->device->dev);
+
+.. warning::
+   The GN4124 chip has a 4KiB payload. When doing a ``DMA_DEV_TO_MEM``
+   the HDL DMA engine splits transfers in 4KiB chunks, but for
+   ``DMA_MEM_TO_DEV`` transfers the split should happen in the
+   driver: it does not happen. The DMA engine implementation
+   supports ``DMA_MEM_TO_DEV`` manly for testing purposes; to avoid
+   complications in the driver the 4KiB split is left to users.

@@ -144,6 +144,10 @@ enum gn412x_dma_state {
 };
 #define GN412X_DMA_STAT_ACK BIT(2)
 
+#define GN412X_DMA_DDR_ALIGN 4
+#define GN412X_DMA_DDR_SIZE (256 * 1024 * 1024)
+#define GN412X_DMA_MAX_SEG_R GN412X_DMA_DDR_SIZE
+#define GN412X_DMA_MAX_SEG_W 0x1000
 
 /**
  * Transfer descriptor an hardware transfer
@@ -349,7 +353,6 @@ static int gn412x_dma_alloc_chan_resources(struct dma_chan *dchan)
 	struct gn412x_dma_chan *chan = to_gn412x_dma_chan(dchan);
 
 	memset(&chan->sconfig, 0, sizeof(struct dma_slave_config));
-	chan->sconfig.direction = DMA_DEV_TO_MEM;
 
 	return 0;
 }
@@ -389,8 +392,8 @@ static void gn412x_dma_prep_fixup(struct gn412x_dma_tx_hw *tx_hw,
 }
 
 static void gn412x_dma_prep(struct gn412x_dma_tx_hw *tx_hw,
-			    struct scatterlist *sg,
-			    dma_addr_t start_addr)
+			    struct scatterlist *sg, dma_addr_t start_addr,
+			    enum dma_transfer_direction direction)
 {
 	tx_hw->start_addr = start_addr & 0xFFFFFFFF;
 	tx_hw->dma_addr_l = sg_dma_address(sg);
@@ -401,8 +404,10 @@ static void gn412x_dma_prep(struct gn412x_dma_tx_hw *tx_hw,
 	tx_hw->next_addr_l = 0x00000000;
 	tx_hw->next_addr_h = 0x00000000;
 	tx_hw->attribute = 0x0;
+	if (direction == DMA_MEM_TO_DEV)
+		tx_hw->attribute |= GN412X_DMA_ATTR_DIR_MEM_TO_DEV;
 	if (!sg_is_last(sg))
-		tx_hw->attribute = GN412X_DMA_ATTR_CHAIN;
+		tx_hw->attribute |= GN412X_DMA_ATTR_CHAIN;
 }
 
 static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
@@ -416,12 +421,6 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 	struct scatterlist *sg;
 	dma_addr_t src_addr;
 	int i;
-
-	if (unlikely(direction != DMA_DEV_TO_MEM)) {
-		dev_err(&chan->dev->device,
-			"Support only DEV -> MEM transfers\n");
-		goto err;
-	}
 
 	if (unlikely(sconfig->direction != direction)) {
 		dev_err(&chan->dev->device,
@@ -455,10 +454,23 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 	for_each_sg(sgl, sg, sg_len, i) {
 		dma_addr_t phys;
 
-		if (sg_dma_len(sg) > dma_get_max_seg_size(chan->device->dev)) {
+		if (direction == DMA_MEM_TO_DEV &&
+		    sg_dma_len(sg) > GN412X_DMA_MAX_SEG_W) {
 			dev_err(&chan->dev->device,
-				"Maximum transfer size %d, got %d on transfer %d\n",
-				0x3FFF, sg_dma_len(sg), i);
+				"Maximum write transfer size %d, got %d on transfer %d\n",
+			        GN412X_DMA_MAX_SEG_W, sg_dma_len(sg), i);
+			goto err_alloc_pool;
+		} else if (sg_dma_len(sg) > dma_get_max_seg_size(chan->device->dev)) {
+			dev_err(&chan->dev->device,
+				"Maximum read transfer size %d, got %d on transfer %d\n",
+				dma_get_max_seg_size(chan->device->dev),
+				sg_dma_len(sg), i);
+			goto err_alloc_pool;
+		}
+		if (sg_dma_len(sg) & (GN412X_DMA_DDR_ALIGN - 1)) {
+			dev_err(&chan->dev->device,
+				"Transfer size must be aligne to %d Bytes, got %d Bytes\n",
+				GN412X_DMA_DDR_ALIGN, sg_dma_len(sg));
 			goto err_alloc_pool;
 		}
 		gn412x_dma_tx->sgl_hw[i] = dma_pool_alloc(gn412x_dma->pool,
@@ -478,7 +490,8 @@ static struct dma_async_tx_descriptor *gn412x_dma_prep_slave_sg(
 		} else {
 			gn412x_dma_tx->tx.phys = phys;
 		}
-		gn412x_dma_prep(gn412x_dma_tx->sgl_hw[i], sg, src_addr);
+		gn412x_dma_prep(gn412x_dma_tx->sgl_hw[i], sg, src_addr,
+				direction);
 		src_addr += sg_dma_len(sg);
 	}
 
@@ -588,12 +601,16 @@ static int gn412x_dma_slave_config(struct dma_chan *chan,
 	       sizeof(struct dma_slave_config));
 	spin_unlock_irqrestore(&gn412x_dma_chan->lock, flags);
 
+	if (gn412x_dma_chan->sconfig.src_addr & (GN412X_DMA_DDR_ALIGN - 1))
+		return -EINVAL;
+
 	return 0;
 }
 
 static int gn412x_dma_terminate_all(struct dma_chan *chan)
 {
 	struct gn412x_dma_device *gn412x_dma;
+	struct gn412x_dma_tx *tx;
 
 	gn412x_dma = to_gn412x_dma_device(chan->device);
 	gn412x_dma_ctrl_abort(gn412x_dma);
@@ -604,6 +621,15 @@ static int gn412x_dma_terminate_all(struct dma_chan *chan)
 		return -EINVAL;
 	}
 
+	tx = to_gn412x_dma_chan(chan)->tx_curr;
+	if (tx && tx->tx.callback_result) {
+		const struct dmaengine_result result = {
+			.result = DMA_TRANS_ABORTED,
+			.residue = 0,
+		};
+
+		tx->tx.callback_result(tx->tx.callback_param, &result);
+	}
 	return 0;
 }
 
@@ -642,6 +668,15 @@ static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 	/* FIXME check for spurious - need HDL fix */
 	gn412x_dma_irq_ack(gn412x_dma);
 
+	if (unlikely(chan->sconfig.direction == DMA_MEM_TO_DEV)) {
+		/*
+		 * There is a bug in the HDL core, write path.
+		 * The IRQ line is asserted before the actual end of transfer.
+		 * A delay of 5us is the best compromise (empirical tests)
+		 */
+		ndelay(5000);
+	}
+
 	spin_lock_irqsave(&chan->lock, flags);
 	tx = chan->tx_curr;
 	chan->tx_curr = NULL;
@@ -651,12 +686,27 @@ static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 	switch (state) {
 	case GN412X_DMA_STAT_IDLE:
 		dma_cookie_complete(&tx->tx);
-		if (tx->tx.callback)
+		if (tx->tx.callback_result) {
+			const struct dmaengine_result result = {
+				.result = DMA_TRANS_NOERROR,
+				.residue = 0,
+			};
+
+			tx->tx.callback_result(tx->tx.callback_param, &result);
+		} else if (tx->tx.callback) {
 			tx->tx.callback(tx->tx.callback_param);
+		}
 		break;
 	case GN412X_DMA_STAT_ERROR:
-		dev_err(&gn412x_dma->pdev->dev,
-			"DMA transfer failed: error\n");
+		if (tx->tx.callback_result) {
+			const struct dmaengine_result result = {
+				.result = DMA_TRANS_READ_FAILED,
+				.residue = 0,
+			};
+
+			tx->tx.callback_result(tx->tx.callback_param, &result);
+		}
+		dev_err(&gn412x_dma->pdev->dev, "DMA transfer failed: error\n");
 		break;
 	default:
 		dev_err(&gn412x_dma->pdev->dev,
@@ -770,7 +820,7 @@ static int gn412x_dma_engine_init(struct gn412x_dma_device *gn412x_dma,
 	tasklet_init(&gn412x_dma->chan.task, gn412x_dma_start_task,
 		     (unsigned long)&gn412x_dma->chan);
 
-	dma_set_max_seg_size(dma->dev, 0x7FFF);
+	dma_set_max_seg_size(dma->dev, GN412X_DMA_DDR_SIZE);
 
 	gn412x_dma->pool = dma_pool_create(dev_name(dma->dev), dma->dev,
 					   sizeof(struct gn412x_dma_tx_hw),

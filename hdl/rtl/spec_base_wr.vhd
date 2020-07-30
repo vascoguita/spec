@@ -301,7 +301,7 @@ entity spec_base_wr is
     --  Addresses 0-0x1fff are not available (used by the carrier).
     --  This is a pipelined wishbone with byte granularity.
     app_wb_o           : out t_wishbone_master_out;
-    app_wb_i           : in  t_wishbone_master_in;
+    app_wb_i           : in  t_wishbone_master_in := c_DUMMY_WB_MASTER_IN;
 
     sim_wb_i : in t_wishbone_slave_in := cc_dummy_slave_in;
     sim_wb_o : out t_wishbone_slave_out
@@ -431,13 +431,7 @@ begin  -- architecture top
       g_WBM_TO_WB_FIFO_SIZE         => 16,
       g_WBM_TO_WB_FIFO_FULL_THRES   => 12,
       g_WBM_FROM_WB_FIFO_SIZE       => 16,
-      g_WBM_FROM_WB_FIFO_FULL_THRES => 12,
-      g_P2L_FIFO_SIZE               => 256,
-      g_P2L_FIFO_FULL_THRES         => 175,
-      g_L2P_ADDR_FIFO_FULL_SIZE     => 256,
-      g_L2P_ADDR_FIFO_FULL_THRES    => 175,
-      g_L2P_DATA_FIFO_FULL_SIZE     => 256,
-      g_L2P_DATA_FIFO_FULL_THRES    => 175
+      g_WBM_FROM_WB_FIFO_FULL_THRES => 12
     )
     port map (
       ---------------------------------------------------------
@@ -488,10 +482,10 @@ begin  -- architecture top
 
       ---------------------------------------------------------
       -- DMA registers wishbone interface (slave classic)
-      wb_dma_cfg_clk_i => clk_62m5_sys,
+      wb_dma_cfg_clk_i   => clk_62m5_sys,
       wb_dma_cfg_rst_n_i => rst_62m5_sys_n,
-      wb_dma_cfg_i => dma_out,
-      wb_dma_cfg_o => dma_in,
+      wb_dma_cfg_i       => dma_out,
+      wb_dma_cfg_o       => dma_in,
 
       ---------------------------------------------------------
       -- CSR wishbone interface (master pipelined)
@@ -502,8 +496,8 @@ begin  -- architecture top
 
       ---------------------------------------------------------
       -- L2P DMA Interface (Pipelined Wishbone master)
-      wb_dma_dat_clk_i   => clk_62m5_sys,
-      wb_dma_dat_rst_n_i => rst_gbl_n,
+      wb_dma_dat_clk_i   => clk_125m_ref,
+      wb_dma_dat_rst_n_i => rst_125m_ref_n,
       wb_dma_dat_o       => gn_wb_ddr_out,
       wb_dma_dat_i       => gn_wb_ddr_in
     );
@@ -610,7 +604,7 @@ begin  -- architecture top
           metadata_data <= x"53504543";
         when x"2" =>
           -- Version
-          metadata_data <= x"0104000d";
+          metadata_data <= x"02000000";
         when x"3" =>
           -- BOM
           metadata_data <= x"fffe0000";
@@ -1110,8 +1104,8 @@ begin  -- architecture top
         p0_wr_underrun_o => open,
         p0_wr_error_o    => open,
 
-        wb1_rst_n_i => rst_gbl_n,
-        wb1_clk_i   => clk_62m5_sys,
+        wb1_rst_n_i => rst_125m_ref_n,
+        wb1_clk_i   => clk_125m_ref,
         wb1_sel_i   => gn_wb_ddr_out.sel,
         wb1_cyc_i   => gn_wb_ddr_out.cyc,
         wb1_stb_i   => gn_wb_ddr_out.stb,

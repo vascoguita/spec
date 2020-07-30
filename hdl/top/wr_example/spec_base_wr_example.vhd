@@ -4,9 +4,9 @@
 -- https://ohwr.org/projects/spec
 --------------------------------------------------------------------------------
 --
--- unit name:   spec_golden
+-- unit name:   spec_base_wr_example
 --
--- description: SPEC golden design, without WR.
+-- description: Example instantiation of SPEC base with White Rabbit.
 --
 --------------------------------------------------------------------------------
 -- Copyright CERN 2019-2020
@@ -24,19 +24,24 @@
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.all;
+use IEEE.NUMERIC_STD.all;
 
-entity spec_golden is
+entity spec_base_wr_example is
 
   generic (
+    g_DPRAM_INITF : string  := "../../../../wr-cores/bin/wrpc/wrc_phy8.bram";
     -- Simulation-mode enable parameter. Set by default (synthesis) to 0, and
     -- changed to non-zero in the instantiation of the top level DUT in the testbench.
     -- Its purpose is to reduce some internal counters/timeouts to speed up simulations.
-    g_SIMULATION : boolean := FALSE
+    g_SIMULATION  : boolean := FALSE
     );
   port (
     -- Global ports
     clk_125m_pllref_p_i : in std_logic;
     clk_125m_pllref_n_i : in std_logic;
+    clk_20m_vcxo_i      : in std_logic;
+    clk_125m_gtp_n_i    : in std_logic;
+    clk_125m_gtp_p_i    : in std_logic;
 
     -- GN4124
     gn_rst_n_i      : in    std_logic;
@@ -100,23 +105,53 @@ entity spec_golden is
     spi_sclk_o : out std_logic;
     spi_ncs_o  : out std_logic;
     spi_mosi_o : out std_logic;
-    spi_miso_i : in  std_logic
+    spi_miso_i : in  std_logic;
+
+    -- Red LED next to the SFP: blinking indicates that packets are being
+    -- transferred.
+    led_act_o  : out std_logic;
+    -- Green LED next to the SFP: indicates if the link is up.
+    led_link_o : out std_logic;
+
+    -- UART
+    uart_rxd_i : in  std_logic;
+    uart_txd_o : out std_logic;
+
+    -- SPI interface to DACs
+    plldac_sclk_o   : out std_logic;
+    plldac_din_o    : out std_logic;
+    pll25dac_cs_n_o : out std_logic;  --cs1
+    pll20dac_cs_n_o : out std_logic;  --cs2
+
+    -- SFP I/O for transceiver
+    sfp_txp_o         : out   std_logic;
+    sfp_txn_o         : out   std_logic;
+    sfp_rxp_i         : in    std_logic;
+    sfp_rxn_i         : in    std_logic;
+    sfp_mod_def0_i    : in    std_logic;  -- sfp detect
+    sfp_mod_def1_b    : inout std_logic;  -- scl
+    sfp_mod_def2_b    : inout std_logic;  -- sda
+    sfp_rate_select_o : out   std_logic;
+    sfp_tx_fault_i    : in    std_logic;
+    sfp_tx_disable_o  : out   std_logic;
+    sfp_los_i         : in    std_logic
     );
 
-end spec_golden;
+end entity spec_base_wr_example;
 
-architecture arch of spec_golden is
+architecture arch of spec_base_wr_example is
 
 begin
 
   inst_spec_base : entity work.spec_base_wr
     generic map (
       g_WITH_VIC      => TRUE,
-      g_WITH_ONEWIRE  => TRUE,
-      g_WITH_SPI      => TRUE,
+      g_WITH_ONEWIRE  => FALSE,
+      g_WITH_SPI      => FALSE,
       g_WITH_DDR      => TRUE,
       g_DDR_DATA_SIZE => 32,
-      g_WITH_WR       => FALSE,
+      g_WITH_WR       => TRUE,
+      g_DPRAM_INITF   => g_DPRAM_INITF,
       g_SIMULATION    => g_SIMULATION
       )
     port map (
@@ -153,6 +188,8 @@ begin
       spi_mosi_o          => spi_mosi_o,
       spi_miso_i          => spi_miso_i,
       pcbrev_i            => pcbrev_i,
+      led_act_o           => led_act_o,
+      led_link_o          => led_link_o,
       button1_n_i         => button1_n_i,
       ddr_a_o             => ddr_a_o,
       ddr_ba_o            => ddr_ba_o,
@@ -171,7 +208,27 @@ begin
       ddr_udm_o           => ddr_udm_o,
       ddr_udqs_n_b        => ddr_udqs_n_b,
       ddr_udqs_p_b        => ddr_udqs_p_b,
-      ddr_we_n_o          => ddr_we_n_o
+      ddr_we_n_o          => ddr_we_n_o,
+      uart_rxd_i          => uart_rxd_i,
+      uart_txd_o          => uart_txd_o,
+      clk_20m_vcxo_i      => clk_20m_vcxo_i,
+      clk_125m_gtp_n_i    => clk_125m_gtp_n_i,
+      clk_125m_gtp_p_i    => clk_125m_gtp_p_i,
+      plldac_sclk_o       => plldac_sclk_o,
+      plldac_din_o        => plldac_din_o,
+      pll25dac_cs_n_o     => pll25dac_cs_n_o,
+      pll20dac_cs_n_o     => pll20dac_cs_n_o,
+      sfp_txp_o           => sfp_txp_o,
+      sfp_txn_o           => sfp_txn_o,
+      sfp_rxp_i           => sfp_rxp_i,
+      sfp_rxn_i           => sfp_rxn_i,
+      sfp_mod_def0_i      => sfp_mod_def0_i,
+      sfp_mod_def1_b      => sfp_mod_def1_b,
+      sfp_mod_def2_b      => sfp_mod_def2_b,
+      sfp_rate_select_o   => sfp_rate_select_o,
+      sfp_tx_fault_i      => sfp_tx_fault_i,
+      sfp_tx_disable_o    => sfp_tx_disable_o,
+      sfp_los_i           => sfp_los_i
       );
 
 end architecture arch;

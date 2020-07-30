@@ -16,10 +16,23 @@
 #include <linux/bitops.h>
 #include <linux/fmc.h>
 #include <linux/delay.h>
+#include <linux/completion.h>
+#include <linux/jiffies.h>
+#include <linux/uaccess.h>
+#include <linux/moduleparam.h>
 
+#include "linux/printk.h"
 #include "spec.h"
 #include "spec-compat.h"
 
+static int user_dma_coherent_size = 4 * 1024 * 1024;
+module_param(user_dma_coherent_size, int, 0644);
+MODULE_PARM_DESC(user_dma_coherent_size,
+		 "DMA coherent allocation's size in bytes (default 4MiB)");
+static size_t user_dma_max_segment;
+module_param(user_dma_max_segment, long, 0644);
+MODULE_PARM_DESC(user_dma_max_segment,
+		 "Maximum DMA segment size in bytes (default 0, meaning whatever supported by the DMA engine)");
 
 enum spec_fpga_irq_lines {
 	SPEC_FPGA_IRQ_FMC_I2C = 0,
@@ -122,6 +135,259 @@ static const struct file_operations spec_fpga_dbg_bld_ops = {
 	.release = single_release,
 };
 
+struct spec_fpga_dbg_dma {
+	struct spec_fpga *spec_fpga;
+	struct dma_chan *dchan;
+	size_t datalen;
+	void *data;
+	dma_addr_t datadma;
+	struct dmaengine_result dma_res;
+	struct completion compl;
+};
+
+
+struct spec_fmca_dbg_dma_tx_ctxt {
+	struct dmaengine_result dma_res;
+};
+static void spec_fmca_dbg_dma_tx_complete(void *arg,
+					  const struct dmaengine_result *result)
+{
+	struct spec_fpga_dbg_dma *dbgdma = arg;
+
+	memcpy(&dbgdma->dma_res, result, sizeof(*result));
+	complete(&dbgdma->compl);
+}
+
+static int spec_fpga_dbg_dma_transfer(struct spec_fpga_dbg_dma *dbgdma,
+				      enum dma_transfer_direction dir,
+				      size_t count, loff_t offset)
+{
+	int err;
+	struct dma_slave_config sconfig;
+	struct dma_async_tx_descriptor *tx;
+	dma_cookie_t cookie;
+	size_t max_segment;
+	struct sg_table sgt;
+	struct scatterlist *sg;
+	int i;
+
+	dev_dbg(dbgdma->dchan->device->dev,
+		"arg: {dir: %d, size: %ld, offset: 0x%08llx}\n",
+		dir, count, offset);
+
+	/*
+	 * The GN4124 chip has a 4KiB payload. For DMA_DEV_TO_MEM this is
+	 * handled by the HDL core. For DMA_MEM_TO_DEV, the split is done here.
+	 */
+	if (dir == DMA_DEV_TO_MEM)
+		max_segment = dma_get_max_seg_size(dbgdma->dchan->device->dev);
+	else
+		max_segment = 4096;
+	if (user_dma_max_segment)
+		max_segment = min(user_dma_max_segment, max_segment);
+	err = sg_alloc_table(&sgt,
+			     (count / max_segment) + !!(count % max_segment),
+			     GFP_KERNEL);
+	if (err)
+		goto err_sgt;
+
+	for_each_sg(sgt.sgl, sg, sgt.nents, i) {
+		sg_dma_address(sg) = dbgdma->datadma + (i * max_segment);
+		sg_dma_len(sg) = max_segment;
+		if (sg_is_last(sg)) {
+			size_t len = count % max_segment;
+
+			if (len)
+				sg_dma_len(sg) = len;
+		}
+	}
+
+	memset(&sconfig, 0, sizeof(sconfig));
+	sconfig.direction = dir;
+	sconfig.src_addr = offset;
+	err = dmaengine_slave_config(dbgdma->dchan, &sconfig);
+	if (err)
+		goto err_cfg;
+
+	tx = dmaengine_prep_slave_sg(dbgdma->dchan, sgt.sgl, sgt.nents,
+				     dir, 0);
+	if (!tx) {
+		err = -EINVAL;
+		goto err_prep;
+	}
+
+	/* Setup the DMA completion callback */
+	dbgdma->dma_res.result = DMA_TRANS_NOERROR;
+	dbgdma->dma_res.residue = 0;
+	tx->callback_result = spec_fmca_dbg_dma_tx_complete;
+	tx->callback_param = (void *)dbgdma;
+
+	cookie = dmaengine_submit(tx);
+	if (cookie < 0) {
+		err = cookie;
+		goto err_sub;
+	}
+	dma_async_issue_pending(dbgdma->dchan);
+
+	err = wait_for_completion_interruptible_timeout(
+		&dbgdma->compl, msecs_to_jiffies(60000));
+	if (err == 0)
+		err = -ETIMEDOUT;
+	if (err > 0) {
+		switch (dbgdma->dma_res.result) {
+		case DMA_TRANS_NOERROR:
+			err = 0;
+			break;
+		default:
+			err = -EIO;
+			break;
+		}
+	}
+
+err_sub:
+err_prep:
+err_cfg:
+	sg_free_table(&sgt);
+err_sgt:
+	return err;
+}
+
+static ssize_t spec_fpga_dbg_dma_read(struct file *file, char __user *buf,
+				      size_t count, loff_t *ppos)
+{
+	struct spec_fpga_dbg_dma *dbgdma = file->private_data;
+	int err;
+
+	if (*ppos >= SPEC_DDR_SIZE)
+		return -EINVAL;
+
+	count = min(dbgdma->datalen, count);
+	err = spec_fpga_dbg_dma_transfer(file->private_data, DMA_DEV_TO_MEM,
+					 count, *ppos);
+	if (err)
+		goto err_trans;
+	err = copy_to_user(buf, dbgdma->data, count);
+	if (err)
+		goto err_cpy;
+
+	*ppos += count;
+
+	return count;
+
+err_cpy:
+err_trans:
+	return err;
+}
+
+static ssize_t spec_fpga_dbg_dma_write(struct file *file,
+				       const char __user *buf, size_t count,
+				       loff_t *ppos)
+{
+	struct spec_fpga_dbg_dma *dbgdma = file->private_data;
+	int err;
+
+	if (*ppos >= SPEC_DDR_SIZE)
+		return -EINVAL;
+
+	count = min(dbgdma->datalen, count);
+	err = copy_from_user(dbgdma->data, buf, count);
+	if (err)
+		goto err_cpy;
+	err = spec_fpga_dbg_dma_transfer(dbgdma, DMA_MEM_TO_DEV,
+					 count, *ppos);
+	if (err)
+		goto err_trans;
+	*ppos += count;
+
+	return count;
+
+err_trans:
+err_cpy:
+	return err;
+}
+
+static bool spec_fpga_dbg_dma_filter(struct dma_chan *dchan, void *arg)
+{
+	return dchan->device == arg;
+}
+
+static int spec_fpga_dbg_dma_open(struct inode *inode, struct file *file)
+{
+	struct spec_fpga_dbg_dma *dbgdma;
+	struct spec_fpga *spec_fpga = inode->i_private;
+	dma_cap_mask_t dma_mask;
+	int err;
+
+	if (!spec_fpga->dma_pdev) {
+		dev_warn(&spec_fpga->dev,
+			 "Not able to find DMA engine: platform_device missing\n");
+		return -ENODEV;
+	}
+
+	dbgdma = kzalloc(sizeof(*dbgdma), GFP_KERNEL);
+	if (!dbgdma)
+		return -ENOMEM;
+	init_completion(&dbgdma->compl);
+	dbgdma->spec_fpga = spec_fpga;
+	dbgdma->datalen = user_dma_coherent_size;
+	dbgdma->data = dma_alloc_coherent(dbgdma->spec_fpga->dev.parent,
+					  dbgdma->datalen, &dbgdma->datadma,
+					  GFP_KERNEL);
+	if (!dbgdma->data) {
+		err = -ENOMEM;
+		goto err_dma_alloc;
+	}
+
+	dma_cap_zero(dma_mask);
+	dma_cap_set(DMA_SLAVE, dma_mask);
+	dma_cap_set(DMA_PRIVATE, dma_mask);
+	dbgdma->dchan = dma_request_channel(dma_mask, spec_fpga_dbg_dma_filter,
+					    platform_get_drvdata(spec_fpga->dma_pdev));
+	if (!dbgdma->dchan) {
+		dev_dbg(&spec_fpga->dev,
+			"DMA transfer Failed: can't request channel\n");
+		err = -EBUSY;
+		goto err_req;
+	}
+
+	file->private_data = dbgdma;
+	return 0;
+
+err_req:
+	dma_free_coherent(dbgdma->spec_fpga->dev.parent,
+			  dbgdma->datalen, dbgdma->data, dbgdma->datadma);
+err_dma_alloc:
+	kfree(dbgdma);
+	return err;
+}
+
+static int spec_fpga_dbg_dma_flush(struct file *file, fl_owner_t id)
+{
+	return 0;
+}
+
+static int spec_fpga_dbg_dma_release(struct inode *inode, struct file *file)
+{
+	struct spec_fpga_dbg_dma *dbgdma = file->private_data;
+
+	dma_free_coherent(dbgdma->spec_fpga->dev.parent,
+			  dbgdma->datalen, dbgdma->data, dbgdma->datadma);
+	dma_release_channel(dbgdma->dchan);
+	kfree(dbgdma);
+
+	return 0;
+}
+
+static const struct file_operations spec_fpga_dbg_dma_ops = {
+	.owner = THIS_MODULE,
+	.llseek = default_llseek,
+	.read = spec_fpga_dbg_dma_read,
+	.write = spec_fpga_dbg_dma_write,
+	.open  = spec_fpga_dbg_dma_open,
+	.flush = spec_fpga_dbg_dma_flush,
+	.release = spec_fpga_dbg_dma_release,
+};
+
 static int spec_fpga_dbg_init(struct spec_fpga *spec_fpga)
 {
 	struct pci_dev *pdev = to_pci_dev(spec_fpga->dev.parent);
@@ -142,13 +408,13 @@ static int spec_fpga_dbg_init(struct spec_fpga *spec_fpga)
 	spec_fpga->dbg_csr_reg.nregs = ARRAY_SIZE(spec_fpga_debugfs_reg32);
 	spec_fpga->dbg_csr_reg.base = spec_fpga->fpga;
 	spec_fpga->dbg_csr = debugfs_create_regset32(SPEC_DBG_CSR_NAME, 0200,
-						spec_fpga->dbg_dir_fpga,
-						&spec_fpga->dbg_csr_reg);
+						     spec_fpga->dbg_dir_fpga,
+						     &spec_fpga->dbg_csr_reg);
 	if (IS_ERR_OR_NULL(spec_fpga->dbg_csr)) {
 		err = PTR_ERR(spec_fpga->dbg_csr);
 		dev_warn(&spec_fpga->dev,
-			"Cannot create debugfs file \"%s\" (%d)\n",
-			SPEC_DBG_CSR_NAME, err);
+			 "Cannot create debugfs file \"%s\" (%d)\n",
+			 SPEC_DBG_CSR_NAME, err);
 		goto err;
 	}
 
@@ -162,6 +428,19 @@ static int spec_fpga_dbg_init(struct spec_fpga *spec_fpga)
 		dev_err(&spec_fpga->dev,
 			"Cannot create debugfs file \"%s\" (%d)\n",
 			SPEC_DBG_BLD_INFO_NAME, err);
+		goto err;
+	}
+
+	spec_fpga->dbg_dma = debugfs_create_file(SPEC_DBG_DMA_NAME,
+						 0444,
+						 spec_fpga->dbg_dir_fpga,
+						 spec_fpga,
+						 &spec_fpga_dbg_dma_ops);
+	if (IS_ERR_OR_NULL(spec_fpga->dbg_dma)) {
+		err = PTR_ERR(spec_fpga->dbg_dma);
+		dev_err(&spec_fpga->dev,
+			"Cannot create debugfs file \"%s\" (%d)\n",
+			SPEC_DBG_DMA_NAME, err);
 		goto err;
 	}
 
@@ -849,6 +1128,7 @@ static void spec_fpga_app_exit(struct spec_fpga *spec_fpga)
 static bool spec_fpga_is_valid(struct spec_gn412x *spec_gn412x,
 			       struct spec_meta_id *meta)
 {
+
 	if ((meta->bom & SPEC_META_BOM_END_MASK) != SPEC_META_BOM_LE) {
 		dev_err(&spec_gn412x->pdev->dev,
 			"Expected Little Endian devices BOM: 0x%x\n",
@@ -871,7 +1151,7 @@ static bool spec_fpga_is_valid(struct spec_gn412x *spec_gn412x,
 		return false;
 	}
 
-	if ((meta->version & SPEC_META_VERSION_MASK) != SPEC_META_VERSION_1_4) {
+	if ((meta->version & SPEC_META_VERSION_MASK) != SPEC_META_VERSION_2_0) {
 		dev_err(&spec_gn412x->pdev->dev,
 			"Unknow version: %08x\n", meta->version);
 		return false;
