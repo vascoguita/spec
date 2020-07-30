@@ -1,28 +1,25 @@
 target = "xilinx"
 action = "synthesis"
+board  = "spec"
 
-# Allow the user to override fetchto using:
-#  hdlmake -p "fetchto='xxx'"
-if locals().get('fetchto', None) is None:
-  fetchto = "../../ip_cores"
-
-syn_device = "xc6slx45t"
-syn_grade = "-3"
+syn_device  = "xc6slx45t"
+syn_grade   = "-3"
 syn_package = "fgg484"
-syn_project = "spec_dma_test.xise"
-syn_tool = "ise"
-syn_top = "spec_dma_test"
+syn_project = "spec_base_wr_example.xise"
+syn_tool    = "ise"
+syn_top     = "spec_base_wr_example"
 
-board = "spec"
-spec_base_ucf = ['ddr3']
+spec_base_ucf = ['wr', 'onewire', 'spi', 'ddr3']
+
 ctrls = ["bank3_32b_32b" ]
 
 files = [ "buildinfo_pkg.vhd" ]
 
 modules = {
   "local" : [
-      "../../top/dma_test", "../../syn/common"
-      ],
+    "../../top/wr_example",
+    "../../syn/common",
+  ],
   "git" : [
       "https://ohwr.org/project/wr-cores.git",
       "https://ohwr.org/project/general-cores.git",
@@ -31,6 +28,10 @@ modules = {
   ],
 }
 
+# Allow the user to override fetchto using:
+#  hdlmake -p "fetchto='xxx'"
+if locals().get('fetchto', None) is None:
+  fetchto = "../../ip_cores"
 
 # Do not fail during hdlmake fetch
 try:

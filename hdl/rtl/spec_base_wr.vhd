@@ -301,7 +301,7 @@ entity spec_base_wr is
     --  Addresses 0-0x1fff are not available (used by the carrier).
     --  This is a pipelined wishbone with byte granularity.
     app_wb_o           : out t_wishbone_master_out;
-    app_wb_i           : in  t_wishbone_master_in;
+    app_wb_i           : in  t_wishbone_master_in := c_DUMMY_WB_MASTER_IN;
 
     sim_wb_i : in t_wishbone_slave_in := cc_dummy_slave_in;
     sim_wb_o : out t_wishbone_slave_out
