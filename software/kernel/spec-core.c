@@ -29,6 +29,8 @@ static char *spec_fw_name_45t = "spec-golden-45T.bin";
 static char *spec_fw_name_100t = "spec-golden-100T.bin";
 static char *spec_fw_name_150t = "spec-golden-150T.bin";
 
+static DEFINE_MUTEX(gn412x_fcl_lock);
+
 char *spec_fw_name = "";
 module_param_named(fw_name, spec_fw_name, charp, 0444);
 
@@ -577,7 +579,9 @@ static int spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name)
 
 	spec_bootsel_set(spec_gn412x, SPEC_FPGA_SELECT_GN4124_FPGA);
 
+	mutex_lock(&gn412x_fcl_lock);
 	err = compat_spec_fw_load(spec_gn412x, name);
+	mutex_unlock(&gn412x_fcl_lock);
 	if (err)
 		goto out;
 
