@@ -6,6 +6,14 @@
 Changelog
 =========
 
+2.0.0 - 2020-08-20
+==================
+Fixed
+-----
+- program 2 or more SPEC FPGAs in parallel. There is a bug in the
+  GN412x chip that we fixed in software by serializing any attempt of
+  parallel programming
+
 2.0.0 - 2020-07-30
 ==================
 Added
