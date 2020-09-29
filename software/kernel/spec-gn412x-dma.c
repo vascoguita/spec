@@ -706,7 +706,8 @@ static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 
 			tx->tx.callback_result(tx->tx.callback_param, &result);
 		}
-		dev_err(&gn412x_dma->pdev->dev, "DMA transfer failed: error\n");
+		dev_err(&gn412x_dma->pdev->dev,
+			"DMA transfer failed: error\n");
 		break;
 	default:
 		dev_err(&gn412x_dma->pdev->dev,
