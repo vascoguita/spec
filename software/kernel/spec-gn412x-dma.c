@@ -780,6 +780,8 @@ static int gn412x_dma_engine_init(struct gn412x_dma_device *gn412x_dma,
 
 	dma->dev = parent;
 	if (dma_set_mask(dma->dev, DMA_BIT_MASK(64))) {
+		dev_warn(dma->dev, "64-bit DMA addressing not available\n");
+
 		/* Check if hardware supports 32-bit DMA */
 		if (dma_set_mask(dma->dev, DMA_BIT_MASK(32))) {
 			dev_err(dma->dev,
