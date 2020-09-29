@@ -6,11 +6,17 @@
 Changelog
 =========
 
-2.0.0 - 2020-08-20
+2.0.2 - 2020-09-29
 ==================
 Fixed
 -----
-- program 2 or more SPEC FPGAs in parallel. There is a bug in the
+- hdl: L2P DMA issues reported with slower hosts
+
+2.0.1 - 2020-08-20
+==================
+Fixed
+-----
+- sw: program 2 or more SPEC FPGAs in parallel. There is a bug in the
   GN412x chip that we fixed in software by serializing any attempt of
   parallel programming
 
