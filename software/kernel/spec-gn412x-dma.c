@@ -535,6 +535,29 @@ err:
 	return NULL;
 }
 
+static void gn412x_dma_tx_free(struct gn412x_dma_tx *tx)
+{
+	struct gn412x_dma_device *gn412x_dma;
+	int i;
+
+	gn412x_dma = to_gn412x_dma_device(tx->tx.chan->device);
+	for (i = 0; i < tx->sg_len; ++i) {
+		dma_addr_t phys;
+		dev_dbg(&gn412x_dma->pdev->dev,
+			"Release TX (%p) DMA desc %d\n", tx, i);
+		if (i == 0) {
+			phys = tx->tx.phys;
+		} else {
+			phys = tx->sgl_hw[i - 1]->next_addr_h;
+			phys <<= 32;
+			phys |= tx->sgl_hw[i - 1]->next_addr_l;
+		}
+		dma_pool_free(gn412x_dma->pool, tx->sgl_hw[i], phys);
+	}
+	kfree(tx->sgl_hw);
+	kfree(tx);
+}
+
 static void gn412x_dma_schedule_next(struct gn412x_dma_chan *gn412x_dma_chan)
 {
 	unsigned long flags;
@@ -656,13 +679,13 @@ static int gn412x_dma_device_control(struct dma_chan *chan,
 }
 #endif
 
+
 static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 {
 	struct gn412x_dma_device *gn412x_dma = arg;
 	struct gn412x_dma_chan *chan = &gn412x_dma->chan;
 	struct gn412x_dma_tx *tx;
 	unsigned long flags;
-	unsigned int i;
 	enum gn412x_dma_state state;
 
 	/* FIXME check for spurious - need HDL fix */
@@ -717,11 +740,7 @@ static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 	}
 
 	/* Clean up memory */
-	for (i = 0; i < tx->sg_len; ++i)
-		dma_pool_free(gn412x_dma->pool, tx->sgl_hw[i], tx->tx.phys);
-	kfree(tx->sgl_hw);
-	kfree(tx);
-
+	gn412x_dma_tx_free(tx);
 	gn412x_dma_schedule_next(chan);
 
 	return IRQ_HANDLED;
