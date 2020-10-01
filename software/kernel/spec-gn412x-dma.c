@@ -651,21 +651,18 @@ static int gn412x_dma_terminate_all(struct dma_chan *chan)
 	}
 	spin_unlock_irqrestore(&gn412x_dma_chan->lock, flags);
 
-	if (!gn412x_dma_is_abort(gn412x_dma)) {
-		dev_err(&gn412x_dma->pdev->dev,
-			"Failed to abort DMA transfer\n");
-		return -EINVAL;
+	if (gn412x_dma_is_abort(gn412x_dma)) {
+		tx = to_gn412x_dma_chan(chan)->tx_curr;
+		if (tx && tx->tx.callback_result) {
+			const struct dmaengine_result result = {
+				.result = DMA_TRANS_ABORTED,
+				.residue = 0,
+			};
+
+			tx->tx.callback_result(tx->tx.callback_param, &result);
+		}
 	}
 
-	tx = to_gn412x_dma_chan(chan)->tx_curr;
-	if (tx && tx->tx.callback_result) {
-		const struct dmaengine_result result = {
-			.result = DMA_TRANS_ABORTED,
-			.residue = 0,
-		};
-
-		tx->tx.callback_result(tx->tx.callback_param, &result);
-	}
 	gn412x_dma_tx_free(tx);
 
 	return 0;
