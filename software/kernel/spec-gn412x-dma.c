@@ -649,6 +649,7 @@ static int gn412x_dma_terminate_all(struct dma_chan *chan)
 		gn412x_dma_chan->tx_curr = NULL;
 	}
 
+	gn412x_dma_tx_free(tx);
 	list_for_each_entry_safe(tx, tx_tmp,
 				 &gn412x_dma_chan->pending_list, list) {
 		list_del(&tx->list);
@@ -666,8 +667,6 @@ static int gn412x_dma_terminate_all(struct dma_chan *chan)
 			tx->tx.callback_result(tx->tx.callback_param, &result);
 		}
 	}
-
-	gn412x_dma_tx_free(tx);
 
 	return 0;
 }
