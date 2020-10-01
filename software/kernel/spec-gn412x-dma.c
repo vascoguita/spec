@@ -641,9 +641,14 @@ static int gn412x_dma_terminate_all(struct dma_chan *chan)
 	unsigned long flags;
 
 	gn412x_dma = to_gn412x_dma_device(chan->device);
-	gn412x_dma_ctrl_abort(gn412x_dma);
 
 	spin_lock_irqsave(&gn412x_dma_chan->lock, flags);
+	tx = gn412x_dma_chan->tx_curr;
+	if (tx) {
+		gn412x_dma_ctrl_abort(gn412x_dma);
+		gn412x_dma_chan->tx_curr = NULL;
+	}
+
 	list_for_each_entry_safe(tx, tx_tmp,
 				 &gn412x_dma_chan->pending_list, list) {
 		list_del(&tx->list);
@@ -652,7 +657,6 @@ static int gn412x_dma_terminate_all(struct dma_chan *chan)
 	spin_unlock_irqrestore(&gn412x_dma_chan->lock, flags);
 
 	if (gn412x_dma_is_abort(gn412x_dma)) {
-		tx = to_gn412x_dma_chan(chan)->tx_curr;
 		if (tx && tx->tx.callback_result) {
 			const struct dmaengine_result result = {
 				.result = DMA_TRANS_ABORTED,
