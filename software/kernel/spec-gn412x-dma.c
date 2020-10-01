@@ -540,6 +540,9 @@ static void gn412x_dma_tx_free(struct gn412x_dma_tx *tx)
 	struct gn412x_dma_device *gn412x_dma;
 	int i;
 
+	if (unlikely(!tx))
+		return;
+
 	gn412x_dma = to_gn412x_dma_device(tx->tx.chan->device);
 	for (i = 0; i < tx->sg_len; ++i) {
 		dma_addr_t phys;
@@ -663,6 +666,8 @@ static int gn412x_dma_terminate_all(struct dma_chan *chan)
 
 		tx->tx.callback_result(tx->tx.callback_param, &result);
 	}
+	gn412x_dma_tx_free(tx);
+
 	return 0;
 }
 
