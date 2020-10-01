@@ -632,12 +632,22 @@ static int gn412x_dma_slave_config(struct dma_chan *chan,
 
 static int gn412x_dma_terminate_all(struct dma_chan *chan)
 {
+	struct gn412x_dma_chan *gn412x_dma_chan = to_gn412x_dma_chan(chan);
 	struct gn412x_dma_device *gn412x_dma;
-	struct gn412x_dma_tx *tx;
+	struct gn412x_dma_tx *tx, *tx_tmp;
+	unsigned long flags;
 
 	gn412x_dma = to_gn412x_dma_device(chan->device);
 	gn412x_dma_ctrl_abort(gn412x_dma);
-	/* FIXME remove all pending */
+
+	spin_lock_irqsave(&gn412x_dma_chan->lock, flags);
+	list_for_each_entry_safe(tx, tx_tmp,
+				 &gn412x_dma_chan->pending_list, list) {
+		list_del(&tx->list);
+		gn412x_dma_tx_free(tx);
+	}
+	spin_unlock_irqrestore(&gn412x_dma_chan->lock, flags);
+
 	if (!gn412x_dma_is_abort(gn412x_dma)) {
 		dev_err(&gn412x_dma->pdev->dev,
 			"Failed to abort DMA transfer\n");
