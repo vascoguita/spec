@@ -535,6 +535,32 @@ err:
 	return NULL;
 }
 
+static void gn412x_dma_tx_free(struct gn412x_dma_tx *tx)
+{
+	struct gn412x_dma_device *gn412x_dma;
+	int i;
+
+	if (unlikely(!tx))
+		return;
+
+	gn412x_dma = to_gn412x_dma_device(tx->tx.chan->device);
+	for (i = 0; i < tx->sg_len; ++i) {
+		dma_addr_t phys;
+		dev_dbg(&gn412x_dma->pdev->dev,
+			"Release TX (%p) DMA desc %d\n", tx, i);
+		if (i == 0) {
+			phys = tx->tx.phys;
+		} else {
+			phys = tx->sgl_hw[i - 1]->next_addr_h;
+			phys <<= 32;
+			phys |= tx->sgl_hw[i - 1]->next_addr_l;
+		}
+		dma_pool_free(gn412x_dma->pool, tx->sgl_hw[i], phys);
+	}
+	kfree(tx->sgl_hw);
+	kfree(tx);
+}
+
 static void gn412x_dma_schedule_next(struct gn412x_dma_chan *gn412x_dma_chan)
 {
 	unsigned long flags;
@@ -609,27 +635,39 @@ static int gn412x_dma_slave_config(struct dma_chan *chan,
 
 static int gn412x_dma_terminate_all(struct dma_chan *chan)
 {
+	struct gn412x_dma_chan *gn412x_dma_chan = to_gn412x_dma_chan(chan);
 	struct gn412x_dma_device *gn412x_dma;
-	struct gn412x_dma_tx *tx;
+	struct gn412x_dma_tx *tx, *tx_tmp;
+	unsigned long flags;
 
 	gn412x_dma = to_gn412x_dma_device(chan->device);
-	gn412x_dma_ctrl_abort(gn412x_dma);
-	/* FIXME remove all pending */
-	if (!gn412x_dma_is_abort(gn412x_dma)) {
-		dev_err(&gn412x_dma->pdev->dev,
-			"Failed to abort DMA transfer\n");
-		return -EINVAL;
+
+	spin_lock_irqsave(&gn412x_dma_chan->lock, flags);
+	tx = gn412x_dma_chan->tx_curr;
+	if (tx) {
+		gn412x_dma_ctrl_abort(gn412x_dma);
+		gn412x_dma_chan->tx_curr = NULL;
 	}
 
-	tx = to_gn412x_dma_chan(chan)->tx_curr;
-	if (tx && tx->tx.callback_result) {
-		const struct dmaengine_result result = {
-			.result = DMA_TRANS_ABORTED,
-			.residue = 0,
-		};
-
-		tx->tx.callback_result(tx->tx.callback_param, &result);
+	gn412x_dma_tx_free(tx);
+	list_for_each_entry_safe(tx, tx_tmp,
+				 &gn412x_dma_chan->pending_list, list) {
+		list_del(&tx->list);
+		gn412x_dma_tx_free(tx);
 	}
+	spin_unlock_irqrestore(&gn412x_dma_chan->lock, flags);
+
+	if (gn412x_dma_is_abort(gn412x_dma)) {
+		if (tx && tx->tx.callback_result) {
+			const struct dmaengine_result result = {
+				.result = DMA_TRANS_ABORTED,
+				.residue = 0,
+			};
+
+			tx->tx.callback_result(tx->tx.callback_param, &result);
+		}
+	}
+
 	return 0;
 }
 
@@ -656,13 +694,13 @@ static int gn412x_dma_device_control(struct dma_chan *chan,
 }
 #endif
 
+
 static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 {
 	struct gn412x_dma_device *gn412x_dma = arg;
 	struct gn412x_dma_chan *chan = &gn412x_dma->chan;
 	struct gn412x_dma_tx *tx;
 	unsigned long flags;
-	unsigned int i;
 	enum gn412x_dma_state state;
 
 	/* FIXME check for spurious - need HDL fix */
@@ -717,11 +755,7 @@ static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 	}
 
 	/* Clean up memory */
-	for (i = 0; i < tx->sg_len; ++i)
-		dma_pool_free(gn412x_dma->pool, tx->sgl_hw[i], tx->tx.phys);
-	kfree(tx->sgl_hw);
-	kfree(tx);
-
+	gn412x_dma_tx_free(tx);
 	gn412x_dma_schedule_next(chan);
 
 	return IRQ_HANDLED;
