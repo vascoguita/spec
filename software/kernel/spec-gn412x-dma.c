@@ -713,6 +713,7 @@ static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 	spin_unlock_irqrestore(&chan->lock, flags);
 
 	state = gn412x_dma_state(gn412x_dma);
+	gn412x_dma_schedule_next(chan);
 	switch (state) {
 	case GN412X_DMA_STAT_IDLE:
 		dma_cookie_complete(&tx->tx);
@@ -748,7 +749,6 @@ static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 
 	/* Clean up memory */
 	gn412x_dma_tx_free(tx);
-	gn412x_dma_schedule_next(chan);
 
 	return IRQ_HANDLED;
 }
