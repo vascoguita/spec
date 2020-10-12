@@ -310,25 +310,17 @@ static void gn412x_dma_ctrl_swapping(struct gn412x_dma_device *gn412x_dma,
 
 static enum gn412x_dma_state gn412x_dma_state(struct gn412x_dma_device *gn412x_dma)
 {
-	return ioread32(gn412x_dma->addr + GN412X_DMA_STAT);
+	return ioread32(gn412x_dma->addr + GN412X_DMA_STAT) & 0x3;
 }
 
 static bool gn412x_dma_is_busy(struct gn412x_dma_device *gn412x_dma)
 {
-	uint32_t status;
-
-	status = ioread32(gn412x_dma->addr + GN412X_DMA_STAT);
-
-	return status & GN412X_DMA_STAT_BUSY;
+	return gn412x_dma_state(gn412x_dma) == GN412X_DMA_STAT_BUSY;
 }
 
 static bool gn412x_dma_is_abort(struct gn412x_dma_device *gn412x_dma)
 {
-	uint32_t status;
-
-	status = ioread32(gn412x_dma->addr + GN412X_DMA_STAT);
-
-	return status & GN412X_DMA_STAT_ABORTED;
+	return gn412x_dma_state(gn412x_dma) ==  GN412X_DMA_STAT_ABORTED;
 }
 
 static void gn412x_dma_irq_ack(struct gn412x_dma_device *gn412x_dma)
