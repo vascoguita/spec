@@ -635,31 +635,25 @@ static int gn412x_dma_terminate_all(struct dma_chan *chan)
 	gn412x_dma = to_gn412x_dma_device(chan->device);
 
 	spin_lock_irqsave(&gn412x_dma_chan->lock, flags);
-	tx = gn412x_dma_chan->tx_curr;
-	if (tx) {
-		gn412x_dma_ctrl_abort(gn412x_dma);
-		gn412x_dma_chan->tx_curr = NULL;
-	}
-
-	gn412x_dma_tx_free(tx);
 	list_for_each_entry_safe(tx, tx_tmp,
 				 &gn412x_dma_chan->pending_list, list) {
 		list_del(&tx->list);
 		gn412x_dma_tx_free(tx);
 	}
-	spin_unlock_irqrestore(&gn412x_dma_chan->lock, flags);
-
-	if (gn412x_dma_is_abort(gn412x_dma)) {
-		if (tx && tx->tx.callback_result) {
+	tx = gn412x_dma_chan->tx_curr;
+	if (tx) {
+		gn412x_dma_ctrl_abort(gn412x_dma);
+		gn412x_dma_chan->tx_curr = NULL;
+		if (tx->tx.callback_result && gn412x_dma_is_abort(gn412x_dma)) {
 			const struct dmaengine_result result = {
 				.result = DMA_TRANS_ABORTED,
 				.residue = 0,
 			};
-
 			tx->tx.callback_result(tx->tx.callback_param, &result);
 		}
+		gn412x_dma_tx_free(tx);
 	}
-
+	spin_unlock_irqrestore(&gn412x_dma_chan->lock, flags);
 	return 0;
 }
 
