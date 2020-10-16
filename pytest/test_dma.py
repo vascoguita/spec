@@ -235,6 +235,7 @@ class TestDma(object):
             except OSError as error:
                 assert False, "Failed after {:d} transfers".format(i)
 
+class TestDmaPerformance(object):
     @pytest.mark.parametrize("dma_alloc_size",
                              [2**20 * x for x in range(1, 5)])
     def test_dma_throughput_read(self, spec, dma_alloc_size):
