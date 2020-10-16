@@ -7,7 +7,7 @@ import pytest
 from PySPEC import PySPEC
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def spec():
     spec_dev = PySPEC(pytest.pci_id)
     yield spec_dev
