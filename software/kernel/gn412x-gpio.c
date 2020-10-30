@@ -157,12 +157,42 @@ static void gn412x_gpio_reg_write(struct gpio_chip *chip,
 }
 
 /**
+ * Enable Internal Gennum error's interrupts
+ * @gn412x gn412x device
+ *
+ * Return: 0 on success, otherwise a negative error number
+ */
+static void gn412x_gpio_int_cfg_enable_err(struct gn412x_gpio_dev *gn412x)
+{
+	uint32_t int_cfg;
+
+	int_cfg = gn412x_ioread32(gn412x, GNINT_CFG(gn412x->pdata->int_cfg));
+	int_cfg |= GNINT_STAT_ERR_ALL;
+	gn412x_iowrite32(gn412x, int_cfg, GNINT_CFG(gn412x->pdata->int_cfg));
+}
+
+/**
+ * disable Internal Gennum error's interrupts
+ * @gn412x gn412x device
+ *
+ * Return: 0 on success, otherwise a negative error number
+ */
+static void gn412x_gpio_int_cfg_disable_err(struct gn412x_gpio_dev *gn412x)
+{
+	uint32_t int_cfg;
+
+	int_cfg = gn412x_ioread32(gn412x, GNINT_CFG(gn412x->pdata->int_cfg));
+	int_cfg &= ~GNINT_STAT_ERR_ALL;
+	gn412x_iowrite32(gn412x, int_cfg, GNINT_CFG(gn412x->pdata->int_cfg));
+}
+
+/**
  * Enable GPIO interrupts
  * @gn412x gn412x device
  *
  * Return: 0 on success, otherwise a negative error number
  */
-static void gn412x_gpio_int_cfg_enable(struct gn412x_gpio_dev *gn412x)
+static void gn412x_gpio_int_cfg_enable_gpio(struct gn412x_gpio_dev *gn412x)
 {
 	uint32_t int_cfg;
 
@@ -175,7 +205,7 @@ static void gn412x_gpio_int_cfg_enable(struct gn412x_gpio_dev *gn412x)
  * Disable GPIO interrupts from a single configuration space
  * @gn412x gn412x device
  */
-static void gn412x_gpio_int_cfg_disable(struct gn412x_gpio_dev *gn412x)
+static void gn412x_gpio_int_cfg_disable_gpio(struct gn412x_gpio_dev *gn412x)
 {
 	uint32_t int_cfg;
 
@@ -435,7 +465,7 @@ static irqreturn_t gn412x_gpio_irq_handler_t(int irq, void *arg)
 
 out_enable_irq:
 	/* Re-enable the GPIO interrupts, we are done here */
-	gn412x_gpio_int_cfg_enable(gn412x);
+	gn412x_gpio_int_cfg_enable_gpio(gn412x);
 
 	return ret;
 }
@@ -454,6 +484,13 @@ static irqreturn_t gn412x_gpio_irq_handler_h(int irq, void *arg)
 	if (unlikely(int_stat & GNINT_STAT_SW_ALL)) /* only for testing */
 		return spec_irq_sw_handler(irq, gn412x);
 
+	if (WARN(int_stat & GNINT_STAT_ERR_ALL, "GN412x ERROR 0x%08x",
+		 int_stat)) {
+		gn412x_iowrite32(gn412x, int_stat & GNINT_STAT_ERR_ALL,
+				 GNINT_STAT);
+		return IRQ_HANDLED;
+	}
+
 	/*
 	 * Do not listen to new interrupts while handling the current GPIOs.
 	 * This may take a while since the chain behind each GPIO can be long.
@@ -462,8 +499,10 @@ static irqreturn_t gn412x_gpio_irq_handler_h(int irq, void *arg)
 	 * devices sharing the same IRQ to wait for us; just to play safe,
 	 * let's disable interrupts. Within the thread we will re-enable them
 	 * when we are ready (like IRQF_ONESHOT).
+	 *
+	 * We keep the error interrupts enabled
 	 */
-	gn412x_gpio_int_cfg_disable(gn412x);
+	gn412x_gpio_int_cfg_disable_gpio(gn412x);
 
 	return IRQ_WAKE_THREAD;
 }
@@ -521,7 +560,8 @@ static int gn412x_gpio_probe(struct platform_device *pdev)
 	}
 	gn412x_iowrite32(gn412x, 0, GNGPIO_BYPASS_MODE);
 
-	gn412x_gpio_int_cfg_disable(gn412x);
+	gn412x_gpio_int_cfg_disable_err(gn412x);
+	gn412x_gpio_int_cfg_disable_gpio(gn412x);
 	gn412x_iowrite32(gn412x, 0xFFFF, GNGPIO_INT_MASK_SET);
 
 	gn412x->irqchip.name = "GN412X-GPIO",
@@ -594,7 +634,8 @@ static int gn412x_gpio_probe(struct platform_device *pdev)
 		goto err_req;
 	}
 
-	gn412x_gpio_int_cfg_enable(gn412x);
+	gn412x_gpio_int_cfg_enable_err(gn412x);
+	gn412x_gpio_int_cfg_enable_gpio(gn412x);
 
 	gn412x_dbg_init(gn412x);
 
@@ -621,7 +662,9 @@ static int gn412x_gpio_remove(struct platform_device *pdev)
 
 	gn412x_dbg_exit(gn412x);
 
-	gn412x_gpio_int_cfg_disable(gn412x);
+	gn412x_gpio_int_cfg_disable_gpio(gn412x);
+	gn412x_gpio_int_cfg_disable_err(gn412x);
+
 
 	free_irq(platform_get_irq(pdev, 0), gn412x);
 	gn412x_gpio_irq_set_nested_thread_all(gn412x, false);

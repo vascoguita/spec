@@ -7,8 +7,22 @@
 #define __GN412X_H__
 
 #define GNINT_STAT_GPIO BIT(15)
+#define GNINT_STAT_ALI6 BIT(14)
+#define GNINT_STAT_ALI5 BIT(13)
+#define GNINT_STAT_ALI4 BIT(12)
+#define GNINT_STAT_ALI3 BIT(11)
+#define GNINT_STAT_ALI2 BIT(10)
+#define GNINT_STAT_ALI1 BIT(9)
+#define GNINT_STAT_ALI0 BIT(8)
 #define GNINT_STAT_SW0 BIT(2)
 #define GNINT_STAT_SW1 BIT(3)
+#define GNINT_STAT_ERR_ALL (GNINT_STAT_ALI0 | \
+			    GNINT_STAT_ALI1 | \
+			    GNINT_STAT_ALI2 | \
+			    GNINT_STAT_ALI3 | \
+			    GNINT_STAT_ALI4 | \
+			    GNINT_STAT_ALI5 | \
+			    GNINT_STAT_ALI6)
 #define GNINT_STAT_SW_ALL (GNINT_STAT_SW0 | GNINT_STAT_SW1)
 
 /* Registers for GN4124 access */
