@@ -218,7 +218,7 @@ class TestDma(object):
 
     @pytest.mark.skipif(pytest.cfg_bitstream is None,
                         reason="We need a bitstream to reflash")
-    def test_dma_reg_word(self, spec):
+    def test_dma_reg_word(self, dma):
         """
         Regression test.
         It happend that a 4Bytes transfer was triggering a DMA error
