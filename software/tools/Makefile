@@ -11,7 +11,8 @@ DESTDIR ?= /usr/local/
 
 TOOLS = spec-firmware-version
 
-CFLAGS = -ggdb -I. -I../include/uapi -Wall -Werror $(EXTRACFLAGS)
+INCLUDE := -I. -I../kernel -I../include/uapi
+CFLAGS = -ggdb $(INCLUDE) -Wall -Werror $(EXTRACFLAGS)
 GIT_VERSION := $(shell git describe --dirty --long --tags)
 CFLAGS += -DGIT_VERSION="\"$(GIT_VERSION)\""
 
@@ -31,6 +32,6 @@ install:
 	install -D $(TOOLS) $(DESTDIR)/bin
 
 cppcheck:
-	$(CPPCHECK) -q -I. -I../include/uapi --suppress=missingIncludeSystem --enable=all *.c *.h  --error-exitcode=1
+	$(CPPCHECK) -q $(INCLUDE) --suppress=missingIncludeSystem --enable=all *.c *.h  --error-exitcode=1
 
 .PHONY=cppcheck
