@@ -23,6 +23,8 @@
 
 static const char git_version[] = "git version: " GIT_VERSION;
 static char *name;
+static bool singleline = false;
+static unsigned int verbose;
 
 static void help(void)
 {
@@ -31,6 +33,7 @@ static void help(void)
 		"\t-p <PCIID>\n"
 		"\t-b  print spec-base\n"
 		"\t-a  print spec-application\n"
+		"\t-1  print on a single line\n"
 		"\t-V  print version\n"
 		"\t-h  print help\n",
 		name);
@@ -47,24 +50,49 @@ static void cleanup(void)
 		free(name);
 }
 
+static const char *bom_to_str(uint32_t bom)
+{
+	if ((bom & SPEC_META_BOM_END_MASK) == SPEC_META_BOM_LE)
+		return "little-endian";
+	else
+		return "wrong";
+}
+
+static void print_meta_id_one(struct spec_meta_id *rom)
+{
+	fprintf(stdout, "0x%08x,0x%08x,%u.%u.%u",
+		rom->vendor,
+		rom->device,
+		SPEC_META_VERSION_MAJ(rom->version),
+		SPEC_META_VERSION_MIN(rom->version),
+		SPEC_META_VERSION_PATCH(rom->version));
+	if (verbose > 1) {
+		fprintf(stdout, ",%08x%08x%08x%08x,%s,%08x%08x%08x%08x",
+			rom->src[0], rom->src[1], rom->src[2], rom->src[3],
+			bom_to_str(rom->bom),
+			rom->uuid[0], rom->uuid[1], rom->uuid[2], rom->uuid[3]);
+	}
+	fputc('\n', stdout);
+}
+
 static void print_meta_id(struct spec_meta_id *rom)
 {
+	fputc('\n', stdout);
 	fprintf(stdout, "  vendor       : 0x%08x\n", rom->vendor);
 	fprintf(stdout, "  device       : 0x%08x\n", rom->device);
 	fprintf(stdout, "  version      : %u.%u.%u\n",
 		SPEC_META_VERSION_MAJ(rom->version),
 		SPEC_META_VERSION_MIN(rom->version),
 		SPEC_META_VERSION_PATCH(rom->version));
-	if ((rom->bom & SPEC_META_BOM_END_MASK) == SPEC_META_BOM_LE)
-		fputs("  byte-order   : little-endian\n", stdout);
-	else
-		fputs("  byte-order   : wrong or unknown\n", stdout);
-	fprintf(stdout, "  sources      : %08x%08x%08x%08x\n",
-		rom->src[0], rom->src[1], rom->src[2], rom->src[3]);
-	fprintf(stdout, "  capabilities : 0x%08x\n", rom->cap);
-	fprintf(stdout, "  UUID         : %08x%08x%08x%08x\n",
-		rom->uuid[0], rom->uuid[1],
-		rom->uuid[2], rom->uuid[3]);
+	if (verbose > 1) {
+		fprintf(stdout, "  byte-order   : %s\n", bom_to_str(rom->bom));
+		fprintf(stdout, "  sources      : %08x%08x%08x%08x\n",
+			rom->src[0], rom->src[1], rom->src[2], rom->src[3]);
+		fprintf(stdout, "  capabilities : 0x%08x\n", rom->cap);
+		fprintf(stdout, "  UUID         : %08x%08x%08x%08x\n",
+			rom->uuid[0], rom->uuid[1],
+			rom->uuid[2], rom->uuid[3]);
+	}
 }
 
 static int print_base_meta_id(int fd)
@@ -77,8 +105,11 @@ static int print_base_meta_id(int fd)
 		fputs("Failed while reading SPEC-BASE FPGA ROM\n", stderr);
 		return -1;
 	}
-	fputs("spec-base:\n", stdout);
-	print_meta_id(rom);
+	fputs("spec-base: ", stdout);
+	if (singleline)
+		print_meta_id_one(rom);
+	else
+		print_meta_id(rom);
 	munmap(rom, sizeof(*rom));
 
         return 0;
@@ -118,8 +149,11 @@ static int print_app_meta_id(int fd)
 		fputs("Failed while reading SPEC-APP FPGA ROM\n", stderr);
 		return -1;
 	}
-	fputs("spec-application:\n", stdout);
-	print_meta_id(rom);
+	fputs("spec-application: ", stdout);
+	if (singleline)
+		print_meta_id_one(rom);
+	else
+		print_meta_id(rom);
 	munmap(rom, sizeof(*rom));
 
         return 0;
@@ -142,7 +176,7 @@ int main(int argc, char *argv[])
 	if (err)
 		exit(EXIT_FAILURE);
 
-        while ((opt = getopt(argc, argv, "h?Vvp:ba")) != -1) {
+        while ((opt = getopt(argc, argv, "h?Vvp:ba1")) != -1) {
 		switch (opt) {
 		case 'h':
 		case '?':
@@ -159,6 +193,12 @@ int main(int argc, char *argv[])
 			break;
 		case 'b':
 			base = true;
+			break;
+		case 'v':
+			verbose++;
+			break;
+		case '1':
+			singleline = true;
 			break;
 		}
 	}
