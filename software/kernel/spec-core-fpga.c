@@ -20,6 +20,7 @@
 #include <linux/jiffies.h>
 #include <linux/uaccess.h>
 #include <linux/moduleparam.h>
+#include <linux/mtd/partitions.h>
 
 #include "linux/printk.h"
 #include "spec.h"
@@ -646,10 +647,23 @@ static struct resource spec_fpga_spi_res[] = {
 	},
 };
 
+static struct mtd_partition spec_flash_parts[] = {
+	{
+		.name = "AFPGA",
+		.offset = 0x00000000,
+		.size = 5 * SZ_1M,
+	}, {
+		.name = "AFPGA_DATA",
+		.offset = MTDPART_OFS_APPEND,
+		.size = MTDPART_SIZ_FULL,
+	},
+
+};
+
 struct flash_platform_data spec_flash_pdata = {
 	.name = "spec-flash",
-	.parts = NULL,
-	.nr_parts = 0,
+	.parts = spec_flash_parts,
+	.nr_parts = ARRAY_SIZE(spec_flash_parts),
 	.type = "m25p32",
 };
 
