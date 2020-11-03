@@ -783,6 +783,6 @@ MODULE_VERSION(VERSION);
 MODULE_DESCRIPTION("Driver for the 'Simple PCIe FMC Carrier' a.k.a. SPEC");
 MODULE_DEVICE_TABLE(pci, spec_pci_tbl);
 
-MODULE_SOFTDEP("pre: gn412x_gpio gn412x_fcl htvic spec_gn412x_dma i2c_mux i2c-ocores spi-ocores");
+MODULE_SOFTDEP("pre: gn412x_gpio gn412x_fcl htvic spec_gn412x_dma i2c_mux i2c-ocores spi-ocores m25p80");
 
 ADDITIONAL_VERSIONS;
