@@ -34,7 +34,7 @@ dkms-src: dkms-tree spec-core-fpga.h
 	@mv /tmp/spec-core-fpga.h $($@_dir)
 	@cp -a $($@_src) $(TOP_DIR)/distribution/dkms.conf $($@_dir)
 	@mv $($@_dir)/gn412x-gpio.h $($@_dir)/platform_data
-	@cp -a $(TOP_DIR)/LICENSES/GPL-2.0.txt $($@_dir)/LICENSE
+	@cp -a $(TOP_DIR)/LICENSES/GPL-2.0-or-later.txt $($@_dir)/LICENSE
 	@sed -r -i -e "s/^VERSION\s=\s.*/VERSION = $(VERSION)/" $($@_dir)/Makefile
 	@sed -r -i -e "s/@PKGNAME@/$(DRIVER_NAME)/" $($@_dir)/dkms.conf
 	@sed -r -i -e "s/@PKGVER@/$(VERSION)/" $($@_dir)/dkms.conf

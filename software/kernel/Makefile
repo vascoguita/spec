@@ -57,10 +57,11 @@ SPI_ABS ?= $(abspath $(SPI))
 VERSION = $(shell git describe --dirty --long --tags)
 
 CHEBY ?= /usr/bin/cheby
+CPPCHECK ?= cppcheck
 
 all: modules
 
-.PHONY: all modules clean help install modules_install coccicheck spec-core-fpga.h
+.PHONY: all modules clean help install modules_install coccicheck spec-core-fpga.h cppcheck
 
 spec-core-fpga.h:
 ifeq ($(DKMS), 0)
@@ -83,3 +84,7 @@ modules help coccicheck modules_install clean: spec-core-fpga.h
 		I2C_ABS=$(I2C_ABS) \
 		SPI_ABS=$(SPI_ABS) \
 		$@
+
+INCLUDE := -I./
+cppcheck:
+	$(CPPCHECK) -q $(INCLUDE) --suppress=missingIncludeSystem --enable=all *.c *.h  --error-exitcode=1

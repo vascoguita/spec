@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: LGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  * Copyright (C) 2020 CERN (www.cern.ch)
  * Author: Federico Vaga <federico.vaga@cern.ch>
  */
@@ -123,7 +123,7 @@ static off_t app_meta_id_offset(int fd)
 	regs = mmap(NULL, 0x100, PROT_READ, MAP_SHARED, fd, 0);
 	if ((long)regs == -1)
 		return -1;
-	offset = *((uint32_t *)(regs + SPEC_BASE_REGS_CSR_APP_OFFSET));
+	offset = *((uint32_t *)((char *)regs + SPEC_BASE_REGS_CSR_APP_OFFSET));
 	munmap(regs, 0x100);
 
 	return offset;

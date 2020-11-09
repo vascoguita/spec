@@ -33,4 +33,4 @@ install:
 cppcheck:
 	$(CPPCHECK) -q $(INCLUDE) --suppress=missingIncludeSystem --enable=all *.c *.h  --error-exitcode=1
 
-.PHONY=cppcheck
+.PHONY: cppcheck
