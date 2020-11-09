@@ -6,6 +6,24 @@
 Changelog
 =========
 
+2.1.0 - 2020-11-09
+==================
+Fixed
+-----
+- hdl: cross-page DMA failure
+- sw: DMA pool memory leak
+- sw: fix concurrent DMA tasklet
+
+Changed
+-------
+- tst: keep the DMA interface open while testing to avoid continuos
+  memory re-allocation
+
+Added
+-----
+- sw: tool to firmware version inspection
+- sw: FLASH partitions
+
 2.0.2 - 2020-09-29
 ==================
 Fixed
