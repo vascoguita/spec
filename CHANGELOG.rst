@@ -6,6 +6,12 @@
 Changelog
 =========
 
+2.1.1 - 2020-11-09
+==================
+Fixed
+-----
+- hdl: report the correct version in spec-golden design
+
 2.1.0 - 2020-11-09
 ==================
 Fixed
