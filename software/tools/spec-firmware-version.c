@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: LGPL-3.0-or-later
+ * SPDX-License-Identifier: GPL-3.0-or-later
  * Copyright (C) 2020 CERN (www.cern.ch)
  * Author: Federico Vaga <federico.vaga@cern.ch>
  */
