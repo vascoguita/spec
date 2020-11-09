@@ -24,7 +24,6 @@ all: $(TOOLS)
 $(TOOLS):
 
 clean:
-	@$(MAKE) -C $(LIB) $@
 	rm -f $(TOOLS)
 
 install:
