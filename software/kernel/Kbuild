@@ -7,8 +7,12 @@ endif
 endif
 # add versions of used submodules
 
+VER_MAJ := $(shell echo $(subst v,,$(VERSION)) | cut -d '.' -f 1)
+VER_MIN := $(shell echo $(subst v,,$(VERSION)) | cut -d '.' -f 2)
+SPEC_META_VERSION_COMPAT := $(shell printf "0x%02x%02x0000" $(VER_MAJ) $(VER_MIN))
 ccflags-y += -DADDITIONAL_VERSIONS="$(SUBMODULE_VERSIONS)"
 ccflags-y += -DVERSION=\"$(VERSION)\"
+ccflags-y += -DSPEC_META_VERSION_COMPAT=$(SPEC_META_VERSION_COMPAT)
 ccflags-y += -Wall -Werror
 
 ccflags-y += -I$(FPGA_MGR_ABS)/include
