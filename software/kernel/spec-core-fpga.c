@@ -1165,9 +1165,10 @@ static bool spec_fpga_is_valid(struct spec_gn412x *spec_gn412x,
 		return false;
 	}
 
-	if ((meta->version & SPEC_META_VERSION_MASK) != SPEC_META_VERSION_2_0) {
+	if ((meta->version & SPEC_META_VERSION_MASK) != SPEC_META_VERSION_COMPAT) {
 		dev_err(&spec_gn412x->pdev->dev,
-			"Unknow version: %08x\n", meta->version);
+			"Unknow version: %08x, expected: %08x\n",
+			meta->version, SPEC_META_VERSION_COMPAT);
 		return false;
 	}
 
