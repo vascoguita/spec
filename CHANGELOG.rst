@@ -6,6 +6,12 @@
 Changelog
 =========
 
+2.1.2 - 2020-11-09
+==================
+Fixed
+-----
+- sw: automatize version validation
+
 2.1.1 - 2020-11-09
 ==================
 Fixed
