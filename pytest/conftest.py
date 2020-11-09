@@ -7,10 +7,16 @@ import pytest
 from PySPEC import PySPEC
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def spec():
     spec_dev = PySPEC(pytest.pci_id)
     yield spec_dev
+
+@pytest.fixture(scope="class")
+def dma():
+    spec = PySPEC(pytest.pci_id)
+    with spec.dma() as spec_dma:
+        yield spec_dma
 
 def pytest_addoption(parser):
     parser.addoption("--pci-id",

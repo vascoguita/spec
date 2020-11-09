@@ -6,11 +6,35 @@
 Changelog
 =========
 
-2.0.0 - 2020-08-20
+2.1.0 - 2020-11-09
 ==================
 Fixed
 -----
-- program 2 or more SPEC FPGAs in parallel. There is a bug in the
+- hdl: cross-page DMA failure
+- sw: DMA pool memory leak
+- sw: fix concurrent DMA tasklet
+
+Changed
+-------
+- tst: keep the DMA interface open while testing to avoid continuos
+  memory re-allocation
+
+Added
+-----
+- sw: tool to firmware version inspection
+- sw: FLASH partitions
+
+2.0.2 - 2020-09-29
+==================
+Fixed
+-----
+- hdl: L2P DMA issues reported with slower hosts
+
+2.0.1 - 2020-08-20
+==================
+Fixed
+-----
+- sw: program 2 or more SPEC FPGAs in parallel. There is a bug in the
   GN412x chip that we fixed in software by serializing any attempt of
   parallel programming
 

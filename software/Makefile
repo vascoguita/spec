@@ -1,7 +1,7 @@
 -include Makefile.specific
 -include $(REPO_PARENT)/parent_common.mk
 
-DIRS = kernel
+DIRS = kernel tools
 
 .PHONY: all clean modules install modules_install coccicheck $(DIRS)
 

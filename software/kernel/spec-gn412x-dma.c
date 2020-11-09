@@ -310,25 +310,17 @@ static void gn412x_dma_ctrl_swapping(struct gn412x_dma_device *gn412x_dma,
 
 static enum gn412x_dma_state gn412x_dma_state(struct gn412x_dma_device *gn412x_dma)
 {
-	return ioread32(gn412x_dma->addr + GN412X_DMA_STAT);
+	return ioread32(gn412x_dma->addr + GN412X_DMA_STAT) & 0x3;
 }
 
 static bool gn412x_dma_is_busy(struct gn412x_dma_device *gn412x_dma)
 {
-	uint32_t status;
-
-	status = ioread32(gn412x_dma->addr + GN412X_DMA_STAT);
-
-	return status & GN412X_DMA_STAT_BUSY;
+	return gn412x_dma_state(gn412x_dma) == GN412X_DMA_STAT_BUSY;
 }
 
 static bool gn412x_dma_is_abort(struct gn412x_dma_device *gn412x_dma)
 {
-	uint32_t status;
-
-	status = ioread32(gn412x_dma->addr + GN412X_DMA_STAT);
-
-	return status & GN412X_DMA_STAT_ABORTED;
+	return gn412x_dma_state(gn412x_dma) ==  GN412X_DMA_STAT_ABORTED;
 }
 
 static void gn412x_dma_irq_ack(struct gn412x_dma_device *gn412x_dma)
@@ -535,6 +527,32 @@ err:
 	return NULL;
 }
 
+static void gn412x_dma_tx_free(struct gn412x_dma_tx *tx)
+{
+	struct gn412x_dma_device *gn412x_dma;
+	int i;
+
+	if (unlikely(!tx))
+		return;
+
+	gn412x_dma = to_gn412x_dma_device(tx->tx.chan->device);
+	for (i = 0; i < tx->sg_len; ++i) {
+		dma_addr_t phys;
+		dev_dbg(&gn412x_dma->pdev->dev,
+			"Release TX (%p) DMA desc %d\n", tx, i);
+		if (i == 0) {
+			phys = tx->tx.phys;
+		} else {
+			phys = tx->sgl_hw[i - 1]->next_addr_h;
+			phys <<= 32;
+			phys |= tx->sgl_hw[i - 1]->next_addr_l;
+		}
+		dma_pool_free(gn412x_dma->pool, tx->sgl_hw[i], phys);
+	}
+	kfree(tx->sgl_hw);
+	kfree(tx);
+}
+
 static void gn412x_dma_schedule_next(struct gn412x_dma_chan *gn412x_dma_chan)
 {
 	unsigned long flags;
@@ -609,27 +627,33 @@ static int gn412x_dma_slave_config(struct dma_chan *chan,
 
 static int gn412x_dma_terminate_all(struct dma_chan *chan)
 {
+	struct gn412x_dma_chan *gn412x_dma_chan = to_gn412x_dma_chan(chan);
 	struct gn412x_dma_device *gn412x_dma;
-	struct gn412x_dma_tx *tx;
+	struct gn412x_dma_tx *tx, *tx_tmp;
+	unsigned long flags;
 
 	gn412x_dma = to_gn412x_dma_device(chan->device);
-	gn412x_dma_ctrl_abort(gn412x_dma);
-	/* FIXME remove all pending */
-	if (!gn412x_dma_is_abort(gn412x_dma)) {
-		dev_err(&gn412x_dma->pdev->dev,
-			"Failed to abort DMA transfer\n");
-		return -EINVAL;
-	}
 
-	tx = to_gn412x_dma_chan(chan)->tx_curr;
-	if (tx && tx->tx.callback_result) {
-		const struct dmaengine_result result = {
-			.result = DMA_TRANS_ABORTED,
-			.residue = 0,
-		};
-
-		tx->tx.callback_result(tx->tx.callback_param, &result);
+	spin_lock_irqsave(&gn412x_dma_chan->lock, flags);
+	list_for_each_entry_safe(tx, tx_tmp,
+				 &gn412x_dma_chan->pending_list, list) {
+		list_del(&tx->list);
+		gn412x_dma_tx_free(tx);
 	}
+	tx = gn412x_dma_chan->tx_curr;
+	if (tx) {
+		gn412x_dma_ctrl_abort(gn412x_dma);
+		gn412x_dma_chan->tx_curr = NULL;
+		if (tx->tx.callback_result && gn412x_dma_is_abort(gn412x_dma)) {
+			const struct dmaengine_result result = {
+				.result = DMA_TRANS_ABORTED,
+				.residue = 0,
+			};
+			tx->tx.callback_result(tx->tx.callback_param, &result);
+		}
+		gn412x_dma_tx_free(tx);
+	}
+	spin_unlock_irqrestore(&gn412x_dma_chan->lock, flags);
 	return 0;
 }
 
@@ -656,13 +680,13 @@ static int gn412x_dma_device_control(struct dma_chan *chan,
 }
 #endif
 
+
 static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 {
 	struct gn412x_dma_device *gn412x_dma = arg;
 	struct gn412x_dma_chan *chan = &gn412x_dma->chan;
 	struct gn412x_dma_tx *tx;
 	unsigned long flags;
-	unsigned int i;
 	enum gn412x_dma_state state;
 
 	/* FIXME check for spurious - need HDL fix */
@@ -683,6 +707,7 @@ static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 	spin_unlock_irqrestore(&chan->lock, flags);
 
 	state = gn412x_dma_state(gn412x_dma);
+	gn412x_dma_schedule_next(chan);
 	switch (state) {
 	case GN412X_DMA_STAT_IDLE:
 		dma_cookie_complete(&tx->tx);
@@ -706,7 +731,8 @@ static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 
 			tx->tx.callback_result(tx->tx.callback_param, &result);
 		}
-		dev_err(&gn412x_dma->pdev->dev, "DMA transfer failed: error\n");
+		dev_err(&gn412x_dma->pdev->dev,
+			"DMA transfer failed: error\n");
 		break;
 	default:
 		dev_err(&gn412x_dma->pdev->dev,
@@ -716,12 +742,7 @@ static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 	}
 
 	/* Clean up memory */
-	for (i = 0; i < tx->sg_len; ++i)
-		dma_pool_free(gn412x_dma->pool, tx->sgl_hw[i], tx->tx.phys);
-	kfree(tx->sgl_hw);
-	kfree(tx);
-
-	gn412x_dma_schedule_next(chan);
+	gn412x_dma_tx_free(tx);
 
 	return IRQ_HANDLED;
 }
@@ -779,6 +800,8 @@ static int gn412x_dma_engine_init(struct gn412x_dma_device *gn412x_dma,
 
 	dma->dev = parent;
 	if (dma_set_mask(dma->dev, DMA_BIT_MASK(64))) {
+		dev_warn(dma->dev, "64-bit DMA addressing not available\n");
+
 		/* Check if hardware supports 32-bit DMA */
 		if (dma_set_mask(dma->dev, DMA_BIT_MASK(32))) {
 			dev_err(dma->dev,
