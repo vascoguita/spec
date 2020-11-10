@@ -3,6 +3,8 @@
 # SPDX-FileCopyrightText: 2020 CERN (home.cern)
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Author: Federico Vaga <federico.vaga@cern.ch>
 
 import os
 import re
