@@ -66,7 +66,7 @@ static void print_meta_id_one(struct spec_meta_id *rom)
 		SPEC_META_VERSION_MAJ(rom->version),
 		SPEC_META_VERSION_MIN(rom->version),
 		SPEC_META_VERSION_PATCH(rom->version));
-	if (verbose > 1) {
+	if (verbose > 0) {
 		fprintf(stdout, ",%08x%08x%08x%08x,%s,%08x%08x%08x%08x",
 			rom->src[0], rom->src[1], rom->src[2], rom->src[3],
 			bom_to_str(rom->bom),
@@ -84,7 +84,7 @@ static void print_meta_id(struct spec_meta_id *rom)
 		SPEC_META_VERSION_MAJ(rom->version),
 		SPEC_META_VERSION_MIN(rom->version),
 		SPEC_META_VERSION_PATCH(rom->version));
-	if (verbose > 1) {
+	if (verbose > 0) {
 		fprintf(stdout, "  byte-order   : %s\n", bom_to_str(rom->bom));
 		fprintf(stdout, "  sources      : %08x%08x%08x%08x\n",
 			rom->src[0], rom->src[1], rom->src[2], rom->src[3]);
