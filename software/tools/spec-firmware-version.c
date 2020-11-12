@@ -67,9 +67,9 @@ static void print_meta_id_one(struct spec_meta_id *rom)
 		SPEC_META_VERSION_MIN(rom->version),
 		SPEC_META_VERSION_PATCH(rom->version));
 	if (verbose > 0) {
-		fprintf(stdout, ",%08x%08x%08x%08x,%s,%08x%08x%08x%08x",
+		fprintf(stdout, ",%08x%08x%08x%08x,%s,%08x,%08x%08x%08x%08x",
 			rom->src[0], rom->src[1], rom->src[2], rom->src[3],
-			bom_to_str(rom->bom),
+			bom_to_str(rom->bom), rom->cap,
 			rom->uuid[0], rom->uuid[1], rom->uuid[2], rom->uuid[3]);
 	}
 	fputc('\n', stdout);
