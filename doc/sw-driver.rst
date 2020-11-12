@@ -241,6 +241,12 @@ attributes.  Here we focus only on those.
 Module Parameters
 -----------------
 
+``version_ignore`` [R]
+  When set to 1 (enable) at ``insmod(2)`` time, it forces the driver
+  to ignore the version declared in the FPGA bitstream. Particularly
+  usefull during development or debugging across major or minor
+  version. By default it is set to 0 (disable).
+
 ``user_dma_coherent_size`` [RW]
   It sets the maximum size for a coherent DMA memory allocation. A
   change to this value is applied on ``open(2)``
