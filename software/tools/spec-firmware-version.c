@@ -12,6 +12,7 @@
 #include <getopt.h>
 #include <libgen.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -67,28 +68,93 @@ static void print_meta_id_one(struct spec_meta_id *rom)
 		SPEC_META_VERSION_MIN(rom->version),
 		SPEC_META_VERSION_PATCH(rom->version));
 	if (verbose > 0) {
-		fprintf(stdout, ",%08x%08x%08x%08x,%s,%08x,%08x%08x%08x%08x",
+		fprintf(stdout, "%08x,%08x,%08x%08x%08x%08x,%08x%08x%08x%08x",
+			rom->cap, rom->bom,
 			rom->src[0], rom->src[1], rom->src[2], rom->src[3],
-			bom_to_str(rom->bom), rom->cap,
 			rom->uuid[0], rom->uuid[1], rom->uuid[2], rom->uuid[3]);
 	}
 	fputc('\n', stdout);
 }
 
+static void print_meta_vendor(uint32_t vendor)
+{
+	switch(vendor) {
+	case SPEC_META_VENDOR_ID:
+		fputs("CERN", stdout);
+		break;
+	default:
+		fprintf(stdout, "unknown (0x%08"PRIx32")", vendor);
+		break;
+	}
+}
+
+static void print_meta_device(uint32_t device)
+{
+	switch(device) {
+	case SPEC_META_DEVICE_ID:
+		fputs("spec-base", stdout);
+		break;
+	default:
+		fprintf(stdout, "unknown (0x%08"PRIx32")", device);
+		break;
+	}
+}
+
+static const char *capability[] = {
+	"vic",
+	"thermometer",
+	"spi",
+	"white-rabbit",
+	"build-info",
+	"dma-engine",
+};
+
+static void print_meta_capabilities(uint32_t cap)
+{
+	bool has_cap = false;
+	int i;
+
+	for (i = 0; i < 32; ++i) {
+		if (i < 6) { /* known bits */
+			if (cap & BIT(i)) {
+				fputs(capability[i], stdout);
+				fputs(", ", stdout);
+				has_cap = true;
+			}
+		} else {
+			if (cap & BIT(i))
+				fprintf(stdout, "unknown BIT(%d), ", i);
+		}
+	}
+	if (has_cap)
+		fputs("\b\b  ", stdout);
+}
+
 static void print_meta_id(struct spec_meta_id *rom)
 {
 	fputc('\n', stdout);
-	fprintf(stdout, "  vendor       : 0x%08x\n", rom->vendor);
-	fprintf(stdout, "  device       : 0x%08x\n", rom->device);
-	fprintf(stdout, "  version      : %u.%u.%u\n",
+
+        fprintf(stdout, "  vendor       : ");
+	print_meta_vendor(rom->vendor);
+	fputc('\n', stdout);
+
+        fprintf(stdout, "  device       : ");
+        print_meta_device(rom->device);
+	fputc('\n', stdout);
+
+        fprintf(stdout, "  version      : %u.%u.%u\n",
 		SPEC_META_VERSION_MAJ(rom->version),
 		SPEC_META_VERSION_MIN(rom->version),
 		SPEC_META_VERSION_PATCH(rom->version));
-	if (verbose > 0) {
+
+        fprintf(stdout, "  capabilities : ");
+	print_meta_capabilities(rom->cap);
+	fputc('\n', stdout);
+
+        if (verbose > 0) {
 		fprintf(stdout, "  byte-order   : %s\n", bom_to_str(rom->bom));
 		fprintf(stdout, "  sources      : %08x%08x%08x%08x\n",
 			rom->src[0], rom->src[1], rom->src[2], rom->src[3]);
-		fprintf(stdout, "  capabilities : 0x%08x\n", rom->cap);
 		fprintf(stdout, "  UUID         : %08x%08x%08x%08x\n",
 			rom->uuid[0], rom->uuid[1],
 			rom->uuid[2], rom->uuid[3]);
@@ -105,7 +171,7 @@ static int print_base_meta_id(int fd)
 		fputs("Failed while reading SPEC-BASE FPGA ROM\n", stderr);
 		return -1;
 	}
-	fputs("spec-base: ", stdout);
+	fputs("base: ", stdout);
 	if (singleline)
 		print_meta_id_one(rom);
 	else
@@ -149,7 +215,7 @@ static int print_app_meta_id(int fd)
 		fputs("Failed while reading SPEC-APP FPGA ROM\n", stderr);
 		return -1;
 	}
-	fputs("spec-application: ", stdout);
+	fputs("application: ", stdout);
 	if (singleline)
 		print_meta_id_one(rom);
 	else

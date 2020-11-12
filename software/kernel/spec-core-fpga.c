@@ -64,16 +64,6 @@ enum spec_fpga_therm_offsets {
 	SPEC_FPGA_THERM_TEMP = SPEC_BASE_REGS_THERM_ID + 0x8,
 };
 
-enum spec_fpga_meta_cap_mask {
-	SPEC_META_CAP_VIC = BIT(0),
-	SPEC_META_CAP_THERM = BIT(1),
-	SPEC_META_CAP_SPI = BIT(2),
-	SPEC_META_CAP_WR = BIT(3),
-	SPEC_META_CAP_BLD = BIT(4),
-	SPEC_META_CAP_DMA = BIT(5),
-};
-
-
 static const struct debugfs_reg32 spec_fpga_debugfs_reg32[] = {
 	{
 		.name = "Application offset",
