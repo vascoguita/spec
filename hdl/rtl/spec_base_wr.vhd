@@ -668,8 +668,15 @@ begin  -- architecture top
   rst_gbl_n <= rst_62m5_sys_n and (not csr_rst_gbl);
 
   -- reset for DDR including soft reset.
-  -- This is treated as async and will be re-synced by the DDR controller
-  ddr_rst <= not rst_333m_ddr_n or csr_rst_gbl;
+  -- Add a FF to ease timing.
+  process(clk_333m_ddr, rst_333m_ddr_n, csr_rst_gbl)
+  begin
+    if rst_333m_ddr_n = '0' or csr_rst_gbl = '1' then
+      ddr_rst <= '1';
+    elsif rising_edge (clk_333m_ddr) then
+      ddr_rst <= not rst_333m_ddr_n or csr_rst_gbl;
+    end if;
+  end process;
 
   rst_csr_app_n <= not (csr_rst_gbl or csr_rst_app);
 

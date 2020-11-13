@@ -157,25 +157,12 @@ NET "inst_spec_base/clk_125m_ref"              TNM_NET = ref_clk;
 NET "*/gen_with_gennum.cmp_gn4124_core/cmp_wrapped_gn4124/sys_clk" TNM_NET = pci_clk;
 NET "*/gen_with_gennum.cmp_gn4124_core/cmp_wrapped_gn4124/io_clk"  TNM_NET = pci_clk;
 
-TIMEGRP "sys_grp" = "sys_clk" "ref_clk";
+# Note: sys and ref are always related
 
-TIMEGRP "sys_sync_ffs"  = "sync_ffs" EXCEPT "sys_grp";
-TIMEGRP "pci_sync_ffs"  = "sync_ffs" EXCEPT "pci_clk";
+# sys <-> pci
+TIMESPEC TS_sys_to_pci = FROM sys_clk TO pci_clk 5 ns DATAPATHONLY;
+TIMESPEC TS_pci_to_sys = FROM pci_clk TO sys_clk 5 ns DATAPATHONLY;
 
-# Exceptions for crossings via gc_sync_ffs
-
-NET "*/gc_sync_ffs_in" TNM = FFS "sync_ffs";
-
-TIMESPEC TS_sys_sync_ffs  = FROM sys_grp TO "sys_sync_ffs" TIG;
-TIMESPEC TS_pci_sync_ffs  = FROM pci_clk TO "pci_sync_ffs" TIG;
-
-# Exceptions for crossings via gc_sync_register
-
-NET "*/gc_sync_register_in[*]" TNM = FFS "sync_reg";
-
-TIMEGRP "sys_sync_reg" = "sync_reg" EXCEPT "sys_grp";
-TIMEGRP "pci_sync_reg" = "sync_reg" EXCEPT "pci_clk";
-
-TIMESPEC TS_ref_sync_reg = FROM ref_clk TO "sys_sync_reg"  8ns  DATAPATHONLY;
-TIMESPEC TS_sys_sync_reg = FROM sys_clk TO "sys_sync_reg"  16ns DATAPATHONLY;
-TIMESPEC TS_pci_sync_reg = FROM pci_clk TO "pci_sync_reg"  5ns  DATAPATHONLY;
+# ref <-> pci
+TIMESPEC TS_ref_to_pci = FROM ref_clk TO pci_clk 5 ns DATAPATHONLY;
+TIMESPEC TS_pci_to_ref = FROM pci_clk TO ref_clk 5 ns DATAPATHONLY;
