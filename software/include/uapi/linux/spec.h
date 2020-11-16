@@ -38,6 +38,16 @@
 #define SPEC_META_BOM_VER_MASK 0x0000FFFF
 #define SPEC_META_VERSION_MASK 0xFFFF0000
 
+#ifndef BIT
+#define BIT(_b) (1 << _b)
+#endif
+#define SPEC_META_CAP_VIC BIT(0)
+#define SPEC_META_CAP_THERM BIT(1)
+#define SPEC_META_CAP_SPI BIT(2)
+#define SPEC_META_CAP_WR BIT(3)
+#define SPEC_META_CAP_BLD BIT(4)
+#define SPEC_META_CAP_DMA BIT(5)
+
 /**
  * struct spec_meta_id Metadata
  */

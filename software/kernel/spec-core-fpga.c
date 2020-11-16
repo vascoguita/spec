@@ -26,6 +26,10 @@
 #include "spec.h"
 #include "spec-compat.h"
 
+static int version_ignore = 0;
+module_param(version_ignore, int, 0644);
+MODULE_PARM_DESC(version_ignore,
+		 "Ignore the version declared in the FPGA and force the driver to load all components (default 0)");
 static int user_dma_coherent_size = 4 * 1024 * 1024;
 module_param(user_dma_coherent_size, int, 0644);
 MODULE_PARM_DESC(user_dma_coherent_size,
@@ -59,16 +63,6 @@ enum spec_fpga_therm_offsets {
 	SPEC_FPGA_THERM_SERID_LSB = SPEC_BASE_REGS_THERM_ID + 0x4,
 	SPEC_FPGA_THERM_TEMP = SPEC_BASE_REGS_THERM_ID + 0x8,
 };
-
-enum spec_fpga_meta_cap_mask {
-	SPEC_META_CAP_VIC = BIT(0),
-	SPEC_META_CAP_THERM = BIT(1),
-	SPEC_META_CAP_SPI = BIT(2),
-	SPEC_META_CAP_WR = BIT(3),
-	SPEC_META_CAP_BLD = BIT(4),
-	SPEC_META_CAP_DMA = BIT(5),
-};
-
 
 static const struct debugfs_reg32 spec_fpga_debugfs_reg32[] = {
 	{
@@ -1165,7 +1159,8 @@ static bool spec_fpga_is_valid(struct spec_gn412x *spec_gn412x,
 		return false;
 	}
 
-	if ((meta->version & SPEC_META_VERSION_MASK) != SPEC_META_VERSION_COMPAT) {
+	if (!version_ignore &&
+	    (meta->version & SPEC_META_VERSION_MASK) != SPEC_META_VERSION_COMPAT) {
 		dev_err(&spec_gn412x->pdev->dev,
 			"Unknow version: %08x, expected: %08x\n",
 			meta->version, SPEC_META_VERSION_COMPAT);

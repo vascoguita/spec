@@ -12,6 +12,7 @@
 #include <getopt.h>
 #include <libgen.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -33,6 +34,7 @@ static void help(void)
 		"\t-p <PCIID>\n"
 		"\t-b  print spec-base\n"
 		"\t-a  print spec-application\n"
+		"\t-B  print FPGA build information\n"
 		"\t-1  print on a single line\n"
 		"\t-V  print version\n"
 		"\t-h  print help\n",
@@ -66,29 +68,121 @@ static void print_meta_id_one(struct spec_meta_id *rom)
 		SPEC_META_VERSION_MAJ(rom->version),
 		SPEC_META_VERSION_MIN(rom->version),
 		SPEC_META_VERSION_PATCH(rom->version));
-	if (verbose > 1) {
-		fprintf(stdout, ",%08x%08x%08x%08x,%s,%08x%08x%08x%08x",
+	if (verbose > 0) {
+		fprintf(stdout, "%08x,%08x,%08x%08x%08x%08x,%08x%08x%08x%08x",
+			rom->cap, rom->bom,
 			rom->src[0], rom->src[1], rom->src[2], rom->src[3],
-			bom_to_str(rom->bom),
 			rom->uuid[0], rom->uuid[1], rom->uuid[2], rom->uuid[3]);
 	}
 	fputc('\n', stdout);
 }
 
+static void print_meta_vendor(uint32_t vendor)
+{
+	switch(vendor) {
+	case SPEC_META_VENDOR_ID:
+		fputs("CERN", stdout);
+		break;
+	default:
+		fprintf(stdout, "unknown (0x%08"PRIx32")", vendor);
+		break;
+	}
+}
+
+static void print_meta_device(uint32_t device)
+{
+	switch(device) {
+	case SPEC_META_DEVICE_ID:
+		fputs("spec-base", stdout);
+		break;
+	default:
+		fprintf(stdout, "unknown (0x%08"PRIx32")", device);
+		break;
+	}
+}
+
+static const char *capability[] = {
+	"vic",
+	"thermometer",
+	"spi",
+	"white-rabbit",
+	"build-info",
+	"dma-engine",
+};
+
+static void print_meta_capabilities(uint32_t cap)
+{
+	bool has_cap = false;
+	int i;
+
+	for (i = 0; i < 32; ++i) {
+		if (i < 6) { /* known bits */
+			if (cap & BIT(i)) {
+				fputs(capability[i], stdout);
+				fputs(", ", stdout);
+				has_cap = true;
+			}
+		} else {
+			if (cap & BIT(i))
+				fprintf(stdout, "unknown BIT(%d), ", i);
+		}
+	}
+	if (has_cap)
+		fputs("\b\b  ", stdout);
+}
+
+#define SPEC_BASE_REGS_BUILDINFO 0x200UL
+#define SPEC_BASE_REGS_BUILDINFO_SIZE 256
+static int print_build_info(int fd)
+{
+	char *bld;
+	char *bld_c;
+
+	bld = mmap(NULL, SPEC_BASE_REGS_BUILDINFO + SPEC_BASE_REGS_BUILDINFO_SIZE,
+		   PROT_READ, MAP_SHARED, fd, 0);
+	if ((long)bld == -1) {
+		fputs("Failed while reading SPEC-BASE FPGA BUILD INFO\n",
+		      stderr);
+		return -1;
+	}
+        fputs("build-info : \n  ", stdout);
+	bld_c = bld + SPEC_BASE_REGS_BUILDINFO;
+	while (*bld_c != 0) {
+		fputc(*bld_c, stdout);
+		if (*bld_c == '\n')
+			fputs("  ", stdout);
+		bld_c++;
+	}
+	fputc('\n', stdout);
+	munmap(bld, SPEC_BASE_REGS_BUILDINFO + SPEC_BASE_REGS_BUILDINFO_SIZE);
+	return 0;
+}
+
 static void print_meta_id(struct spec_meta_id *rom)
 {
 	fputc('\n', stdout);
-	fprintf(stdout, "  vendor       : 0x%08x\n", rom->vendor);
-	fprintf(stdout, "  device       : 0x%08x\n", rom->device);
-	fprintf(stdout, "  version      : %u.%u.%u\n",
+
+        fprintf(stdout, "  vendor       : ");
+	print_meta_vendor(rom->vendor);
+	fputc('\n', stdout);
+
+        fprintf(stdout, "  device       : ");
+        print_meta_device(rom->device);
+	fputc('\n', stdout);
+
+        fprintf(stdout, "  version      : %u.%u.%u\n",
 		SPEC_META_VERSION_MAJ(rom->version),
 		SPEC_META_VERSION_MIN(rom->version),
 		SPEC_META_VERSION_PATCH(rom->version));
-	if (verbose > 1) {
+
+        fprintf(stdout, "  capabilities : ");
+	print_meta_capabilities(rom->cap);
+	fputc('\n', stdout);
+
+        if (verbose > 0) {
 		fprintf(stdout, "  byte-order   : %s\n", bom_to_str(rom->bom));
 		fprintf(stdout, "  sources      : %08x%08x%08x%08x\n",
 			rom->src[0], rom->src[1], rom->src[2], rom->src[3]);
-		fprintf(stdout, "  capabilities : 0x%08x\n", rom->cap);
 		fprintf(stdout, "  UUID         : %08x%08x%08x%08x\n",
 			rom->uuid[0], rom->uuid[1],
 			rom->uuid[2], rom->uuid[3]);
@@ -105,7 +199,7 @@ static int print_base_meta_id(int fd)
 		fputs("Failed while reading SPEC-BASE FPGA ROM\n", stderr);
 		return -1;
 	}
-	fputs("spec-base: ", stdout);
+	fputs("base: ", stdout);
 	if (singleline)
 		print_meta_id_one(rom);
 	else
@@ -149,7 +243,7 @@ static int print_app_meta_id(int fd)
 		fputs("Failed while reading SPEC-APP FPGA ROM\n", stderr);
 		return -1;
 	}
-	fputs("spec-application: ", stdout);
+	fputs("application: ", stdout);
 	if (singleline)
 		print_meta_id_one(rom);
 	else
@@ -162,7 +256,7 @@ static int print_app_meta_id(int fd)
 #define PCIID_STR_LEN 16
 int main(int argc, char *argv[])
 {
-	bool base = false, app = false;
+	bool base = false, app = false, buildinfo = false;
 	int err;
 	int fd;
 	char path[128];
@@ -176,7 +270,7 @@ int main(int argc, char *argv[])
 	if (err)
 		exit(EXIT_FAILURE);
 
-        while ((opt = getopt(argc, argv, "h?Vvp:ba1")) != -1) {
+        while ((opt = getopt(argc, argv, "h?Vvp:ba1B")) != -1) {
 		switch (opt) {
 		case 'h':
 		case '?':
@@ -200,6 +294,9 @@ int main(int argc, char *argv[])
 		case '1':
 			singleline = true;
 			break;
+		case 'B':
+			buildinfo = true;
+			break;
 		}
 	}
 	if (strlen(pciid_str) == 0) {
@@ -218,6 +315,8 @@ int main(int argc, char *argv[])
 		err = print_base_meta_id(fd);
 	if (app)
 		err = print_app_meta_id(fd);
+	if (buildinfo)
+		err = print_build_info(fd);
 	close(fd);
 
 	exit(err ? EXIT_FAILURE : EXIT_SUCCESS);
