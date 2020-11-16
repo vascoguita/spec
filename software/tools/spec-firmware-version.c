@@ -34,6 +34,7 @@ static void help(void)
 		"\t-p <PCIID>\n"
 		"\t-b  print spec-base\n"
 		"\t-a  print spec-application\n"
+		"\t-B  print FPGA build information\n",
 		"\t-1  print on a single line\n"
 		"\t-V  print version\n"
 		"\t-h  print help\n",
@@ -128,6 +129,33 @@ static void print_meta_capabilities(uint32_t cap)
 	}
 	if (has_cap)
 		fputs("\b\b  ", stdout);
+}
+
+#define SPEC_BASE_REGS_BUILDINFO 0x200UL
+#define SPEC_BASE_REGS_BUILDINFO_SIZE 256
+static int print_build_info(int fd)
+{
+	char *bld;
+	char *bld_c;
+
+	bld = mmap(NULL, SPEC_BASE_REGS_BUILDINFO + SPEC_BASE_REGS_BUILDINFO_SIZE,
+		   PROT_READ, MAP_SHARED, fd, 0);
+	if ((long)bld == -1) {
+		fputs("Failed while reading SPEC-BASE FPGA BUILD INFO\n",
+		      stderr);
+		return -1;
+	}
+        fputs("build-info : \n  ", stdout);
+	bld_c = bld + SPEC_BASE_REGS_BUILDINFO;
+	while (*bld_c != 0) {
+		fputc(*bld_c, stdout);
+		if (*bld_c == '\n')
+			fputs("  ", stdout);
+		bld_c++;
+	}
+	fputc('\n', stdout);
+	munmap(bld, SPEC_BASE_REGS_BUILDINFO + SPEC_BASE_REGS_BUILDINFO_SIZE);
+	return 0;
 }
 
 static void print_meta_id(struct spec_meta_id *rom)
@@ -228,7 +256,7 @@ static int print_app_meta_id(int fd)
 #define PCIID_STR_LEN 16
 int main(int argc, char *argv[])
 {
-	bool base = false, app = false;
+	bool base = false, app = false, buildinfo = false;
 	int err;
 	int fd;
 	char path[128];
@@ -242,7 +270,7 @@ int main(int argc, char *argv[])
 	if (err)
 		exit(EXIT_FAILURE);
 
-        while ((opt = getopt(argc, argv, "h?Vvp:ba1")) != -1) {
+        while ((opt = getopt(argc, argv, "h?Vvp:ba1B")) != -1) {
 		switch (opt) {
 		case 'h':
 		case '?':
@@ -266,6 +294,9 @@ int main(int argc, char *argv[])
 		case '1':
 			singleline = true;
 			break;
+		case 'B':
+			buildinfo = true;
+			break;
 		}
 	}
 	if (strlen(pciid_str) == 0) {
@@ -284,6 +315,8 @@ int main(int argc, char *argv[])
 		err = print_base_meta_id(fd);
 	if (app)
 		err = print_app_meta_id(fd);
+	if (buildinfo)
+		err = print_build_info(fd);
 	close(fd);
 
 	exit(err ? EXIT_FAILURE : EXIT_SUCCESS);
