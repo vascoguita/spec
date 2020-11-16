@@ -6,6 +6,18 @@
 Changelog
 =========
 
+2.1.3 - 2020-11-16
+==================
+Added
+-----
+- sw,drv: module parameter to ignore bitstream version check (for development
+  or debug)
+- sw: the spec-firmware-version tool can dump build-info
+
+Fixed
+-----
+- hdl: DMA failures fixed with thight timing constraints
+
 2.1.2 - 2020-11-09
 ==================
 Fixed
