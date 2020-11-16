@@ -34,7 +34,7 @@ static void help(void)
 		"\t-p <PCIID>\n"
 		"\t-b  print spec-base\n"
 		"\t-a  print spec-application\n"
-		"\t-B  print FPGA build information\n",
+		"\t-B  print FPGA build information\n"
 		"\t-1  print on a single line\n"
 		"\t-V  print version\n"
 		"\t-h  print help\n",
