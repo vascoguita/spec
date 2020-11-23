@@ -6,6 +6,12 @@
 Changelog
 =========
 
+2.1.4 - 2020-11-23
+==================
+Fixed
+-----
+- sw: SPEC driver detects the correct FLASH only on drivers reload
+
 2.1.3 - 2020-11-16
 ==================
 Added

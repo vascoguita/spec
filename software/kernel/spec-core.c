@@ -562,7 +562,6 @@ static const char *spec_fw_name_init_get(struct spec_gn412x *spec_gn412x)
  */
 static int spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name)
 {
-	enum spec_fpga_select sel;
 	int err;
 
 	dev_dbg(&spec_gn412x->pdev->dev, "Writing firmware '%s'\n", name);
@@ -575,7 +574,6 @@ static int spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name)
 
 
 	mutex_lock(&spec_gn412x->mtx);
-	sel = spec_bootsel_get(spec_gn412x);
 
 	spec_bootsel_set(spec_gn412x, SPEC_FPGA_SELECT_GN4124_FPGA);
 
@@ -585,13 +583,13 @@ static int spec_fw_load(struct spec_gn412x *spec_gn412x, const char *name)
 	if (err)
 		goto out;
 
+	spec_bootsel_set(spec_gn412x, SPEC_FPGA_SELECT_FPGA_FLASH);
 	err = spec_fpga_init(spec_gn412x);
 	if (err)
 		dev_warn(&spec_gn412x->pdev->dev,
 			 "FPGA incorrectly programmed %d\n", err);
 
 out:
-	spec_bootsel_set(spec_gn412x, sel);
 	mutex_unlock(&spec_gn412x->mtx);
 
 	return err;
