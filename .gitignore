@@ -16,3 +16,4 @@ GPATH
 GRTAGS
 Makefile.specific
 compile_commands.json
+.clangd
