@@ -1,0 +1,8 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: SPEC
+Upstream-Contact: Federico Vaga <federico.vaga@cern.ch>
+Source: https://ohwr.org/project/spec/
+
+Files: doc/requirements.txt
+Copyright: 2020 CERN (home.cern)
+License: CC0-1.0
