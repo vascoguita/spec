@@ -1,4 +1,8 @@
 --------------------------------------------------------------------------------
+-- SPDX-FileCopyrightText: 2020 CERN (home.cern)
+--
+-- SPDX-License-Identifier: CERN-OHL-W-2.0+
+--
 -- CERN BE-CO-HT
 -- SPEC
 -- https://ohwr.org/projects/spec
@@ -8,18 +12,6 @@
 --
 -- description: Example instantiation of SPEC base with White Rabbit.
 --
---------------------------------------------------------------------------------
--- Copyright CERN 2019-2020
---------------------------------------------------------------------------------
--- Copyright and related rights are licensed under the Solderpad Hardware
--- License, Version 2.0 (the "License"); you may not use this file except
--- in compliance with the License. You may obtain a copy of the License at
--- http://solderpad.org/licenses/SHL-2.0.
--- Unless required by applicable law or agreed to in writing, software,
--- hardware and materials distributed under this License is distributed on an
--- "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
--- or implied. See the License for the specific language governing permissions
--- and limitations under the License.
 --------------------------------------------------------------------------------
 
 library IEEE;

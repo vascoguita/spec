@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020
+#
+# SPDX-License-Identifier: CC0-1.0
+
 # -*- coding: utf-8 -*-
 #
 # Configuration file for the Sphinx documentation builder.

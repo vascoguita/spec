@@ -1,7 +1,8 @@
-/*
- * Copyright (C) 2020 CERN (www.cern.ch)
- * Author: Federico Vaga <federico.vaga@cern.ch>
- */
+// Copyright (C) 2020 CERN (www.cern.ch)
+// SPDX-FileCopyrightText: 2020 CERN (home.cern)
+//
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Author: Federico Vaga <federico.vaga@cern.ch>
 
 #ifndef __LINUX_UAPI_SPEC_H
 #define __LINUX_UAPI_SPEC_H

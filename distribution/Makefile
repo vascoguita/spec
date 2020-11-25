@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 CERN (home.cern)
+#
+# SPDX-License-Identifier: CC0-1.0
+
 TOP_DIR ?= $(shell pwd)/../
 HDL_DIR ?= $(TOP_DIR)/hdl
 
