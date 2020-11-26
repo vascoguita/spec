@@ -28,9 +28,9 @@ copyright = '2019-2020, Federico Vaga <federico.vaga@cern.ch>, Tristan Gingold <
 author = 'Federico Vaga <federico.vaga@cern.ch>, Tristan Gingold <tristan.gingold@cern.ch>, Dimitris Lampridis <dimitrios.lampridis@cern.ch>'
 
 # The short X.Y version
-version = '1.4'
+version = '2.1'
 # The full version, including alpha/beta/rc tags
-release = 'v1.4'
+release = 'v2.1.4'
 
 
 # -- General configuration ---------------------------------------------------

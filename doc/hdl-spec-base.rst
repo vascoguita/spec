@@ -99,7 +99,7 @@ Remember that the Linux driver expects the ``SPEC base`` at offset
 Meta-Data ROM
 -------------
 
-These are the fixed fields in the current (v2.1) release.
+These are the fixed fields in the current (|version|) release.
 
   ==========  ==========  ==================  ============
   Offset      Size (bit)  Name                Default (LE)
