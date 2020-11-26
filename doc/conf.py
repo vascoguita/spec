@@ -27,12 +27,6 @@ project = 'SPEC'
 copyright = '2019-2020, Federico Vaga <federico.vaga@cern.ch>, Tristan Gingold <tristan.gingold@cern.ch>, Dimitris Lampridis <dimitrios.lampridis@cern.ch>'
 author = 'Federico Vaga <federico.vaga@cern.ch>, Tristan Gingold <tristan.gingold@cern.ch>, Dimitris Lampridis <dimitrios.lampridis@cern.ch>'
 
-# The short X.Y version
-version = '2.1'
-# The full version, including alpha/beta/rc tags
-release = 'v2.1.4'
-
-
 # -- General configuration ---------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
