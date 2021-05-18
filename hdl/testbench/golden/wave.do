@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 CERN (home.cern)
+#
+# SPDX-License-Identifier: CC0-1.0
+
 onerror {resume}
 quietly WaveActivateNextPane {} 0
 add wave -noupdate -group {App DDR port} -color Coral /main/DUT/inst_spec_base/gen_with_ddr/cmp_ddr_ctrl_bank3/cmp_ddr3_ctrl_wb_0/rst_n_i

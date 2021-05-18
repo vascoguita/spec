@@ -25,6 +25,7 @@
 #include "linux/printk.h"
 #include "spec.h"
 #include "spec-compat.h"
+#include "gn412x.h"
 
 static int version_ignore = 0;
 module_param(version_ignore, int, 0644);
@@ -1195,6 +1196,22 @@ static const struct device_type spec_fpga_type = {
 };
 
 /**
+ * Checks if the FPGA has been programmed
+ */
+static bool spec_fpga_is_programmed(struct spec_gn412x *spec_gn412x)
+{
+	struct resource *r4 = &spec_gn412x->pdev->resource[4];
+	void *mem;
+	bool done;
+
+	mem = ioremap(r4->start, resource_size(r4));
+	done = ioread32(mem + FCL_STATUS) & FCL_SPRI_DONE;
+	iounmap(mem);
+	dev_err(&spec_gn412x->pdev->dev, "SPRI_DONE %d\n", done);
+	return done;
+}
+
+/**
  * Initialize carrier devices on FPGA
  */
 int spec_fpga_init(struct spec_gn412x *spec_gn412x)
@@ -1202,6 +1219,11 @@ int spec_fpga_init(struct spec_gn412x *spec_gn412x)
 	struct spec_fpga *spec_fpga;
 	struct resource *r0 = &spec_gn412x->pdev->resource[0];
 	int err;
+
+	if (!spec_fpga_is_programmed(spec_gn412x)) {
+		dev_err(&spec_gn412x->pdev->dev, "FPGA is not programmed\n");
+		return -ENODEV;
+	}
 
 	spec_fpga = kzalloc(sizeof(*spec_fpga), GFP_KERNEL);
 	if (!spec_fpga)

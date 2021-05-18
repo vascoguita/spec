@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 CERN (home.cern)
+#
+# SPDX-License-Identifier: CC0-1.0
+
 -include Makefile.specific
 -include $(REPO_PARENT)/parent_common.mk
 

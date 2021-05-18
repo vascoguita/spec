@@ -99,28 +99,13 @@ Remember that the Linux driver expects the ``SPEC base`` at offset
 Meta-Data ROM
 -------------
 
-Fixed Part
-~~~~~~~~~~
+These are the fixed fields in the current (|version|) release.
 
   ==========  ==========  ==================  ============
   Offset      Size (bit)  Name                Default (LE)
   0x00000000  32          Vendor ID           0x000010DC
   0x00000004  32          Device ID           0x53504543
-  0x00000008  32          Version             <variable>
-  0x0000000C  32          Byte Order Mark     0xFFFE0000
-  0x00000010  128         Source ID           <variable>
-  0x00000020  32          Capability Mask     <variable>
-  0x00000030  128         Vendor UUID         0x00000000
-  ==========  ==========  ==================  ============
-
-Version 1.4
-~~~~~~~~~~~
-
-  ==========  ==========  ==================  ============
-  Offset      Size (bit)  Name                Default (LE)
-  0x00000000  32          Vendor ID           0x000010DC
-  0x00000004  32          Device ID           0x53504543
-  0x00000008  32          Version             0x0104xxxx
+  0x00000008  32          Version             0x0201xxxx
   0x0000000C  32          Byte Order Mark     0xFFFE0000
   0x00000010  128         Source ID           <variable>
   0x00000020  32          Capability Mask     0x0000000x

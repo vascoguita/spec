@@ -1,3 +1,8 @@
+..
+  SPDX-FileCopyrightText: 2020 CERN (home.cern)
+
+  SPDX-License-Identifier: CC0-1.0
+
 ==============================
 Simple PCIe FMC Carrier - SPEC
 ==============================

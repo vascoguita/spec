@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 CERN (home.cern)
+#
+# SPDX-License-Identifier: CC0-1.0
+
 # Allow the user to override fetchto using:
 #  hdlmake -p "fetchto='xxx'"
 if locals().get('fetchto', None) is None:

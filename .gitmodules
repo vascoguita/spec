@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 CERN (home.cern)
+#
+# SPDX-License-Identifier: CC0-1.0
+
 [submodule "hdl/ip_cores/wr-cores"]
 	path = hdl/ip_cores/wr-cores
 	url = https://ohwr.org/project/wr-cores.git

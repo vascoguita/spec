@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2020 CERN (home.cern)
+#
+# SPDX-License-Identifier: CC0-1.0
+
 ## DDR-3
 NET "ddr_rzq_b"     LOC = K7;
 NET "ddr_we_n_o"    LOC = H2;
