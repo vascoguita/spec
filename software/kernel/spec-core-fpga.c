@@ -25,6 +25,7 @@
 #include "linux/printk.h"
 #include "spec.h"
 #include "spec-compat.h"
+#include "gn412x.h"
 
 static int version_ignore = 0;
 module_param(version_ignore, int, 0644);

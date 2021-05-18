@@ -14,33 +14,6 @@
 #include "spec-compat.h"
 #include "gn412x.h"
 
-#define FCL_CTRL_START_FSM BIT(0)
-#define FCL_CTRL_SPRI_EN BIT(1)
-#define FCL_CTRL_FSM_EN BIT(2)
-#define FCL_CTRL_SEND_CFG_DATA BIT(3)
-#define FCL_CTRL_LAST_BYTE_CNT_1 (0x3 << 4)
-#define FCL_CTRL_LAST_BYTE_CNT_2 (0x2 << 4)
-#define FCL_CTRL_LAST_BYTE_CNT_3 (0x1 << 4)
-#define FCL_CTRL_LAST_BYTE_CNT_4 (0x0 << 4)
-#define FCL_CTRL_RESET BIT(6)
-#define FCL_CTRL_DATA_PUSH_COMP BIT(7)
-#define FCL_CTRL_SPRI_CLK_STOP_EN BIT(8)
-
-#define FCL_SPRI_CLKOUT BIT(0)
-#define FCL_SPRI_DATAOUT BIT(1)
-#define FCL_SPRI_CONFIG BIT(2)
-#define FCL_SPRI_DONE BIT(3)
-#define FCL_SPRI_XI_SWAP BIT(4)
-#define FCL_SPRI_STATUS BIT(5)
-
-#define FCL_IRQ_SPRI_STATUS BIT(0)
-#define FCL_IRQ_TIMER BIT(1)
-#define FCL_IRQ_CONFIG_ERROR BIT(2)
-#define FCL_IRQ_CONFIG_DONE BIT(3)
-#define FCL_IRQ_FIFO_UNDRFL BIT(4)
-#define FCL_IRQ_FIFO_HALFFULL BIT(5)
-
-
 /* Compatibility layer */
 static int gn412x_fcl_write_init(struct fpga_manager *mgr,
 				 struct fpga_image_info *info,
