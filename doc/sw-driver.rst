@@ -36,6 +36,10 @@ GN4124 FCL
   This driver provides support for the GN4124 FCL (FPGA Configuration Loader).
   It uses the `FPGA manager interface`_ to program the FPGA at run-time.
 
+.. note::
+   At CERN we use CentOS 7 and its kernel does not provide the FPGA manager. To
+   solve the problem we provide an `FPGA manager backport`_
+
 If the SPEC based application is using the :ref:`SPEC
 base<spec_hdl_spec_base>` component then it can profit from the
 following driver. They are not all mandatory, it depends on the
@@ -72,6 +76,7 @@ VIC
 .. _`FMC`: https://www.ohwr.org/projects/fmc-sw
 .. _`GPIO interface`: https://www.kernel.org/doc/html/latest/driver-api/gpio/index.html
 .. _`FPGA manager interface`: https://www.kernel.org/doc/html/latest/driver-api/fpga/index.html
+.. _`FPGA manager backport`: https://gitlab.cern.ch/coht/fpga-manager
 .. _`DMA Engine`: https://www.kernel.org/doc/html/latest/driver-api/dmaengine/index.html
 .. _`general cores`: https://www.ohwr.org/projects/general-cores
 
@@ -90,11 +95,25 @@ variable ``CHEBY``.  Following an example on how to build the driver(s).::
 
   # define CHEBY only if it is not installed
   export CHEBY=/path/to/cheby/proto/cheby.py
+  export FMC=/path/to/fmc-sw
+  export FPGA_MGR=/path/to/fpga-mgr
+  export SPI=/path/to/general-cores/software/spi-ocores
+  export I2C=/path/to/general-cores/software/i2c-ocores
   cd /path/to/spec/
   make -C software/kernel modules
   make -C software/kernel modules_install
 
-This will build and install  4 drivers:
+If sources have been cloned all in the same directory you could you the
+following commands.::
+
+  # define CHEBY only if it is not installed
+  export CHEBY=/path/to/cheby/proto/cheby.py
+  export REPO_PARENT=/path/to/directory/where/all/dependencies/are/
+  cd /path/to/spec/
+  make -C software/kernel modules
+  make -C software/kernel modules_install
+
+This will build and install 4 drivers:
 
 - :ref:`spec-fmc-carrier.ko<spec_fmc_carrier>`,
 - :ref:`gn412x-gpio.ko<gn4124_gpio>`,
@@ -109,10 +128,10 @@ This will build and install  4 drivers:
   software/kernel/spec-fmc-carrier.ko
   software/kernel/spec-gn412x-dma.ko
 
-Please note that this will not install all soft dependencies which are
+Please note that this will not install the dependencies which are
 distributed separately (:ref:`I2C OpenCore<i2c_ocore>`,
 :ref:`SPI OpenCore<spi_ocore>`, :ref:`HT Vector Interrupt Controller<vic>`,
-`FMC`_).
+`FMC`_, `FPGA manager backport`_).
 
 .. _`cheby`: https://gitlab.cern.ch/cohtdrivers/cheby
 
