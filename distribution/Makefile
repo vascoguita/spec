@@ -31,7 +31,7 @@ dkms-tree:
 	@mkdir -p $(BUILD_DKMSTREE)
 
 dkms-src: dkms-tree spec-core-fpga.h
-	$(eval $@_src := $(shell git ls-tree -r --name-only HEAD $(TOP_DIR) | grep "kernel" | tr '\n' ' '))
+	$(eval $@_src := $(addprefix $(TOP_DIR), $(shell cd $(TOP_DIR) && git ls-tree -r --name-only HEAD software/kernel | grep -v -E "\/\." | tr '\n' ' ')))
 	$(eval $@_dir := $(BUILD_DKMSSOURCE)/$(DRIVER_NAME)-$(VERSION))
 
 	@mkdir -p $($@_dir)/platform_data
