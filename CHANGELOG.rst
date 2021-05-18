@@ -6,6 +6,13 @@
 Changelog
 =========
 
+2.1.5 - 2021-05-18
+==================
+Fixed
+-----
+- sw: check if FPGA is programmed before loading FPGA devices
+- doc: improve documentation
+
 2.1.4 - 2020-11-23
 ==================
 Fixed
