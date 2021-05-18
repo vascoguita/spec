@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2020 CERN
 
 before_script:
-  - yum install -y python3
+  - yum install -y python3 python36-PyYAML
   - git clone https://gitlab.cern.ch/cohtdrivers/cheby.git ~/git/cheby
   - export CHEBY=~/git/cheby/proto/cheby.py
   - git clone https://gitlab.cern.ch/fvaga/fpga-manager.git ~/git/fpga-mgr
