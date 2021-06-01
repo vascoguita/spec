@@ -1207,7 +1207,7 @@ static bool spec_fpga_is_programmed(struct spec_gn412x *spec_gn412x)
 	mem = ioremap(r4->start, resource_size(r4));
 	done = ioread32(mem + FCL_STATUS) & FCL_SPRI_DONE;
 	iounmap(mem);
-	dev_err(&spec_gn412x->pdev->dev, "SPRI_DONE %d\n", done);
+	dev_dbg(&spec_gn412x->pdev->dev, "SPRI_DONE %d\n", done);
 	return done;
 }
 
