@@ -470,6 +470,14 @@ out_enable_irq:
 	return ret;
 }
 
+static bool gn412x_gpio_fpga_is_programmed(struct gn412x_gpio_dev *gn412x)
+{
+	bool done;
+
+	done = gn412x_ioread32(gn412x, FCL_STATUS) & FCL_SPRI_DONE;
+
+	return done;
+}
 
 static irqreturn_t gn412x_gpio_irq_handler_h(int irq, void *arg)
 {
@@ -484,10 +492,17 @@ static irqreturn_t gn412x_gpio_irq_handler_h(int irq, void *arg)
 	if (unlikely(int_stat & GNINT_STAT_SW_ALL)) /* only for testing */
 		return spec_irq_sw_handler(irq, gn412x);
 
-	if (WARN(int_stat & GNINT_STAT_ERR_ALL, "GN412x ERROR 0x%08x",
-		 int_stat)) {
+	if (unlikely(int_stat & GNINT_STAT_ERR_ALL)) {
 		gn412x_iowrite32(gn412x, int_stat & GNINT_STAT_ERR_ALL,
-				 GNINT_STAT);
+						 GNINT_STAT);
+		if (!gn412x_gpio_fpga_is_programmed(gn412x))
+			return IRQ_NONE;  /* spurious interrupt if FPGA is not programmed */
+#if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE
+		dev_err(gn412x->gpiochip.dev, "Local bus error 0x%08x\n", int_stat);
+#else
+		dev_err(gn412x->gpiochip.parent, "Local bus error 0x%08x\n", int_stat);
+#endif
+
 		return IRQ_HANDLED;
 	}
 
