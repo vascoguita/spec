@@ -16,11 +16,12 @@ reuse:
     - reuse lint
   allow_failure: true
 
-# cppcheck:
-#   stage: static-analysis
-#   script:
-#     - yum install -y cppcheck
-#     - make -C software cppcheck
+cppcheck:
+  stage: static-analysis
+  image:
+    name: gitlab-registry.cern.ch/coht/common-containers/static-analysis:latest
+  script:
+    - make -C software cppcheck
 
 documentation:
   stage: build
