@@ -35,6 +35,14 @@ cppcheck:
     - yum install -y cppcheck
     - make -C software cppcheck
 
+documentation:
+  stage: build
+  image:
+    name: gitlab-registry.cern.ch/coht/common-containers/documentation:latest
+  script:
+    - make -C doc html
+  allow_failure: true
+
 build:
   stage: build
   script:
