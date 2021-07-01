@@ -36,12 +36,12 @@ build:
   image:
     name: gitlab-registry.cern.ch/coht/common-containers/build-centos-7:latest
   before_script:
-    - git clone https://gitlab.cern.ch/fvaga/fpga-manager.git ~/git/fpga-mgr
+    - git clone --depth 1 https://gitlab.cern.ch/fvaga/fpga-manager.git ~/git/fpga-mgr
     - export FPGA_MGR=~/git/fpga-mgr
     - export CONFIG_FPGA_MGR_BACKPORT=y
-    - git clone https://gitlab.cern.ch/coht/fmc.git ~/git/fmc
+    - git clone --depth 1 https://gitlab.cern.ch/coht/fmc.git ~/git/fmc
     - export FMC=~/git/fmc
-    - git clone --branch proposed_master https://ohwr.org/project/general-cores.git ~/git/general-cores/
+    - git clone --depth 1 https://ohwr.org/project/general-cores.git ~/git/general-cores/
     - export SPI=~/git/general-cores/software/spi-ocores
     - export I2C=~/git/general-cores/software/i2c-ocores
   script:
