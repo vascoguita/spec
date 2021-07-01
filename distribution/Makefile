@@ -19,7 +19,7 @@ DKMS_OPT := --dkmstree $(BUILD_DKMSTREE) -m $(DRIVER_NAME)/$(VERSION)
 
 all: kernel
 
-CHEBY ?= /usr/bin/cheby
+CHEBY ?= cheby
 
 spec-core-fpga.h:
 	$(CHEBY) --gen-c -i $(HDL_DIR)/rtl/spec_base_regs.cheby > /tmp/$@
