@@ -6,6 +6,12 @@
 Changelog
 =========
 
+Next
+====
+Added
+-----
+- bld: continuos integration
+
 2.1.4 - 2020-11-23
 ==================
 Fixed
