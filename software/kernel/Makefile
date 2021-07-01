@@ -60,7 +60,7 @@ SPI_ABS ?= $(abspath $(SPI))
 
 VERSION = $(shell git describe --dirty --long --tags)
 
-CHEBY ?= /usr/bin/cheby
+CHEBY ?= cheby
 CPPCHECK ?= cppcheck
 
 all: modules

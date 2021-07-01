@@ -6,6 +6,12 @@
 Changelog
 =========
 
+Next
+====
+Added
+-----
+- bld: continuos integration
+
 2.1.5 - 2021-05-18
 ==================
 Fixed
