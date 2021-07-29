@@ -13,6 +13,15 @@
 
 
 
+#if KERNEL_VERSION(5, 7, 0) <= LINUX_VERSION_CODE
+#define KPROBE_LOOKUP
+#include <linux/kprobes.h>
+typedef unsigned long (*kallsyms_lookup_name_t)(const char *name);
+static struct kprobe kp = {
+	.symbol_name = "kallsyms_lookup_name"
+};
+#endif
+
 #if KERNEL_VERSION(4, 10, 0) > LINUX_VERSION_CODE && !defined(CONFIG_FPGA_MGR_BACKPORT)
 struct fpga_manager *__fpga_mgr_get(struct device *dev)
 {
@@ -60,6 +69,13 @@ struct fpga_manager *fpga_mgr_get(struct device *dev)
 	struct class *fpga_mgr_class;
 	struct device *mgr_dev;
 
+#ifdef KPROBE_LOOKUP
+	kallsyms_lookup_name_t kallsyms_lookup_name;
+
+	register_kprobe(&kp);
+	kallsyms_lookup_name = (kallsyms_lookup_name_t) kp.addr;
+	unregister_kprobe(&kp);
+#endif
 	fpga_mgr_class = (struct class *) kallsyms_lookup_name(FPGA_CLASS);
 	mgr_dev = class_find_device(fpga_mgr_class, NULL, dev,
 				    fpga_mgr_dev_match);
@@ -156,6 +172,13 @@ int compat_gpiod_add_lookup_table(struct gpiod_lookup_table *table)
 {
 	void (*gpiod_add_lookup_table_p)(struct gpiod_lookup_table *table);
 
+#ifdef KPROBE_LOOKUP
+	kallsyms_lookup_name_t kallsyms_lookup_name;
+
+	register_kprobe(&kp);
+	kallsyms_lookup_name = (kallsyms_lookup_name_t) kp.addr;
+	unregister_kprobe(&kp);
+#endif
 	gpiod_add_lookup_table_p = (void *) kallsyms_lookup_name("gpiod_add_lookup_table");
 
 	if (gpiod_add_lookup_table_p)
@@ -168,6 +191,13 @@ int compat_gpiod_add_lookup_table(struct gpiod_lookup_table *table)
 #if KERNEL_VERSION(4, 3, 0) > LINUX_VERSION_CODE
 void gpiod_remove_lookup_table(struct gpiod_lookup_table *table)
 {
+#ifdef KPROBE_LOOKUP
+	kallsyms_lookup_name_t kallsyms_lookup_name;
+
+	register_kprobe(&kp);
+	kallsyms_lookup_name = (kallsyms_lookup_name_t) kp.addr;
+	unregister_kprobe(&kp);
+#endif
 	struct mutex *gpio_lookup_lock_p = (void *) kallsyms_lookup_name("gpio_lookup_lock");
 
 	mutex_lock(gpio_lookup_lock_p);

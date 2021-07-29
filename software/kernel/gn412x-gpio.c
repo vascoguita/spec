@@ -75,7 +75,10 @@ static const struct debugfs_reg32 gn412x_debugfs_reg32[] = {
 
 static int gn412x_dbg_init(struct gn412x_gpio_dev *gn412x)
 {
-	struct dentry *dir, *file;
+	struct dentry *dir;
+#if KERNEL_VERSION(5, 6, 0) > LINUX_VERSION_CODE
+	struct dentry *file;
+#endif
 	int err;
 
 #if KERNEL_VERSION(4, 5, 0) > LINUX_VERSION_CODE
@@ -96,6 +99,10 @@ static int gn412x_dbg_init(struct gn412x_gpio_dev *gn412x)
 	gn412x->dbg_reg32.regs = gn412x_debugfs_reg32;
 	gn412x->dbg_reg32.nregs = ARRAY_SIZE(gn412x_debugfs_reg32);
 	gn412x->dbg_reg32.base = gn412x->mem;
+#if KERNEL_VERSION(5, 6, 0) <= LINUX_VERSION_CODE
+	debugfs_create_regset32(GN412X_DBG_REG_NAME, 0200,
+				       dir, &gn412x->dbg_reg32);
+#else
 	file = debugfs_create_regset32(GN412X_DBG_REG_NAME, 0200,
 				       dir, &gn412x->dbg_reg32);
 	if (IS_ERR_OR_NULL(file)) {
@@ -105,13 +112,16 @@ static int gn412x_dbg_init(struct gn412x_gpio_dev *gn412x)
 			 GN412X_DBG_REG_NAME, err);
 		goto err_reg32;
 	}
+	gn412x->dbg_reg = file;
+#endif
 
 	gn412x->dbg_dir = dir;
-	gn412x->dbg_reg = file;
 	return 0;
 
+#if KERNEL_VERSION(5, 6, 0) > LINUX_VERSION_CODE
 err_reg32:
 	debugfs_remove_recursive(dir);
+#endif
 err_dir:
 	return err;
 }

@@ -403,6 +403,11 @@ static int spec_fpga_dbg_init(struct spec_fpga *spec_fpga)
 	spec_fpga->dbg_csr_reg.regs = spec_fpga_debugfs_reg32;
 	spec_fpga->dbg_csr_reg.nregs = ARRAY_SIZE(spec_fpga_debugfs_reg32);
 	spec_fpga->dbg_csr_reg.base = spec_fpga->fpga;
+#if KERNEL_VERSION(5, 6, 0) <= LINUX_VERSION_CODE
+	debugfs_create_regset32(SPEC_DBG_CSR_NAME, 0200,
+						     spec_fpga->dbg_dir_fpga,
+						     &spec_fpga->dbg_csr_reg);
+#else
 	spec_fpga->dbg_csr = debugfs_create_regset32(SPEC_DBG_CSR_NAME, 0200,
 						     spec_fpga->dbg_dir_fpga,
 						     &spec_fpga->dbg_csr_reg);
@@ -413,6 +418,7 @@ static int spec_fpga_dbg_init(struct spec_fpga *spec_fpga)
 			 SPEC_DBG_CSR_NAME, err);
 		goto err;
 	}
+#endif
 
 	spec_fpga->dbg_bld = debugfs_create_file(SPEC_DBG_BLD_INFO_NAME,
 						 0444,
@@ -478,14 +484,8 @@ static struct resource spec_fpga_vic_res[] = {
 
 struct irq_domain *spec_fpga_irq_find_host(struct device *dev)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,7,0)
-	struct irq_fwspec fwspec = {
-		.fwnode = dev->fwnode,
-		.param_count = 2,
-		.param[0] = ((unsigned long)dev >> 32) & 0xffffffff,
-		.param[1] = ((unsigned long)dev) & 0xffffffff,
-	};
-	return irq_find_matching_fwspec(&fwspec, DOMAIN_BUS_ANY);
+#if KERNEL_VERSION(4, 4, 0) <= LINUX_VERSION_CODE
+	return irq_find_matching_fwnode(dev->fwnode, DOMAIN_BUS_ANY);
 #else
 	return (irq_find_host((void *)dev));
 #endif
