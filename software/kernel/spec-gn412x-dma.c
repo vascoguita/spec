@@ -750,7 +750,10 @@ static irqreturn_t gn412x_dma_irq_handler(int irq, void *arg)
 
 static int gn412x_dma_dbg_init(struct gn412x_dma_device *gn412x_dma)
 {
-	struct dentry *dir, *file;
+	struct dentry *dir;
+#if KERNEL_VERSION(5, 6, 0) > LINUX_VERSION_CODE
+	struct dentry *file;
+#endif
 	int err;
 
 	dir = debugfs_create_dir(dev_name(&gn412x_dma->pdev->dev), NULL);
@@ -765,6 +768,10 @@ static int gn412x_dma_dbg_init(struct gn412x_dma_device *gn412x_dma)
 	gn412x_dma->dbg_reg32.regs = gn412x_dma_debugfs_reg32;
 	gn412x_dma->dbg_reg32.nregs = ARRAY_SIZE(gn412x_dma_debugfs_reg32);
 	gn412x_dma->dbg_reg32.base = gn412x_dma->addr;
+#if KERNEL_VERSION(5, 6, 0) <= LINUX_VERSION_CODE
+	debugfs_create_regset32(GN412X_DMA_DBG_REG_NAME, 0200,
+				       dir, &gn412x_dma->dbg_reg32);
+#else
 	file = debugfs_create_regset32(GN412X_DMA_DBG_REG_NAME, 0200,
 				       dir, &gn412x_dma->dbg_reg32);
 	if (IS_ERR_OR_NULL(file)) {
@@ -774,13 +781,16 @@ static int gn412x_dma_dbg_init(struct gn412x_dma_device *gn412x_dma)
 			 GN412X_DMA_DBG_REG_NAME, err);
 		goto err_reg32;
 	}
+	gn412x_dma->dbg_reg = file;
+#endif
 
 	gn412x_dma->dbg_dir = dir;
-	gn412x_dma->dbg_reg = file;
 	return 0;
 
+#if KERNEL_VERSION(5, 6, 0) > LINUX_VERSION_CODE
 err_reg32:
 	debugfs_remove_recursive(dir);
+#endif
 err_dir:
 	return err;
 }
