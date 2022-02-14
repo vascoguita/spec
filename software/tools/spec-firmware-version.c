@@ -19,7 +19,7 @@
 #include <fcntl.h>
 
 #include <linux/spec.h>
-#include <spec-core-fpga.h>
+#include <linux/spec-core-fpga.h>
 
 
 static const char git_version[] = "git version: " GIT_VERSION;

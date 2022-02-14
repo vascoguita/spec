@@ -20,8 +20,12 @@ CPPCHECK ?= cppcheck
 
 all: $(TOOLS)
 
+headers:
+	$(MAKE) -C $(HDR_DIR) $@
 
-$(TOOLS):
+%: %.c headers
+	$(CC) $(CFLAGS) $(LDFLAGS) $< -o $@
+
 
 clean:
 	rm -f $(TOOLS)

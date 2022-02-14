@@ -17,8 +17,9 @@
 #include <linux/fmc.h>
 #include <uapi/linux/spec.h>
 
+#include <uapi/linux/spec-core-fpga.h>
 #include "gn412x.h"
-#include "spec-core-fpga.h"
+
 
 /**
  * @SPEC_FPGA_SELECT_FPGA_FLASH: (default) the FPGA is an SPI master that can

@@ -59,27 +59,19 @@ I2C_ABS ?= $(abspath $(I2C))
 SPI_ABS ?= $(abspath $(SPI))
 
 VERSION = $(shell git describe --dirty --long --tags)
-
-CHEBY ?= cheby
 CPPCHECK ?= cppcheck
 
 all: modules
 
 .PHONY: all modules clean help install modules_install coccicheck spec-core-fpga.h cppcheck
 
-spec-core-fpga.h:
-ifeq ($(DKMS), 0)
-	$(CHEBY) --gen-c -i $(HDL_DIR)/rtl/spec_base_regs.cheby > $@
-endif
+help coccicheck:
+	@$(MAKE) -C $(LINUX) M=$(shell pwd) $@
 
-clean-spec-core-fpga.h:
-ifeq ($(DKMS), 0)
-	rm -f spec-core-fpga.h
-endif
+headers:
+	$(MAKE) -C $(HDR_DIR) $@
 
-install: modules_install
-clean: clean-spec-core-fpga.h
-modules help coccicheck modules_install clean: spec-core-fpga.h
+modules: headers
 	$(MAKE) -C $(LINUX) M=$(shell pwd) \
 		VERSION=$(VERSION) \
 		FPGA_MGR_ABS=$(FPGA_MGR_ABS) \
