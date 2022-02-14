@@ -5,17 +5,17 @@
 -include Makefile.specific
 -include $(REPO_PARENT)/parent_common.mk
 
-DIRS = kernel tools
+DIRS = include kernel tools
 
 .PHONY: all clean modules install modules_install coccicheck cppcheck $(DIRS)
 
-all : $(DIRS)
-install modules_install coccicheck modules: kernel
+all install modules_install coccicheck modules: $(DIRS)
 
 modules: TARGET = modules
 coccicheck: TARGET = coccicheck
 install: TARGET = install
 modules_install: TARGET = modules_install
+
 cppcheck:
 	$(MAKE) -C tools $@
 
