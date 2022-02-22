@@ -7,10 +7,16 @@
 # build a particular environment.
 -include Makefile.specific
 
+#
+# Install variable
+#
 DESTDIR ?= /usr/local/
 
 TOOLS = spec-firmware-version
 
+#
+# Compiler options
+#
 INCLUDE := -I. -I../kernel -I../include/uapi
 CFLAGS = -ggdb $(INCLUDE) -Wall -Werror $(EXTRACFLAGS)
 GIT_VERSION := $(shell git describe --dirty --long --tags)
