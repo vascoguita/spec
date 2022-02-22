@@ -6,9 +6,11 @@
 TOP_DIR ?= $(shell pwd)/../..
 include $(TOP_DIR)/common.mk
 
-all:
+all: build
 clean:
-install:
-	python3 setup.py install
+	rm -rf build
+
+build install:
+	python3 setup.py $@
 
 .PHONY: all clean install

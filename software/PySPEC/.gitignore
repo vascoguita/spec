@@ -2,5 +2,6 @@
 #
 # SPDX-FileCopyrightText: 2020 CERN
 
+build
 *.pyc
 MANIFEST
