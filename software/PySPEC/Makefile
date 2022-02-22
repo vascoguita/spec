@@ -9,6 +9,6 @@ include $(TOP_DIR)/common.mk
 all:
 clean:
 install:
-	python setup.py install
+	python3 setup.py install
 
 .PHONY: all clean install
