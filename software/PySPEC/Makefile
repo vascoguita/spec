@@ -3,6 +3,8 @@
 # SPDX-FileCopyrightText: 2020 CERN
 
 -include Makefile.specific
+TOP_DIR ?= $(shell pwd)/../..
+include $(TOP_DIR)/common.mk
 
 all:
 clean:
