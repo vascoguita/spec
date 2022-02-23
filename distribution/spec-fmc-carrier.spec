@@ -30,7 +30,6 @@ BuildRequires: git
 Requires: %{name}-kmod
 Requires: %{name}-tools
 Requires: %{name}-firmware
-Requires: python3-%{name}
 
 Source0: %{name}-%{version}.tar.gz
 Source1: CHANGELOG
@@ -65,7 +64,6 @@ export DESTDIR=%{buildroot}/%{_exec_prefix}
 
 %make_build -C software/include install
 %make_build -C software/tools install
-%make_build -C software/PySPEC install
 # Install manually to avoid running depmod at this stage
 %{__install} -d %{buildroot}/lib/modules/%{kver}/extra/cern/%{name}
 %{__install} -t %{buildroot}/lib/modules/%{kver}/extra/cern/%{name} software/kernel/*.ko
@@ -99,21 +97,6 @@ The SPEC kmod
 %license LICENSES/GPL-3.0-or-later.txt
 /lib/modules/%{kver}/extra/cern/%{name}/*.ko
 
-
-#
-# Python Class
-#
-%package -n python3-%{name}
-Summary: Simple PCIe Carrier (SPEC) Python Class
-Requires: Python3
-BuildRequires: python3-devel
-
-%description -n python3-%{name}
-The SPEC python class
-
-%files -n python3-%{name}
-%license LICENSES/GPL-3.0-or-later.txt
-%pycached %{python3_sitelib}/%{name}/
 
 #
 # Tools
