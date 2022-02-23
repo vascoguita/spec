@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: 2022 CERN
+
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm>=6.2"]
+build-backend = "setuptools.build_meta"
+
+# Enable automatic versioning from git.
+[tool.setuptools_scm]
+write_to = "PySPEC/_version.py"
+version_scheme = "no-guess-dev"
+local_scheme = "dirty-tag"
+relative_to = "../../README.rst"

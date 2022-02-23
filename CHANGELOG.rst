@@ -2,15 +2,9 @@
   SPDX-License-Identifier: CC0-1.0
   SPDX-FileCopyrightText: 2019 CERN
 
-=========
-Changelog
-=========
-
-Next
-====
-Added
------
-- bld: continuos integration
+==========
+Change Log
+==========
 
 2.1.6 - 2021-07-29
 ==================

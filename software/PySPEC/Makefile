@@ -3,10 +3,17 @@
 # SPDX-FileCopyrightText: 2020 CERN
 
 -include Makefile.specific
+TOP_DIR ?= $(shell pwd)/../..
+include $(TOP_DIR)/common.mk
 
-all:
+all: build
 clean:
+	rm -rf build
+
+build:
+	python3 -m build
+
 install:
-	python setup.py install
+	pip3 install -e .
 
 .PHONY: all clean install
