@@ -10,7 +10,10 @@ all: build
 clean:
 	rm -rf build
 
-build install:
-	python3 setup.py $@
+build:
+	python3 -m build
+
+install:
+	pip3 install -e .
 
 .PHONY: all clean install
