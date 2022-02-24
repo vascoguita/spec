@@ -93,6 +93,12 @@ Summary: Simple PCIe Carrier (SPEC) Kmod
 %description kmod
 The SPEC kmod
 
+%post kmod
+/usr/sbin/depmod -a
+
+%postun kmod
+/usr/sbin/depmod -a
+
 %files kmod
 %license LICENSES/GPL-3.0-or-later.txt
 /lib/modules/%{kver}/extra/cern/%{name}/*.ko
