@@ -9,6 +9,8 @@
  * option) any later version.
  */
 
+#include "linux/device.h"
+#include "linux/irqreturn.h"
 #include <linux/stddef.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
