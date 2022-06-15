@@ -277,7 +277,8 @@ static int gn4124_fpga_fcl_init(struct gn412x_fcl_dev *gn412x,
 	gn412x_iowrite32(gn412x, FCL_CTRL_RESET, FCL_CTRL);
 	i = gn412x_ioread32(gn412x, FCL_CTRL);
 	if (i != FCL_CTRL_RESET) {
-		pr_err("%s: %i: error\n", __func__, __LINE__);
+		dev_err(&gn412x->mgr->dev, "%s: %i: error\n",
+			__func__, __LINE__);
 		return -EIO;
 	}
 	gn412x_iowrite32(gn412x, 0x00, FCL_CTRL);
