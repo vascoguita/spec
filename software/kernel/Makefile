@@ -14,7 +14,7 @@ INSTALL_MOD_PATH ?=
 INSTALL_MOD_DIR ?= extra/cern/spec-fmc-carrier
 
 
-ifndef (CONFIG_FPGA_MGR_BACKPORT)
+ifndef CONFIG_FPGA_MGR_BACKPORT
 ifeq ($(shell test $(shell uname -p) \> "4.4"), 0)
 CONFIG_FPGA_MGR_BACKPORT := n
 else
