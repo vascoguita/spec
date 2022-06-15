@@ -89,6 +89,10 @@ find %{buildroot} -type f -name \*.ko -exec %{__chmod} u+x \{\} \;
 #
 %package kmod
 Summary: Simple PCIe Carrier (SPEC) Kmod
+BuildRequires: fmc-kmod
+BuildRequires: htvic-kmod
+BuildRequires: i2c-ocores-kmod
+BuildRequires: spi-ocores-kmod
 
 %description kmod
 The SPEC kmod
@@ -100,7 +104,7 @@ The SPEC kmod
 /usr/sbin/depmod -a
 
 %files kmod
-%license LICENSES/GPL-3.0-or-later.txt
+%license LICENSES/GPL-2.0-or-later.txt
 /lib/modules/%{kver}/extra/cern/%{name}/*.ko
 
 
