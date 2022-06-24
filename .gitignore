@@ -3,13 +3,14 @@
 # SPDX-License-Identifier: CC0-1.0
 
 *.o
+*.a
+*.so
 *.ko
-*.mod.c
-.*.o.cmd
-.*.ko.cmd
-*.mod.d
+*.mod*
+.*cmd
 *.o.d
-*.tmp
+*.tmp*
+*.swp
 .tmp_versions
 modules.order
 Module.symvers
