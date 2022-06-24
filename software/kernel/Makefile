@@ -9,7 +9,7 @@ TOP_DIR ?= $(shell pwd)/../..
 include $(TOP_DIR)/common.mk
 
 KVERSION ?= $(shell uname -r)
-LINUX ?= /lib/modules/$(KVERSION)/build
+KERNELSRC ?= /lib/modules/$(KVERSION)/build
 INSTALL_MOD_PATH ?=
 INSTALL_MOD_DIR ?= extra/cern/spec-fmc-carrier
 
@@ -59,8 +59,9 @@ help coccicheck:
 headers:
 	$(MAKE) -C $(HDR_DIR) $@
 
+
 modules: headers
-	$(MAKE) -C $(LINUX) M=$(shell pwd) \
+	$(MAKE) -C $(KERNELSRC) M=$(shell pwd) \
 		VERSION=$(GIT_VERSION) \
 		FPGA_MGR_ABS=$(FPGA_MGR_ABS) \
 		CONFIG_FPGA_MGR_BACKPORT=$(CONFIG_FPGA_MGR_BACKPORT) \
