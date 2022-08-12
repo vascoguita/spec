@@ -13,14 +13,7 @@ KERNELSRC ?= /lib/modules/$(KVERSION)/build
 INSTALL_MOD_PATH ?=
 INSTALL_MOD_DIR ?= extra/cern/spec-fmc-carrier
 
-
-ifndef CONFIG_FPGA_MGR_BACKPORT
-ifeq ($(shell test $(shell uname -p) \> "4.4"), 0)
-CONFIG_FPGA_MGR_BACKPORT := n
-else
-CONFIG_FPGA_MGR_BACKPORT := y
-endif
-endif
+CONFIG_FPGA_MGR_BACKPORT ?= n
 
 ifdef REPO_PARENT
 FPGA_MGR ?= $(REPO_PARENT)/fpga-mgr-backport/

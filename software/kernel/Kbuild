@@ -17,10 +17,10 @@ SPEC_META_VERSION_COMPAT := $(shell printf "0x%02x%02x0000" $(VER_MAJ) $(VER_MIN
 ccflags-y += -DADDITIONAL_VERSIONS="$(SUBMODULE_VERSIONS)"
 ccflags-y += -DVERSION=\"$(VERSION)\"
 ccflags-y += -DSPEC_META_VERSION_COMPAT=$(SPEC_META_VERSION_COMPAT)
+ccflags-$(CONFIG_FPGA_MGR_BACKPORT) += -DCONFIG_FPGA_MGR_BACKPORT
 ccflags-y += -Wall -Werror
 
-ccflags-y += -I$(FPGA_MGR_ABS)/include
-ccflags-$(CONFIG_FPGA_MGR_BACKPORT) += -DCONFIG_FPGA_MGR_BACKPORT
+ccflags-$(CONFIG_FPGA_MGR_BACKPORT) += -I$(FPGA_MGR_ABS)/include
 ccflags-y += -I$(FMC_ABS)/include
 ccflags-y += -I$(SPI_ABS)/include
 ccflags-y += -I$(src)/../include
@@ -28,12 +28,13 @@ ccflags-y += -I$(src)/../include
 # priority to I2C, FMC headers from our sources
 LINUXINCLUDE := -I$(FMC_ABS)/include -I$(FMC_ABS)/include/linux -I$(I2C_ABS)/include -I$(I2C_ABS)/include/linux $(LINUXINCLUDE)
 
-ifneq ($(FPGA_MGR_ABS), "")
+ifeq ($(CONFIG_FPGA_MGR_BACKPORT), y)
 FPGA_MGR_BACKPORT_INCLUDE := -I$(FPGA_MGR_ABS)/include
 FPGA_MGR_BACKPORT_INCLUDE += -I$(FPGA_MGR_ABS)/include/linux
 LINUXINCLUDE := $(FPGA_MGR_BACKPORT_INCLUDE) $(LINUXINCLUDE)
 KBUILD_EXTRA_SYMBOLS += $(FPGA_MGR_ABS)/drivers/fpga/Module.symvers
 endif
+
 KBUILD_EXTRA_SYMBOLS += $(FMC_ABS)/drivers/fmc/Module.symvers
 
 obj-m := spec-fmc-carrier.o
