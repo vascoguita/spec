@@ -62,6 +62,7 @@ memory-map:
           width: 32
           children:
            - field:
+              description: the PCB revision number
               name: rev
               range: 3-0
     - submap:
