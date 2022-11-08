@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-SPDX-License-Identifier: CC0-1.0
+SPDX-License-Identifier: LGPL-2.1-or-later
 SPDX-FileCopyrightText: 2020 CERN
 """
 
@@ -15,7 +15,7 @@ setup(name='PySPEC',
       maintainer_email="federico.vaga@cern.ch",
       url='https://www.ohwr.org/project/spec',
       packages=['PySPEC'],
-      license='LGPL-3.0-or-later',
+      license='LGPL-2.1-or-later',
       use_scm_version={
           "write_to":  "PySPEC/_version.py",
           "version_scheme":  "no-guess-dev",

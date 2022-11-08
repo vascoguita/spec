@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2020
 #
-# SPDX-License-Identifier: CC0-1.0
+# SPDX-License-Identifier: CC-BY-SA-4.0+
 
 # -*- coding: utf-8 -*-
 #

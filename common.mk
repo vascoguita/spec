@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 CERN (home.cern)
+#
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
 HDL_DIR ?= $(TOP_DIR)/hdl
 SW_DIR ?= $(TOP_DIR)/software
 HDR_DIR ?= $(SW_DIR)/include

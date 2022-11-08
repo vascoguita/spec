@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: LGPL-2.1-or-later
 #
 # SPDX-FileCopyrightText: 2022 CERN
 
@@ -13,7 +13,7 @@
 Summary: Simple PCIe Carrier (SPEC)
 Name: spec-fmc-carrier
 Version: %{?_version}
-License: GPL-3.0-or-later
+License: LGPL-2.1-or-later
 Release: 1%{?dist}
 URL: https://www.ohwr.org/projects/spec
 
@@ -118,7 +118,7 @@ Summary: Simple PCIe Carrier (SPEC) Tools
 The SPEC tools
 
 %files tools
-%license LICENSES/GPL-3.0-or-later.txt
+%license LICENSES/LGPL-2.1-or-later.txt
 /usr/bin/spec-firmware-version
 
 
@@ -132,7 +132,7 @@ Summary: Simple PCIe Carrier (SPEC) Devel
 The SPEC development header files
 
 %files devel
-%license LICENSES/GPL-3.0-or-later.txt
+%license LICENSES/LGPL-2.1-or-later.txt
 /usr/include/linux/spec.h
 /usr/include/linux/spec-core-fpga.h
 

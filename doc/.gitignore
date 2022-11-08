@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2020 CERN (home.cern)
 #
-# SPDX-License-Identifier: CC0-1.0
+# SPDX-License-Identifier: CC-BY-SA-4.0+
 
 _build/
 spec_base_regs.rst

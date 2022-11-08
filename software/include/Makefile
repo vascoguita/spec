@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 CERN (home.cern)
+#
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
 TOP_DIR ?= $(shell pwd)/../..
 include $(TOP_DIR)/common.mk
 
