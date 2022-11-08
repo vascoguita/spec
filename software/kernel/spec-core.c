@@ -25,10 +25,6 @@
 #include "spec.h"
 #include "spec-compat.h"
 
-static char *spec_fw_name_45t = "spec-golden-45T.bin";
-static char *spec_fw_name_100t = "spec-golden-100T.bin";
-static char *spec_fw_name_150t = "spec-golden-150T.bin";
-
 static DEFINE_MUTEX(gn412x_fcl_lock);
 
 char *spec_fw_name = "";
@@ -502,30 +498,6 @@ static const struct mfd_cell spec_mfd_devs[] = {
 	},
 };
 
-
-/**
- * Return the SPEC defult FPGA firmware name based on PCI ID
- * @spec: SPEC device
- *
- * Return: FPGA firmware name
- */
-static const char *spec_fw_name_init_get(struct spec_gn412x *spec_gn412x)
-{
-	if (strlen(spec_fw_name) > 0)
-		return spec_fw_name;
-
-	switch (spec_gn412x->pdev->device) {
-	case PCI_DEVICE_ID_SPEC_45T:
-		return spec_fw_name_45t;
-	case PCI_DEVICE_ID_SPEC_100T:
-		return spec_fw_name_100t;
-	case PCI_DEVICE_ID_SPEC_150T:
-		return spec_fw_name_150t;
-	default:
-		return NULL;
-	}
-}
-
 /**
  * Load FPGA code
  * @spec: SPEC device
@@ -619,25 +591,7 @@ static ssize_t bootselect_show(struct device *dev,
 }
 static DEVICE_ATTR_RW(bootselect);
 
-/**
- * Load golden bitstream on FGPA
- */
-static ssize_t load_golden_fpga_store(struct device *dev,
-				      struct device_attribute *attr,
-				      const char *buf, size_t count)
-{
-	struct pci_dev *pdev = to_pci_dev(dev);
-	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pdev);
-	int err;
-
-	err = spec_fw_load(spec_gn412x, spec_fw_name_init_get(spec_gn412x));
-
-	return err < 0 ? err : count;
-}
-static DEVICE_ATTR_WO(load_golden_fpga);
-
 static struct attribute *gn412x_fpga_attrs[] = {
-	&dev_attr_load_golden_fpga.attr,
 	&dev_attr_spec_fpga_firmware.attr,
 	&dev_attr_bootselect.attr,
 	NULL,
