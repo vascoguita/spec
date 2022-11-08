@@ -2,22 +2,14 @@
 #
 # SPDX-FileCopyrightText: 2020 CERN
 
-stages:
-  - static-analysis
-  - build
-  - dkms
-
-reuse:
-  stage: static-analysis
-  image:
-    name: fsfe/reuse:latest
-    entrypoint: [""]
-  script:
-    - reuse lint
-  allow_failure: true
+include:
+  - project: 'be-cem-edl/evergreen/gitlab-ci'
+    ref: master
+    file:
+      - 'edl-gitlab-ci.yml'
 
 cppcheck:
-  stage: static-analysis
+  stage: analyse
   image:
     name: gitlab-registry.cern.ch/coht/common-containers/static-analysis:latest
   script:
@@ -29,13 +21,16 @@ documentation:
     name: gitlab-registry.cern.ch/coht/common-containers/documentation:latest
   script:
     - make -C doc html
-  allow_failure: true
+    - mkdir -p $EDL_CI_EOS_OUTPUT_DIR
+    - cp -a doc/_build/html/* $EDL_CI_EOS_OUTPUT_DIR
+  artifacts:
+    paths:
+      - $EDL_CI_EOS_OUTPUT_DIR
 
 .script_fetch_kernel_dep: &script_fetch_kernel_dep
   - git clone --depth 1 https://gitlab.cern.ch/fvaga/fpga-manager.git ~/git/fpga-mgr
   - export FPGA_MGR=~/git/fpga-mgr
-  - export CONFIG_FPGA_MGR_BACKPORT=y
-  - git clone --depth 1 https://gitlab.cern.ch/coht/fmc.git ~/git/fmc
+  - git clone -b v1.1.5 --depth 1 https://ohwr.org/project/fmc-sw.git ~/git/fmc
   - export FMC=~/git/fmc
   - git clone --depth 1 https://ohwr.org/project/general-cores.git ~/git/general-cores/
   - export SPI=~/git/general-cores/software/spi-ocores
@@ -48,7 +43,8 @@ documentation:
 build-centos-7:
   stage: build
   variables:
-    LINUX: /usr/src/kernels/*/
+    CONFIG_FPGA_MGR_BACKPORT: y
+    KERNELSRC: /usr/src/kernels/*/
   image:
     name: gitlab-registry.cern.ch/coht/common-containers/build-centos-7:latest
   before_script:
@@ -57,32 +53,20 @@ build-centos-7:
   script:
     - make -C software
 
-.script_build_kernel_ver: &script_build_kernel_ver
-  - source /linux-versions.sh
-  - fetch $VERSION && prepare $VERSION && export LINUX=$(linux $VERSION)
-  - *script_build_kernel_dep
-  - make -C software/kernel all
-
-build-kernel-5.4.129:
+build-kernel:
   stage: build
   allow_failure: true
   variables:
-    VERSION: 5.4.129
+    CONFIG_FPGA_MGR_BACKPORT: n
   image:
     name: gitlab-registry.cern.ch/coht/common-containers/build-kernel:latest
+  parallel:
+    matrix:
+      - VERSION: [5.10.149, 5.15.74]
   before_script:
     - *script_fetch_kernel_dep
   script:
-    - *script_build_kernel_ver
-
-build-kernel-5.10.47:
-  stage: build
-  allow_failure: true
-  variables:
-    VERSION: 5.10.47
-  image:
-    name: gitlab-registry.cern.ch/coht/common-containers/build-kernel:latest
-  before_script:
-    - *script_fetch_kernel_dep
-  script:
-    - *script_build_kernel_ver
+    - source /linux-versions.sh
+    - fetch $VERSION && prepare $VERSION  && export KERNELSRC=$(linux $VERSION)
+    - *script_build_kernel_dep
+    - make -C software/kernel all
