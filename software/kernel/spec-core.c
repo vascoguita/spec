@@ -644,7 +644,6 @@ static struct attribute *gn412x_fpga_attrs[] = {
 };
 
 static const struct attribute_group gn412x_fpga_group = {
-	.name = "fpga-options",
 	.attrs = gn412x_fpga_attrs,
 };
 
