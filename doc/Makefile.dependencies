@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2020 CERN (home.cern)
+#
+# SPDX-License-Identifier: CC-BY-SA-4.0+
+
+CHEBY ?= cheby
+CHEBY_FILES := spec_base_regs.cheby
+CHEBY_DOC_FILES := $(CHEBY_FILES:.cheby=.rst)
+
+all: cheby_doc
+
+vpath %.cheby ../hdl/rtl
+cheby_doc: $(CHEBY_DOC_FILES)
+$(CHEBY_DOC_FILES): %.rst: %.cheby
+	$(CHEBY) -i $< --gen-doc --doc rest > $@
+
+clean:
+	@rm -f $(CHEBY_DOC_FILES)
+
+# Whatever sphinx target, build the cheby doc
+%: cheby_doc
+	@echo > /dev/null
+
+.PHONY: all cheby_doc clean
