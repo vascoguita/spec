@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2020 CERN (home.cern)
 #
-# SPDX-License-Identifier: CC0-1.0
+# SPDX-License-Identifier: LGPL-2.1-or-later
+TOPDIR = $(shell pwd)/..
+REPO_PARENT ?= $(TOPDIR)/..
 
 -include Makefile.specific
 -include $(REPO_PARENT)/parent_common.mk

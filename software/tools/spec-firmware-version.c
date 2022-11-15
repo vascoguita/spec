@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: GPL-3.0-or-later
+ * SPDX-License-Identifier: LGPL-2.1-or-later
  * Copyright (C) 2020 CERN (www.cern.ch)
  * Author: Federico Vaga <federico.vaga@cern.ch>
  */
@@ -113,18 +113,17 @@ static const char *capability[] = {
 static void print_meta_capabilities(uint32_t cap)
 {
 	bool has_cap = false;
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < 32; ++i) {
+		if (!(cap >> i & 0x1))
+			continue;
 		if (i < 6) { /* known bits */
-			if (cap & BIT(i)) {
-				fputs(capability[i], stdout);
-				fputs(", ", stdout);
-				has_cap = true;
-			}
+			fputs(capability[i], stdout);
+			fputs(", ", stdout);
+			has_cap = true;
 		} else {
-			if (cap & BIT(i))
-				fprintf(stdout, "unknown BIT(%d), ", i);
+			fprintf(stdout, "unknown BIT(%u), ", i);
 		}
 	}
 	if (has_cap)

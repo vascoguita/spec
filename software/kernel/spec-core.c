@@ -25,10 +25,6 @@
 #include "spec.h"
 #include "spec-compat.h"
 
-static char *spec_fw_name_45t = "spec-golden-45T.bin";
-static char *spec_fw_name_100t = "spec-golden-100T.bin";
-static char *spec_fw_name_150t = "spec-golden-150T.bin";
-
 static DEFINE_MUTEX(gn412x_fcl_lock);
 
 char *spec_fw_name = "";
@@ -72,37 +68,20 @@ static const struct file_operations spec_irq_dbg_info_ops = {
 };
 
 #define SPEC_DBG_FW_BUF_LEN 128
-static ssize_t spec_dbg_fw_write(struct file *file,
-				 const char __user *buf,
-				 size_t count, loff_t *ppos)
+static ssize_t spec_fpga_firmware_store(struct device *dev,
+					struct device_attribute *attr,
+					const char *buf,
+					size_t count)
 {
-	struct spec_gn412x *spec_gn412x = file->private_data;
-	char buf_l[SPEC_DBG_FW_BUF_LEN];
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pdev);
 	int err;
 
-	if (SPEC_DBG_FW_BUF_LEN < count) {
-		dev_err(&spec_gn412x->pdev->dev,
-			 "Firmware name too long max %u\n",
-			SPEC_DBG_FW_BUF_LEN);
-
-		return -EINVAL;
-	}
-	memset(buf_l, 0, SPEC_DBG_FW_BUF_LEN);
-	err = copy_from_user(buf_l, buf, count);
-	if (err)
-		return -EFAULT;
-
-	err = spec_fw_load(spec_gn412x, buf_l);
-	if (err)
-		return err;
-	return count;
+	err = spec_fw_load(spec_gn412x, buf);
+	return err ? err : count;
 }
 
-static const struct file_operations spec_dbg_fw_ops = {
-	.owner = THIS_MODULE,
-	.open  = simple_open,
-	.write = spec_dbg_fw_write,
-};
+static DEVICE_ATTR_WO(spec_fpga_firmware);
 
 static void seq_printf_meta(struct seq_file *s, const char *indent,
 			    struct spec_meta_id *meta)
@@ -197,16 +176,6 @@ static int spec_dbg_init(struct spec_gn412x *spec_gn412x)
 		dev_err(dev, "Cannot create debugfs file \"%s\" (%ld)\n",
 			SPEC_DBG_INFO_NAME, PTR_ERR(spec_gn412x->dbg_info));
 		return PTR_ERR(spec_gn412x->dbg_info);
-	}
-
-	spec_gn412x->dbg_fw = debugfs_create_file(SPEC_DBG_FW_NAME, 0200,
-						  spec_gn412x->dbg_dir,
-						  spec_gn412x,
-						  &spec_dbg_fw_ops);
-	if (IS_ERR_OR_NULL(spec_gn412x->dbg_fw)) {
-		dev_err(dev, "Cannot create debugfs file \"%s\" (%ld)\n",
-			SPEC_DBG_FW_NAME, PTR_ERR(spec_gn412x->dbg_fw));
-		return PTR_ERR(spec_gn412x->dbg_fw);
 	}
 
 	spec_gn412x->dbg_meta = debugfs_create_file(SPEC_DBG_META_NAME, 0200,
@@ -529,30 +498,6 @@ static const struct mfd_cell spec_mfd_devs[] = {
 	},
 };
 
-
-/**
- * Return the SPEC defult FPGA firmware name based on PCI ID
- * @spec: SPEC device
- *
- * Return: FPGA firmware name
- */
-static const char *spec_fw_name_init_get(struct spec_gn412x *spec_gn412x)
-{
-	if (strlen(spec_fw_name) > 0)
-		return spec_fw_name;
-
-	switch (spec_gn412x->pdev->device) {
-	case PCI_DEVICE_ID_SPEC_45T:
-		return spec_fw_name_45t;
-	case PCI_DEVICE_ID_SPEC_100T:
-		return spec_fw_name_100t;
-	case PCI_DEVICE_ID_SPEC_150T:
-		return spec_fw_name_150t;
-	default:
-		return NULL;
-	}
-}
-
 /**
  * Load FPGA code
  * @spec: SPEC device
@@ -646,31 +591,13 @@ static ssize_t bootselect_show(struct device *dev,
 }
 static DEVICE_ATTR_RW(bootselect);
 
-/**
- * Load golden bitstream on FGPA
- */
-static ssize_t load_golden_fpga_store(struct device *dev,
-				      struct device_attribute *attr,
-				      const char *buf, size_t count)
-{
-	struct pci_dev *pdev = to_pci_dev(dev);
-	struct spec_gn412x *spec_gn412x = pci_get_drvdata(pdev);
-	int err;
-
-	err = spec_fw_load(spec_gn412x, spec_fw_name_init_get(spec_gn412x));
-
-	return err < 0 ? err : count;
-}
-static DEVICE_ATTR_WO(load_golden_fpga);
-
 static struct attribute *gn412x_fpga_attrs[] = {
-	&dev_attr_load_golden_fpga.attr,
+	&dev_attr_spec_fpga_firmware.attr,
 	&dev_attr_bootselect.attr,
 	NULL,
 };
 
 static const struct attribute_group gn412x_fpga_group = {
-	.name = "fpga-options",
 	.attrs = gn412x_fpga_attrs,
 };
 
