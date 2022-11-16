@@ -6,6 +6,28 @@
 Change Log
 ==========
 
+3.0.0 - 2022-11-16
+==================
+Added
+-----
+- ci: better automation
+- sw: support for Linux 5.10
+
+Changed
+-------
+- sw|API change: the API to flash a bitstream moved from debugfs to sysfs to
+  keep it symmetric to the SVEC driver that needed to change due to an
+  incompatibility in 5.10
+- hdl: update gn4124 and ddr3 ip-cores
+- dist: improved RPM packaging
+- bld: improved Makefiles
+
+Fixed
+-----
+- sw: prevent kernel crash on invalid DMA transfer pointer
+- sw: prevent objtool warning about frame pointer state mismatch
+- doc: fixed building and configuration files to avoid warning on sphinx 5.x
+
 2.1.6 - 2021-07-29
 ==================
 Fixed
