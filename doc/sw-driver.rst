@@ -180,10 +180,9 @@ attributes.  Here we focus only on those.
 
 At PCI device top-level we can see the `DMA Engine`_ interface and the
 GN412x sub-devices for :ref:`GPIO<gn4124_gpio>` and :ref:`FCL<gn4124_fcl>`.
-Still at the PCI device top-level there is the directory ``fpga-options``
-that contains additional attributes to control the FPGA.
+Still at the PCI device top-level there are also the following attributes.
 
-``fpga-options/bootselect`` [R/W]
+``bootselect`` [R/W]
   It selects (returns) the FPGA access mode. Possible values are:
 
   - fpga-flash: (default) the FPGA has access to the SPI flash, it uses it
@@ -193,8 +192,12 @@ that contains additional attributes to control the FPGA.
   - gn4124-flash: the SPI flash is accessible form the PCI bridge, it is used
     to load an FPGA configuration on the SPI flash
 
-``fpga-options/load_golden_fpga`` [W]
-  It loads the SPEC golden FPGA (if installed). Just write '1' to this file.
+``firmware_name`` [W]
+  It configures the FPGA with a bitstream which name is provided as input.
+  Remember that firmwares are installed in ``/lib/firmware`` and alternatively
+  you can provide your own path by setting it in
+  ``/sys/module/firmware_class/parameters/path``.
+
 
 If the FPGA is correctly programmed (an FPGA configuration that uses the
 :ref:`SPEC base<spec_hdl_spec_base>`) then there will be a directory named
@@ -237,12 +240,6 @@ attributes.  Here we focus only on those.
 
 ``<pci-id>/info`` [R]
   Miscellaneous information about the card status: IRQ mapping.
-
-``<pci-id>/fpga_firmware`` [W]
-  It configures the FPGA with a bitstream which name is provided as input.
-  Remember that firmwares are installed in ``/lib/firmware`` and alternatively
-  you can provide your own path by setting it in
-  ``/sys/module/firmware_class/parameters/path``.
 
 ``<pci-id>/spec-<pci-id>/csr_regs`` [R]
   It dumps the Control/Status register for
