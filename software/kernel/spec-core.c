@@ -68,7 +68,7 @@ static const struct file_operations spec_irq_dbg_info_ops = {
 };
 
 #define SPEC_DBG_FW_BUF_LEN 128
-static ssize_t spec_fpga_firmware_store(struct device *dev,
+static ssize_t firmware_name_store(struct device *dev,
 					struct device_attribute *attr,
 					const char *buf,
 					size_t count)
@@ -81,7 +81,7 @@ static ssize_t spec_fpga_firmware_store(struct device *dev,
 	return err ? err : count;
 }
 
-static DEVICE_ATTR_WO(spec_fpga_firmware);
+static DEVICE_ATTR_WO(firmware_name);
 
 static void seq_printf_meta(struct seq_file *s, const char *indent,
 			    struct spec_meta_id *meta)
@@ -592,7 +592,7 @@ static ssize_t bootselect_show(struct device *dev,
 static DEVICE_ATTR_RW(bootselect);
 
 static struct attribute *gn412x_fpga_attrs[] = {
-	&dev_attr_spec_fpga_firmware.attr,
+	&dev_attr_firmware_name.attr,
 	&dev_attr_bootselect.attr,
 	NULL,
 };
