@@ -596,7 +596,7 @@ begin  -- architecture top
           metadata_data <= x"53504543";
         when x"2" =>
           -- Version (0xVVMMmmmm VV: version, MM: major, mmmm: minor)
-          metadata_data <= x"02010003";
+          metadata_data <= sourceid_spec_base_pkg.version;
         when x"3" =>
           -- BOM
           metadata_data <= x"fffe0000";
