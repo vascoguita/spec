@@ -45,20 +45,9 @@ build-centos-7:
   script:
     - make -C software
 
-build-kernel:
-  stage: build
-  allow_failure: true
-  variables:
-    CONFIG_FPGA_MGR_BACKPORT: n
-  image:
-    name: gitlab-registry.cern.ch/coht/common-containers/build-kernel:latest
-  parallel:
-    matrix:
-      - VERSION: [5.10.149, 5.15.74]
+kernel_build_validation:
+  extends: .kernel_build_validation
   before_script:
+    - export CONFIG_FPGA_MGR_BACKPORT=n
     - *script_fetch_kernel_dep
-  script:
-    - source /linux-versions.sh
-    - fetch $VERSION && prepare $VERSION  && export KERNELSRC=$(linux $VERSION)
     - *script_build_kernel_dep
-    - make -C software/kernel all
