@@ -1,0 +1,89 @@
+---
+# SPDX-FileCopyrightText: 2023 CERN (home.cern)
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+# The version of the .ohwr.yaml template.
+version: '1.0.0'
+
+project:
+
+  # The name of your project.
+  name: 'Simple PCIe FMC carrier (SPEC)'
+
+  # The description of your project. There are 2 options:
+  #   * Enter an inline Markdown description (like in the example below).
+  #   * Enter the URL of the Markdown file containing the description
+  #     (e.g. 'https://raw.githubusercontent.com/user/project/master/.ohwr/description.md').
+  description: |
+    The FMC PCIe Carrier is an FMC carrier that can hold one FMC card and an SFP connector. On the PCIe side it has a
+    4-lane interface, while the FMC mezzanine slot uses a low-pin count connector. This board is optimised for cost
+    and is usable with most of the FMC cards designed within the OHR project (e.g. ADC cards, Fine Delay). The board
+    is [commercially available](https://ohwr.org/project/spec/wikis/home#commercial-producers).
+    
+    Labview and Linux drivers are available for the
+    [FMC DEL 1ns 4cha delay](https://ohwr.org/project/fmc-delay-1ns-8cha/wikis/home) and
+    [FMC TDC 1ns 5cha](https://ohwr.org/project/fmc-delay-1ns-8cha/wikis/home) TDC mezzanine cards.
+    
+    Boards with a very similar architecture are available for the VME bus
+    ([SVEC - Simple VME FMC Carrier (SVEC)](https://ohwr.org/project/svec/wikis/home)) and for the PXI Express bus
+    ([SPEXI - Simple PXI express FMC Carrier Board (SPEXI)](https://ohwr.org/project/spexi/wikis/home)).
+    
+    Other FMC projects and the FMC standard are described in [FMC Projects](https://ohwr.org/project/fmc-projects).
+
+  # The website of your project.
+  # Use the web page of your git repository if your project doesn't have dedicated website
+  # (e.g. 'https://github.com/user/project').
+  website: 'https://ohwr.org/project/spec'
+
+  # The licenses of your project. Use SPDX identifiers - https://spdx.org/licenses/.
+  licenses:
+    - 'CC-BY-SA-4.0'
+    - 'CERN-OHL-W-2.0'
+    - 'GPL-2.0-or-later'
+    - 'LGPL-2.1-or-later'
+
+  # (optional) Image of your project (e.g. a photo of the latest prototype).
+  image: 'https://ohwr.org/project/spec/uploads/3b5326fd6ed2dc55b2e26e8c25f826fd/spec_v4_top.jpg'
+
+  # (optional) Link to the documentation of your project.
+  documentation: 'https://ohwr.org/project/spec/wikis'
+
+  # (optional) Link to the issue/bug tracker of your project.
+  issues: 'https://ohwr.org/project/spec/issues'
+
+  # (optional) Link to the latest release of your project.
+  latest_release: 'https://ohwr.org/project/spec/tags/v3.0.0'
+
+  # (optional) Link to the forum where your community has conversations, asks questions and posts answers.
+  forum: 'https://forums.ohwr.org/c/spec'
+
+  # (optional) Link to the news page of your project.
+  news: 'https://ohwr.org/project/spec/wikis/home#status'
+
+  # (optional) Addtional links.
+  links:
+    - name: '📎 Getting Started with the SPEC documentation'
+      url: 'https://www.ohwr.org/project/white-rabbit/uploads/e747a4d84a62dcb0f9d784621137b003/spec-getting-started-v1.0-201403.pdf'
+    - name: 'SPEC - INCAA Computers, Netherlands'
+      url: 'https://www.incaacomputers.com/products/by-standard/fmc/spec/'
+    - name: 'FAQ'
+      url: 'https://ohwr.org/project/spec/wikis/FAQ'
+
+  # (optional) Additional images (maximum 5 images).
+  gallery:
+    - 'https://ohwr.org/project/spec/uploads/b9ea47be8f4a6a411dd444e432868bd7/spec.JPG'
+    - 'https://ohwr.org/project/spec/uploads/1da041f7ed1da9b42d1b83f77528a11d/spec_v2.jpg'
+    - 'https://ohwr.org/project/spec/uploads/036da7721683445ec3e5d5d0a8a855c8/SPEC_top_high_res.jpg'
+    - 'https://ohwr.org/project/spec/uploads/0e72fd9272d29cd6e0e67de39924cb78/SPEC_bottom_high_res.jpg'
+  
+  # (optional) Categories to which your project belongs.
+  # (e.g. 'FMC Carriers').
+  categories:
+    - 'FMC Carriers'
+
+  # (optional) Tags that characterize your project.
+  # (e.g. 'ethernet').
+  tags:
+    - 'PCIe'
+    - 'FMC'
