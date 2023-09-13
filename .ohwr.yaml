@@ -44,7 +44,12 @@ project:
     - 'LGPL-2.1-or-later'
 
   # (optional) Image of your project (e.g. a photo of the latest prototype).
-  image: 'https://ohwr.org/project/spec/uploads/3b5326fd6ed2dc55b2e26e8c25f826fd/spec_v4_top.jpg'
+  image:
+    - 'https://ohwr.org/project/spec/uploads/3b5326fd6ed2dc55b2e26e8c25f826fd/spec_v4_top.jpg'
+    - 'https://ohwr.org/project/spec/uploads/b9ea47be8f4a6a411dd444e432868bd7/spec.JPG'
+    - 'https://ohwr.org/project/spec/uploads/1da041f7ed1da9b42d1b83f77528a11d/spec_v2.jpg'
+    - 'https://ohwr.org/project/spec/uploads/036da7721683445ec3e5d5d0a8a855c8/SPEC_top_high_res.jpg'
+    - 'https://ohwr.org/project/spec/uploads/0e72fd9272d29cd6e0e67de39924cb78/SPEC_bottom_high_res.jpg'
 
   # (optional) Link to the documentation of your project.
   documentation: 'https://ohwr.org/project/spec/wikis'
@@ -77,13 +82,6 @@ project:
       url: 'https://www.incaacomputers.com/products/by-standard/fmc/spec/'
     - name: 'FAQ'
       url: 'https://ohwr.org/project/spec/wikis/FAQ'
-
-  # (optional) Additional images (maximum 5 images).
-  gallery:
-    - 'https://ohwr.org/project/spec/uploads/b9ea47be8f4a6a411dd444e432868bd7/spec.JPG'
-    - 'https://ohwr.org/project/spec/uploads/1da041f7ed1da9b42d1b83f77528a11d/spec_v2.jpg'
-    - 'https://ohwr.org/project/spec/uploads/036da7721683445ec3e5d5d0a8a855c8/SPEC_top_high_res.jpg'
-    - 'https://ohwr.org/project/spec/uploads/0e72fd9272d29cd6e0e67de39924cb78/SPEC_bottom_high_res.jpg'
   
   # (optional) Categories to which your project belongs.
   # (e.g. 'FMC Carriers').
