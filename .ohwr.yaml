@@ -43,8 +43,8 @@ project:
     - 'GPL-2.0-or-later'
     - 'LGPL-2.1-or-later'
 
-  # (optional) Image of your project (e.g. a photo of the latest prototype).
-  image:
+  # (optional) Images of your project (e.g. a photo of the latest prototype).
+  images:
     - 'https://ohwr.org/project/spec/uploads/3b5326fd6ed2dc55b2e26e8c25f826fd/spec_v4_top.jpg'
     - 'https://ohwr.org/project/spec/uploads/b9ea47be8f4a6a411dd444e432868bd7/spec.JPG'
     - 'https://ohwr.org/project/spec/uploads/1da041f7ed1da9b42d1b83f77528a11d/spec_v2.jpg'
