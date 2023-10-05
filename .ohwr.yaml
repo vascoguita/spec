@@ -16,7 +16,7 @@ project:
   #   * Enter the URL of the Markdown file containing the description
   #     (e.g. 'https://raw.githubusercontent.com/user/project/master/.ohwr/description.md').
   description: |
-    The FMC PCIe Carrier is an FMC carrier that can hold one FMC card and an SFP connector. On the PCIe side it has a
+    The **FMC PCIe Carrier** is an FMC carrier that can hold one FMC card and an SFP connector. On the PCIe side it has a
     4-lane interface, while the FMC mezzanine slot uses a low-pin count connector. This board is optimised for cost
     and is usable with most of the FMC cards designed within the OHR project (e.g. ADC cards, Fine Delay). The board
     is [commercially available](https://ohwr.org/project/spec/wikis/home#commercial-producers).
@@ -77,7 +77,7 @@ project:
   # (optional) Link to the forum where your community has conversations, asks questions and posts answers.
   forum: 'https://forums.ohwr.org/c/spec'
   links:
-    - name: '📎 Getting Started with the SPEC documentation'
+    - name: 'Getting Started with the SPEC documentation'
       url: 'https://www.ohwr.org/project/white-rabbit/uploads/e747a4d84a62dcb0f9d784621137b003/spec-getting-started-v1.0-201403.pdf'
     - name: 'SPEC - INCAA Computers, Netherlands'
       url: 'https://www.incaacomputers.com/products/by-standard/fmc/spec/'
