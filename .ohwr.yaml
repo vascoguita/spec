@@ -93,9 +93,3 @@ project:
   # (e.g. 'FMC Carriers').
   categories:
     - 'FMC Carriers'
-
-  # (optional) Tags that characterize your project.
-  # (e.g. 'ethernet').
-  tags:
-    - 'PCIe'
-    - 'FMC'
