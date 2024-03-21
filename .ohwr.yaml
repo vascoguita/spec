@@ -86,8 +86,3 @@ project:
       url: 'https://www.incaacomputers.com/products/by-standard/fmc/spec/'
     - name: 'FAQ'
       url: 'https://ohwr.org/project/spec/wikis/FAQ'
-  
-  # (optional) Categories to which your project belongs.
-  # (e.g. 'FMC Carriers').
-  categories:
-    - 'FMC Carriers'
