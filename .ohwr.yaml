@@ -11,25 +11,8 @@ project:
   # The name of your project.
   name: 'Simple PCIe FMC carrier (SPEC)'
 
-  # The description of your project. There are 2 options:
-  #   * Enter an inline Markdown description (like in the example below).
-  #   * Enter the URL of the Markdown file containing the description
-  #     (e.g. 'https://raw.githubusercontent.com/user/project/master/.ohwr/description.md').
-  description: |
-    The **FMC PCIe Carrier** is an FMC carrier that can hold one FMC card and an SFP connector. On the PCIe side it has a
-    4-lane interface, while the FMC mezzanine slot uses a low-pin count connector. This board is optimised for cost
-    and is usable with most of the FMC cards designed within the OHR project (e.g. ADC cards, Fine Delay). The board
-    is [commercially available](https://ohwr.org/project/spec/wikis/home#commercial-producers).
-    
-    Labview and Linux drivers are available for the
-    [FMC DEL 1ns 4cha delay](https://ohwr.org/project/fmc-delay-1ns-8cha/wikis/home) and
-    [FMC TDC 1ns 5cha](https://ohwr.org/project/fmc-delay-1ns-8cha/wikis/home) TDC mezzanine cards.
-    
-    Boards with a very similar architecture are available for the VME bus
-    ([SVEC - Simple VME FMC Carrier (SVEC)](https://ohwr.org/project/svec/wikis/home)) and for the PXI Express bus
-    ([SPEXI - Simple PXI express FMC Carrier Board (SPEXI)](https://ohwr.org/project/spexi/wikis/home)).
-    
-    Other FMC projects and the FMC standard are described in [FMC Projects](https://ohwr.org/project/fmc-projects).
+  # The description of your project.
+  description: 'https://raw.githubusercontent.com/wiki/vascoguita/spec/Home.md'
 
   # The website of your project.
   # Use the web page of your git repository if your project doesn't have dedicated website
