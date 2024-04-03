@@ -44,21 +44,7 @@ project:
   latest_release: 'https://ohwr.org/project/spec/tags/v3.0.0'
   
   # (optional) News feed of your project.
-  news:
-    - title: 'SPEC gateware/software v2.0.2 released'
-      date: 2020-09-29
-    - title: 'SPEC gateware/software v2.0.0 released'
-      date: 2020-07-30
-    - title: 'Created documentation for SPEC150 that has a larger FPGA'
-      date: 2019-12-19
-    - title: 'Over 2000 SPEC boards produced by industry'
-      date: 2018-12-19
-      content: |
-        Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor.
-        Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.
-        Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis enim. 
-    - title: 'Start of study of a new design. Contact Erik van der Bij - CERN'
-      date: 2018-01-11
+  newsfeed: 'https://raw.githubusercontent.com/wiki/vascoguita/spec/News.md'
 
   # (optional) Link to the forum where your community has conversations, asks questions and posts answers.
   forum: 'https://forums.ohwr.org/c/spec'
