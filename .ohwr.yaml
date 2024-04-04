@@ -3,55 +3,30 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-# The version of the .ohwr.yaml template.
 version: '1.0.0'
-
-project:
-
-  # The name of your project.
-  name: 'Simple PCIe FMC carrier (SPEC)'
-
-  # The description of your project.
-  description: 'https://raw.githubusercontent.com/wiki/vascoguita/spec/Home.md'
-
-  # The website of your project.
-  # Use the web page of your git repository if your project doesn't have dedicated website
-  # (e.g. 'https://github.com/user/project').
-  website: 'https://ohwr.org/project/spec'
-
-  # The licenses of your project. Use SPDX identifiers - https://spdx.org/licenses/.
-  licenses:
-    - 'CC-BY-SA-4.0'
-    - 'CERN-OHL-W-2.0'
-    - 'GPL-2.0-or-later'
-    - 'LGPL-2.1-or-later'
-
-  # (optional) Images of your project (e.g. a photo of the latest prototype).
-  images:
-    - 'https://ohwr.org/project/spec/uploads/3b5326fd6ed2dc55b2e26e8c25f826fd/spec_v4_top.jpg'
-    - 'https://ohwr.org/project/spec/uploads/b9ea47be8f4a6a411dd444e432868bd7/spec.JPG'
-    - 'https://ohwr.org/project/spec/uploads/1da041f7ed1da9b42d1b83f77528a11d/spec_v2.jpg'
-    - 'https://ohwr.org/project/spec/uploads/036da7721683445ec3e5d5d0a8a855c8/SPEC_top_high_res.jpg'
-    - 'https://ohwr.org/project/spec/uploads/0e72fd9272d29cd6e0e67de39924cb78/SPEC_bottom_high_res.jpg'
-
-  # (optional) Link to the documentation of your project.
-  documentation: 'https://ohwr.org/project/spec/wikis'
-
-  # (optional) Link to the issue/bug tracker of your project.
-  issues: 'https://ohwr.org/project/spec/issues'
-
-  # (optional) Link to the latest release of your project.
-  latest_release: 'https://ohwr.org/project/spec/tags/v3.0.0'
-  
-  # (optional) News feed of your project.
-  newsfeed: 'https://raw.githubusercontent.com/wiki/vascoguita/spec/News.md'
-
-  # (optional) Link to the forum where your community has conversations, asks questions and posts answers.
-  forum: 'https://forums.ohwr.org/c/spec'
-  links:
-    - name: 'Getting Started with the SPEC documentation'
-      url: 'https://www.ohwr.org/project/white-rabbit/uploads/e747a4d84a62dcb0f9d784621137b003/spec-getting-started-v1.0-201403.pdf'
-    - name: 'SPEC - INCAA Computers, Netherlands'
-      url: 'https://www.incaacomputers.com/products/by-standard/fmc/spec/'
-    - name: 'FAQ'
-      url: 'https://ohwr.org/project/spec/wikis/FAQ'
+name: 'Simple PCIe FMC carrier (SPEC)'
+description: 'https://raw.githubusercontent.com/wiki/vascoguita/spec/Home.md'
+website: 'https://ohwr.org/project/spec'
+licenses:
+  - 'CC-BY-SA-4.0'
+  - 'CERN-OHL-W-2.0'
+  - 'GPL-2.0-or-later'
+  - 'LGPL-2.1-or-later'
+images:
+  - 'https://ohwr.org/project/spec/uploads/3b5326fd6ed2dc55b2e26e8c25f826fd/spec_v4_top.jpg'
+  - 'https://ohwr.org/project/spec/uploads/b9ea47be8f4a6a411dd444e432868bd7/spec.JPG'
+  - 'https://ohwr.org/project/spec/uploads/1da041f7ed1da9b42d1b83f77528a11d/spec_v2.jpg'
+  - 'https://ohwr.org/project/spec/uploads/036da7721683445ec3e5d5d0a8a855c8/SPEC_top_high_res.jpg'
+  - 'https://ohwr.org/project/spec/uploads/0e72fd9272d29cd6e0e67de39924cb78/SPEC_bottom_high_res.jpg'
+documentation: 'https://ohwr.org/project/spec/wikis'
+issues: 'https://ohwr.org/project/spec/issues'
+latest_release: 'https://ohwr.org/project/spec/tags/v3.0.0'
+newsfeed: 'https://raw.githubusercontent.com/wiki/vascoguita/spec/News.md'
+forum: 'https://forums.ohwr.org/c/spec'
+links:
+  - name: 'Getting Started with the SPEC documentation'
+    url: 'https://www.ohwr.org/project/white-rabbit/uploads/e747a4d84a62dcb0f9d784621137b003/spec-getting-started-v1.0-201403.pdf'
+  - name: 'SPEC - INCAA Computers, Netherlands'
+    url: 'https://www.incaacomputers.com/products/by-standard/fmc/spec/'
+  - name: 'FAQ'
+    url: 'https://ohwr.org/project/spec/wikis/FAQ'
